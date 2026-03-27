@@ -51,7 +51,7 @@ import {
   RotateCcw,
   Maximize2
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import * as XLSX from "xlsx-js-style";
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from './api';
 import { Order, OrderItem, OrderStatus, Role, User, Client, OrderHistory, Employee, EmployeeReport, ProductionAssignment, Payment, Product } from './types';
@@ -1904,23 +1904,147 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 
   const exportToExcel = () => {
     if (!order) return;
-    const data = order.items?.map(item => ({
-      'Prenda': item.garment_type,
-      'Nombre / Jugador': item.player_name || '-',
-      'Número': item.number || '-',
-      'Talla': item.size || '-',
-      'Manga': item.sleeve || '-',
-      'Cuello': item.collar_type || '-',
-      'Tipo': item.design_type || '-',
-      'Horma': item.fit || '-',
-      'Precio Costura': item.sewing_price || 0,
-      'Precio Venta': item.sale_price || 0,
-      'Observaciones': item.observations || '-'
-    })) || [];
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
+    console.log(order);
+    // 🔹 1. Información general
+    const orderInfo = [
+      ["ORDEN", order.order_number],
+      ["CLIENTE", order.client_name || "-"],
+      ["ESTADO", order.status || "-"],
+      ["FECHA", order.created_at || "-"],
+      ["FECHA DE ENTREGA",
+        order.delivery_date
+          ? new Date(new Date(order.delivery_date).setDate(new Date(order.delivery_date).getDate() - 1))
+              .toISOString()
+              .split("T")[0]
+          : "-"
+      ],
+      [],
+      ["DETALLE DE PRENDAS"],
+    ];
+
+    // 🔹 2. Headers
+    const headers = [[
+      "Prenda",
+      "Nombre / Jugador",
+      "Número",
+      "Talla",
+      "Manga",
+      "Cuello",
+      "Tipo",
+      "Horma",
+      "Observaciones"
+    ]];
+
+    // 🔹 3. Items
+    const itemsData = order.items?.map(item => ([
+      item.garment_type,
+      item.player_name || "-",
+      item.number || "-",
+      item.size || "-",
+      item.sleeve || "-",
+      item.collar_type || "-",
+      item.design_type || "-",
+      item.fit || "-",
+      item.observations || "-"
+    ])) || [];
+
+    const finalData = [...orderInfo, ...headers, ...itemsData];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(finalData);
+
+    // 🎨 ESTILOS
+    const headerStyle = {
+      fill: { fgColor: { rgb: "D9EAF7" } }, // azul clarito
+      font: { bold: true },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" }
+      }
+    };
+
+    const cellBorder = {
+      border: {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" }
+      }
+    };
+
+    const bold = { font: { bold: true } };
+
+    // 🔹 4. Header index
+    const headerRowIndex = orderInfo.length;
+
+    // 🔹 5. Aplicar estilo a headers
+    headers[0].forEach((_, colIndex) => {
+      const cell = XLSX.utils.encode_cell({ r: headerRowIndex, c: colIndex });
+      if (worksheet[cell]) worksheet[cell].s = headerStyle;
+    });
+
+    // 🔹 6. Bordes en filas de datos
+    itemsData.forEach((row, rowIndex) => {
+      row.forEach((_, colIndex) => {
+        const cell = XLSX.utils.encode_cell({
+          r: headerRowIndex + 1 + rowIndex,
+          c: colIndex
+        });
+        if (worksheet[cell]) worksheet[cell].s = cellBorder;
+      });
+    });
+
+    // 🔹 7. Negrita en info general
+    for (let i = 0; i < 4; i++) {
+      const cell = XLSX.utils.encode_cell({ r: i, c: 0 });
+      if (worksheet[cell]) worksheet[cell].s = bold;
+    }
+
+    // 🔥 8. MERGE (colspan 9 columnas)
+    const detalleRowIndex = 5;
+
+    worksheet["!merges"] = [
+      {
+        s: { r: detalleRowIndex, c: 0 },
+        e: { r: detalleRowIndex, c: 8 }
+      }
+    ];
+
+    // 🎨 Estilo título "DETALLE DE PRENDAS"
+    const detalleCell = XLSX.utils.encode_cell({ r: detalleRowIndex, c: 0 });
+
+    if (worksheet[detalleCell]) {
+      worksheet[detalleCell].s = {
+        font: { bold: true, sz: 14 },
+        alignment: { horizontal: "center", vertical: "center" },
+        fill: { fgColor: { rgb: "F2F2F2" } },
+        border: {
+          top: { style: "thin" },
+          bottom: { style: "thin" }
+        }
+      };
+    }
+
+    // 🔹 9. Ajuste columnas
+    worksheet["!cols"] = [
+      { wch: 18 },
+      { wch: 25 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 30 }
+    ];
+
+    // 🔹 10. Crear archivo
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Prendas");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Pedido");
+
     XLSX.writeFile(workbook, `Pedido_${order.order_number}.xlsx`);
   };
 
