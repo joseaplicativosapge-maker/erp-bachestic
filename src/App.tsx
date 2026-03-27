@@ -198,7 +198,7 @@ function Select({ label, options, ...props }: { label: string, options: { value:
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const [view, setView] = useState<'dashboard' | 'orders' | 'kds' | 'client' | 'create-order' | 'order-details' | 'employees' | 'clients' | 'products'>('dashboard');
   const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [showRoadmapModal, setShowRoadmapModal] = useState<string | null>(null);
@@ -348,17 +348,23 @@ export default function App() {
             exit={{ x: -280 }}
             className="w-[280px] bg-surface border-r border-border-custom flex flex-col z-50"
           >
-            <div className="p-8 border-b border-border-custom flex items-center justify-between">
+            <div className="p-3 border-b border-border-custom flex items-center justify-between">
+  
               <div className="flex items-center gap-4">
-                <div className="w-11 h-11 bg-accent rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-accent/20">B</div>
-                <div>
-                  <h1 className="font-bold text-xl tracking-tight text-foreground-main uppercase">BACHESTIC</h1>
-                  <p className="text-[9px] font-bold text-accent tracking-[0.25em] uppercase opacity-80">v1.1 - Historial</p>
-                </div>
+                <img
+                  src="/logo-bachestic.jpeg"
+                  alt="Bachestic Logo"
+                  className="h-30 object-contain"
+                />
               </div>
-              <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-foreground-muted hover:text-foreground-main">
+
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="lg:hidden text-foreground-muted hover:text-foreground-main"
+              >
                 <X size={20} />
               </button>
+
             </div>
 
             <nav className="flex-1 p-6 space-y-2">
@@ -2114,7 +2120,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
         />
       )}
       <div className="flex items-center justify-between">
-        <button onClick={onBack} className="flex items-center gap-3 text-foreground-muted hover:text-foreground-main font-black uppercase tracking-widest text-[10px] transition-colors">
+        <button onClick={onBack} className="flex items-center gap-3 hover:text-foreground-main font-black uppercase tracking-widest text-[10px] transition-colors">
           <ArrowLeft size={20} className="text-accent" />
           Volver a Órdenes
         </button>
@@ -2272,7 +2278,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                         {order.order_number}
                       </span>
                       <div className="h-[1px] w-8 bg-border-custom"></div>
-                      <span className="text-foreground-muted text-[11px] font-black uppercase tracking-[0.5em]">{order.client_city}</span>
+                      <span className="text-[11px] font-black uppercase tracking-[0.5em]">{order.client_city}</span>
                     </div>
                     <h3 className="text-5xl font-black tracking-tighter text-foreground-main uppercase leading-none drop-shadow-2xl group-hover:text-accent transition-colors duration-700">
                       {order.client_name}
@@ -5543,32 +5549,54 @@ function EmployeeManagement({}: { key?: string }) {
         </div>
 
 
-        <Card className="overflow-hidden p-0 border-accent/20">
-          <div className="p-6 border-b border-border-custom bg-accent text-white">
+        <Card className="overflow-hidden p-0 border-accent/20 !bg-accent text-white">
+
+          {/* HEADER */}
+          <div className="p-6 border-b border-white/20">
             <h4 className="font-black flex items-center gap-2 uppercase tracking-widest text-xs">
               <DollarSign size={18} /> Rendimiento Mensual
             </h4>
           </div>
-          <div className="p-6 space-y-6 bg-accent/90">
+
+          {/* BODY */}
+          <div className="p-6 space-y-6">
+
             {report.map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 transition-all">
+              <div
+                key={i}
+                className="flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white/20 hover:border-white/40 transition-all"
+              >
                 <div>
-                  <p className="font-bold text-sm text-white tracking-tight">{item.employee_name}</p>
-                  <p className="text-[10px] text-white/60 uppercase font-black tracking-widest mt-0.5">{item.role}</p>
+                  <p className="font-bold text-sm tracking-tight">
+                    {item.employee_name}
+                  </p>
+                  <p className="text-[10px] text-white/70 uppercase font-black tracking-widest mt-0.5">
+                    {item.role}
+                  </p>
                 </div>
+
                 <div className="text-right">
-                  <p className="font-black text-white tracking-tighter text-lg">${(item.total_earned || 0).toLocaleString()}</p>
-                  <p className="text-[10px] text-white/60 font-black uppercase tracking-widest">{item.total_garments} prendas</p>
+                  <p className="font-black tracking-tighter text-lg">
+                    ${(item.total_earned || 0).toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-white/70 font-black uppercase tracking-widest">
+                    {item.total_garments} prendas
+                  </p>
                 </div>
               </div>
             ))}
+
             {report.length === 0 && (
-              <div className="text-center py-12 text-white/20">
+              <div className="text-center py-12 text-white/40">
                 <Users size={48} className="mx-auto mb-4" />
-                <p className="text-sm font-black uppercase tracking-widest">Sin registros este mes</p>
+                <p className="text-sm font-black uppercase tracking-widest">
+                  Sin registros este mes
+                </p>
               </div>
             )}
+
           </div>
+
         </Card>
       </div>
 
@@ -5741,103 +5769,115 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
   }, [pin]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 font-sans text-foreground-main relative overflow-hidden">
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        <img 
-          src="https://images.unsplash.com/photo-1558603668-6570496b66f8?q=80&w=2000&auto=format&fit=crop" 
-          alt="Background" 
-          className="w-full h-full object-cover opacity-20 dark:opacity-10 grayscale"
-          referrerPolicy="no-referrer"
+    <div className="min-h-screen grid md:grid-cols-[65%_35%] font-sans">
+
+  {/* IZQUIERDA — IMAGEN GRANDE */}
+  <div className="hidden md:block h-screen">
+    <img
+      src="/login.jpg"
+      alt="Login"
+      className="w-full h-full object-cover"
+    />
+  </div>
+
+  {/* DERECHA — LOGIN MÁS COMPACTO */}
+  <div className="flex items-center justify-center bg-background px-6">
+
+    <motion.div
+      initial={{ opacity: 0, x: 40 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="w-full max-w-sm"
+    >
+
+      {/* HEADER */}
+      <div className="mb-8 text-center">
+        <img
+          src="/logo-bachestic.jpeg"
+          alt="Bachestic Logo"
+          className="h-30 mx-auto object-contain mb-4"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background"></div>
       </div>
 
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md text-center relative z-10"
-      >
-        <div className="mb-12">
-          <div className="w-20 h-20 bg-accent rounded-3xl mx-auto flex items-center justify-center text-white font-bold text-4xl shadow-2xl shadow-accent/40 mb-6">B</div>
-          <h1 className="text-4xl font-black tracking-tighter mb-2">BACHESTIC</h1>
-          <p className="text-foreground-muted font-bold uppercase tracking-widest text-xs mb-2">Sistema de Gestión de Producción</p>
-          <p className="text-[10px] font-bold text-accent tracking-[0.2em] uppercase">v1.1 - Historial</p>
-        </div>
+      {/* CARD */}
+      <div className="bg-surface rounded-3xl p-8 border border-border-custom shadow-xl">
+        <h2 className="text-lg font-bold mb-6 text-center">
+          Ingresa tu PIN
+        </h2>
 
-        <div className="bg-surface rounded-[40px] p-10 border border-border-custom shadow-2xl">
-          <h2 className="text-xl font-bold mb-8">Ingresa tu PIN</h2>
-          
-          <form id="login-form" onSubmit={handleSubmit} className="space-y-8">
-            <div className="flex justify-center gap-4">
-              {[0, 1, 2, 3].map(i => (
-                <div 
-                  key={i}
-                  className={cn(
-                    "w-12 h-16 rounded-2xl border-2 flex items-center justify-center transition-all duration-200",
-                    pin[i] ? "border-accent bg-accent/10" : "border-border-custom bg-surface-hover"
-                  )}
-                >
-                  {pin[i] && <div className="w-3 h-3 rounded-full bg-accent shadow-glow shadow-accent" />}
-                </div>
-              ))}
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
 
-            {error && (
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-accent text-sm font-bold"
+          {/* PIN */}
+          <div className="flex justify-center gap-3">
+            {[0,1,2,3].map(i => (
+              <div
+                key={i}
+                className={cn(
+                  "w-10 h-14 rounded-xl border-2 flex items-center justify-center transition-all",
+                  pin[i]
+                    ? "border-accent bg-accent/10"
+                    : "border-border-custom bg-surface-hover"
+                )}
               >
-                {error}
-              </motion.p>
-            )}
+                {pin[i] && (
+                  <div className="w-2.5 h-2.5 rounded-full bg-accent" />
+                )}
+              </div>
+            ))}
+          </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => handleNumberClick(num)}
-                  disabled={loading}
-                  className="h-16 rounded-2xl bg-surface-hover border border-border-custom text-2xl font-bold hover:bg-surface-hover/80 active:scale-95 transition-all"
-                >
-                  {num}
-                </button>
-              ))}
-              <div />
+          {/* NUMPAD */}
+          <div className="grid grid-cols-3 gap-3">
+            {['1','2','3','4','5','6','7','8','9'].map(num => (
               <button
+                key={num}
                 type="button"
-                onClick={() => handleNumberClick('0')}
+                onClick={() => handleNumberClick(num)}
                 disabled={loading}
-                className="h-16 rounded-2xl bg-surface-hover border border-border-custom text-2xl font-bold hover:bg-surface-hover/80 active:scale-95 transition-all"
+                className="h-14 rounded-xl bg-surface-hover border border-border-custom text-xl font-bold active:scale-95 transition-all"
               >
-                0
+                {num}
               </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={loading}
-                className="h-16 rounded-2xl bg-surface-hover border border-border-custom flex items-center justify-center hover:bg-surface-hover/80 active:scale-95 transition-all text-foreground-muted hover:text-foreground-main"
-              >
-                <X size={24} />
-              </button>
-            </div>
+            ))}
 
-            <button 
-              type="submit"
-              disabled={loading || pin.length !== 4}
-              className="w-full py-4 bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:hover:bg-accent text-white rounded-2xl font-bold shadow-lg shadow-accent/20 transition-all duration-200 flex items-center justify-center gap-2"
+            <div />
+
+            <button
+              type="button"
+              onClick={() => handleNumberClick('0')}
+              disabled={loading}
+              className="h-14 rounded-xl bg-surface-hover border border-border-custom text-xl font-bold active:scale-95 transition-all"
             >
-              {loading ? <Clock className="animate-spin" size={20} /> : <><Lock size={20} /> Entrar</>}
+              0
             </button>
-          </form>
-        </div>
 
-        <p className="mt-12 text-foreground-muted/50 text-xs font-bold uppercase tracking-widest">
-          &copy; 2024 Bachestic Sportswear. Todos los derechos reservados.
-        </p>
-      </motion.div>
-    </div>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={loading}
+              className="h-14 rounded-xl bg-surface-hover border border-border-custom flex items-center justify-center active:scale-95 transition-all"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* BOTÓN */}
+          <button
+            type="submit"
+            disabled={loading || pin.length !== 4}
+            className="w-full py-3 bg-accent disabled:opacity-50 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2"
+          >
+            {loading
+              ? <Clock className="animate-spin" size={18} />
+              : <><Lock size={18} /> Entrar</>
+            }
+          </button>
+
+        </form>
+      </div>
+
+    </motion.div>
+
+  </div>
+</div>
   );
 }
