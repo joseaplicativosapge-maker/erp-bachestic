@@ -4367,10 +4367,10 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
           </div>
         </motion.div>
       ) : search && (
-        <div className="py-32 text-center bg-surface rounded-[48px] border border-border-custom shadow-2xl">
+        <div className="py-32 text-center bg-surface border border-border-custom shadow-2xl">
           <Search className="mx-auto text-foreground-muted/10 mb-6" size={64} />
-          <h4 className="font-black text-2xl text-foreground-main tracking-tighter uppercase mb-2">Orden no encontrada</h4>
-          <p className="text-foreground-muted/50 text-[10px] font-black uppercase tracking-widest italic">Verifica el número e intenta nuevamente</p>
+          <h4 className="font-black text-2xl text-foreground-main tracking-tighter mb-2">Orden no encontrada</h4>
+          <p className="text-foreground-muted/50 text-[10px] font-black tracking-widest italic">Verifica el número e intenta nuevamente</p>
         </div>
       )}
 
