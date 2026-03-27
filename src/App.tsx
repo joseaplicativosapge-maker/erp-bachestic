@@ -3717,7 +3717,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   const isDesignPhase = foundOrder && ['En diseño', 'Versión enviada', 'Corrección solicitada', 'Diseño aprobado', 'Arte final cargado'].includes(foundOrder.status);
 
   const steps: OrderStatus[] = [
-    'Cotización', 'Abono confirmado', 'En diseño', 'Diseño aprobado', 'En impresión', 'En confección', 'En empaque', 'En transporte', 'Entregado'
+    'Cotización', 'Abono confirmado', 'En diseño', 'Diseño aprobado', 'En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En transporte', 'Entregado'
   ];
 
   const getDisplayStatus = (status: OrderStatus) => {
@@ -3811,7 +3811,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-5xl mx-auto space-y-16">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mx-auto space-y-16">
       <div className="text-center space-y-6">
         <h3 className="text-4xl font-black tracking-tighter text-foreground-main">Sigue tu Pedido</h3>
         <p className="text-foreground-muted text-[10px] font-black tracking-[0.3em] italic">Ingresa tu número de orden para ver el estado técnico en tiempo real</p>
@@ -3833,7 +3833,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
       </div>
 
       {foundOrder ? (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-surface p-12 border border-border-custom shadow-2xl space-y-16 relative overflow-hidden">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-surface p-12 border border-border-custom shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-accent/20"></div>
           <div className="absolute top-0 left-0 w-1/3 h-1 bg-accent"></div>
 
@@ -3897,9 +3897,9 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
 
           {/* Progress Bar */}
           <div className="relative pt-16 pb-8">
-            <div className="absolute top-[60px] left-0 w-full h-1 bg-foreground-main/5"></div>
+            <div className="absolute top-[90px] left-0 w-full h-1 bg-foreground-main/5"></div>
             <div 
-              className="absolute top-[60px] left-0 h-1 bg-accent transition-all duration-1000 shadow-[0_0_20px_var(--accent-glow)]"
+              className="absolute top-[90px] left-0 h-1 bg-accent transition-all duration-1000 shadow-[0_0_20px_var(--accent-glow)]"
               style={{ width: `${(Math.max(0, currentStepIndex) / (steps.length - 1)) * 100}%` }}
             ></div>
             
@@ -3971,8 +3971,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                               referrerPolicy="no-referrer" 
                             />
                             {ref.uploaded_by && ref.uploaded_by !== 'Cliente' && (
-                              <div className="absolute top-3 left-3 px-3 py-1 bg-accent text-white rounded-full text-[8px] font-black uppercase tracking-widest shadow-lg z-10 flex items-center gap-2">
-                                <Palette size={10} /> Diseño Final
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                               </div>
                             )}
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
