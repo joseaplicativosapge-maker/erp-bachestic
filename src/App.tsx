@@ -55,7 +55,7 @@ import * as XLSX from "xlsx-js-style";
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from './api';
 import { Order, OrderItem, OrderStatus, Role, User, Client, OrderHistory, Employee, EmployeeReport, ProductionAssignment, Payment, Product } from './types';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInBusinessDays } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Toaster, toast } from 'sonner';
@@ -3315,7 +3315,9 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h3 className="text-4xl font-black text-foreground-main tracking-tighter uppercase">KDS: {role}</h3>
+          <h3 className="text-4xl font-black text-foreground-main tracking-tighter uppercase">
+            KDS: {role}
+          </h3>
         </div>
         <div className="flex flex-wrap items-center gap-6">
           {role === 'Admin' && (
@@ -3349,9 +3351,26 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {filteredOrders.map(order => {
-          const daysLeft = order.delivery_date ? differenceInDays(new Date(order.delivery_date), new Date()) : 0;
-          const colorClass = daysLeft < 0 ? "border-accent shadow-accent/20" : daysLeft < 3 ? "border-yellow-500 shadow-yellow-500/20" : "border-green-500 shadow-green-500/20";
-          const statusColorClass = daysLeft < 0 ? "text-accent" : daysLeft < 3 ? "text-yellow-500" : "text-green-500";
+
+          // 🔥 CAMBIO AQUÍ — ahora usa días hábiles
+          const daysLeft = order.delivery_date
+            ? differenceInBusinessDays(
+                new Date(order.delivery_date),
+                new Date()
+              )
+            : 0;
+
+          const colorClass = daysLeft < 0 
+            ? "border-accent shadow-accent/20" 
+            : daysLeft < 3 
+            ? "border-yellow-500 shadow-yellow-500/20" 
+            : "border-green-500 shadow-green-500/20";
+
+          const statusColorClass = daysLeft < 0 
+            ? "text-accent" 
+            : daysLeft < 3 
+            ? "text-yellow-500" 
+            : "text-green-500";
 
           return (
             <motion.div 
@@ -3368,140 +3387,55 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               </div>
 
               <div className="flex justify-between items-start mb-6">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">{order.order_number}</p>
-                <div className={cn("px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-background border border-border-custom", statusColorClass)}>
-                  {daysLeft < 0 ? `Vencido ${Math.abs(daysLeft)}d` : `${daysLeft} días`}
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">
+                  {order.order_number}
+                </p>
+
+                <div className={cn(
+                  "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-background border border-border-custom",
+                  statusColorClass
+                )}>
+                  {daysLeft < 0 
+                    ? `Vencido ${Math.abs(daysLeft)}d` 
+                    : `${daysLeft} días`}
                 </div>
               </div>
               
-              <h4 className="font-black text-lg mb-4 text-foreground-main tracking-tight leading-tight">{order.client_name}</h4>
+              <h4 className="font-black text-lg mb-4 text-foreground-main tracking-tight leading-tight">
+                {order.client_name}
+              </h4>
               
               <div className="flex-1 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">Prendas</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+                    Prendas
+                  </span>
                   <span className="text-sm font-black text-foreground-main tracking-tighter">
                     {order.items?.length || 0}
                   </span>
                 </div>
+
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">Estado</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+                    Estado
+                  </span>
                   <span className={cn(
                     "text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border",
-                    order.status === 'Abono confirmado' ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
-                    order.status === 'Entregado' ? "bg-green-500/10 text-green-500 border-green-500/20" :
-                    "bg-accent/10 text-accent border-accent/20"
-                  )}>{order.status}</span>
+                    order.status === 'Abono confirmado' 
+                      ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                      : order.status === 'Entregado'
+                      ? "bg-green-500/10 text-green-500 border-green-500/20"
+                      : "bg-accent/10 text-accent border-accent/20"
+                  )}>
+                    {order.status}
+                  </span>
                 </div>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-border-custom flex items-center justify-between gap-4">
-                <div className="flex -space-x-2">
-                  {employees.filter(e => e.id === order.assigned_employee_id).map(emp => (
-                    <div key={emp.id} className="w-8 h-8 rounded-full bg-background border-2 border-surface overflow-hidden flex items-center justify-center">
-                      {emp.photo_path ? (
-                        <img src={emp.photo_path} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      ) : (
-                        <span className="text-[10px] font-black text-foreground-muted">{emp.name.substring(0, 2).toUpperCase()}</span>
-                      )}
-                    </div>
-                  ))}
-                  {!order.assigned_employee_id && (
-                    <div className="w-8 h-8 rounded-full bg-background border-2 border-surface flex items-center justify-center text-[10px] font-black text-foreground-muted">--</div>
-                  )}
-                </div>
-                <div className="flex items-center gap-4">
-                  <button 
-                    onClick={(e) => handleRevert(e, order)}
-                    disabled={updatingId === order.id}
-                    className="text-[9px] font-black uppercase tracking-widest text-foreground-muted hover:text-accent transition-colors disabled:opacity-50"
-                  >
-                    {updatingId === order.id ? '...' : '← Revertir'}
-                  </button>
-                  <button 
-                    onClick={(e) => handleAdvance(e, order)}
-                    disabled={updatingId === order.id}
-                    className="text-[9px] font-black uppercase tracking-widest text-accent hover:text-accent/90 transition-colors disabled:opacity-50"
-                  >
-                    {updatingId === order.id ? '...' : 'Avanzar →'}
-                  </button>
-                </div>
-              </div>
             </motion.div>
           );
         })}
-        {filteredOrders.length === 0 && (
-          <div className="col-span-full py-32 text-center bg-surface rounded-[40px] border border-border-custom shadow-2xl">
-            <CheckCircle2 className="mx-auto text-green-500 mb-6 " size={64} />
-            <h4 className="font-black text-2xl text-foreground-main tracking-tighter mb-2">¡Todo al día!</h4>
-            <p className="text-foreground-muted text-[10px] font-black tracking-widest italic">No hay órdenes pendientes para este departamento</p>
-          </div>
-        )}
       </div>
-
-      <AnimatePresence>
-        {showAssign && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-surface rounded-[40px] p-10 w-full max-w-md shadow-2xl border border-border-custom relative overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 w-full h-1 bg-accent"></div>
-              
-              <div className="flex justify-between items-start mb-10">
-                <div>
-                  <h3 className="text-3xl font-black text-foreground-main tracking-tighter uppercase">Asignar Trabajo</h3>
-                  <p className="text-[10px] text-foreground-muted font-black uppercase tracking-[0.2em] mt-1">{showAssign.order_number}</p>
-                </div>
-                <button onClick={() => setShowAssign(null)} className="p-3 hover:bg-background rounded-full text-foreground-muted hover:text-foreground-main transition-all">
-                  <X size={24} />
-                </button>
-              </div>
-              
-              <div className="space-y-8">
-                  <Select 
-                    label="Empleado Responsable"
-                    value={assignment.employee_id}
-                    onChange={e => setAssignment({...assignment, employee_id: e.target.value})}
-                    options={employees.filter(e => e.role === (nextStatusMap[showAssign.status] === 'En confección' ? 'Confección' : 'Empaque')).map(emp => ({ value: emp.id, label: emp.name }))}
-                    placeholder="Seleccionar empleado..."
-                  />
-
-                <div className="grid grid-cols-2 gap-6">
-                  <Input 
-                    label="Cant. Prendas"
-                    type="number"
-                    value={assignment.garment_count.toString()}
-                    onChange={e => setAssignment({...assignment, garment_count: parseInt(e.target.value)})}
-                  />
-                  <Input 
-                    label="Precio x Prenda"
-                    type="number"
-                    value={assignment.price_per_unit.toString()}
-                    onChange={e => setAssignment({...assignment, price_per_unit: parseFloat(e.target.value)})}
-                  />
-                </div>
-
-                <div className="p-6 bg-accent/5 rounded-[32px] border border-accent/10">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-accent uppercase tracking-widest">Total a Pagar</span>
-                    <span className="text-2xl font-black text-accent tracking-tighter">${((assignment.garment_count || 0) * (assignment.price_per_unit || 0)).toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={handleConfirmAssignment}
-                  disabled={!assignment.employee_id}
-                  className="w-full bg-accent text-white py-5 rounded-[24px] font-black uppercase tracking-widest text-xs shadow-2xl shadow-accent/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-20 disabled:grayscale"
-                >
-                  Confirmar y Avanzar
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }
@@ -5551,21 +5485,15 @@ function EmployeeManagement({}: { key?: string }) {
 
         <Card className="overflow-hidden p-0 border-accent/20 !bg-accent text-white">
 
-          {/* HEADER */}
           <div className="p-6 border-b border-white/20">
             <h4 className="font-black flex items-center gap-2 uppercase tracking-widest text-xs">
               <DollarSign size={18} /> Rendimiento Mensual
             </h4>
           </div>
 
-          {/* BODY */}
           <div className="p-6 space-y-6">
-
             {report.map((item, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white/20 hover:border-white/40 transition-all"
-              >
+              <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white/20 hover:border-white/40 transition-all">
                 <div>
                   <p className="font-bold text-sm tracking-tight">
                     {item.employee_name}
