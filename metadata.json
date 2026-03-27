@@ -1,0 +1,5 @@
+{
+  "name": "Remix: BACHESTIC ERP",
+  "description": "Sistema ERP interno para la gestión de órdenes de producción de uniformes deportivos, con dashboard analítico, gestión de referencias de diseño por el cliente y control de flujo KDS.",
+  "requestFramePermissions": []
+}
