@@ -391,7 +391,7 @@ export default function App() {
           </div>
         )}
         <div className="flex-1 overflow-y-auto p-8">
-          <div className="flex items-center gap-4 mb-8">
+          <div className="flex items-center gap-4">
             {!isSidebarOpen && !isProductionRole && (
               <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-surface-hover rounded-lg text-foreground-main">
                 <Menu size={20} />
@@ -450,7 +450,7 @@ export default function App() {
 // --- Dashboard Component ---
 function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any, orders: Order[], employeeReport: any[], onOrderClick: (id: number) => void, key?: string }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-10 mt-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {[
           { label: 'Órdenes Activas', value: stats.activeOrders, icon: ShoppingCart, color: 'text-accent', trend: '+12%' },
@@ -3138,7 +3138,6 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h3 className="text-4xl font-black text-foreground-main tracking-tighter uppercase">KDS: {role}</h3>
-          <p className="text-foreground-muted text-[10px] font-black uppercase tracking-[0.2em] mt-2 italic">Control de producción técnica en tiempo real</p>
         </div>
         <div className="flex flex-wrap items-center gap-6">
           {role === 'Admin' && (
@@ -4566,7 +4565,6 @@ function ProductManagement({}: { key?: string }) {
         <div className="flex items-center gap-8">
           <div>
             <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Catálogo de Productos</h3>
-            <p className="text-foreground-muted text-[10px] font-black tracking-widest mt-1">Gestiona los precios de venta y costos de confección</p>
           </div>
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button 
@@ -4837,7 +4835,6 @@ function ClientManagement({}: { key?: string }) {
         <div className="flex items-center gap-8">
           <div>
             <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Directorio de Clientes</h3>
-            <p className="text-foreground-muted text-[10px] font-black tracking-widest mt-1">Gestiona tu base de datos de clientes</p>
           </div>
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button 
@@ -5195,7 +5192,6 @@ function EmployeeManagement({}: { key?: string }) {
         <div className="flex items-center gap-8">
           <div>
             <h3 className="text-3xl font-black text-foreground-main tracking-tighter uppercase">Gestión de Personal</h3>
-            <p className="text-foreground-muted text-[10px] font-black uppercase tracking-widest mt-1">Administra tu equipo y revisa su rendimiento mensual</p>
           </div>
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button 
