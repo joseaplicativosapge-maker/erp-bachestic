@@ -4041,7 +4041,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mx-auto space-y-16">
       <div className="text-center space-y-6">
         <h3 className="text-4xl font-black tracking-tighter text-foreground-main">Sigue tu Pedido</h3>
-        <p className="text-foreground-muted text-[10px] font-black tracking-[0.3em] italic">Ingresa tu número de orden para ver el estado técnico en tiempo real</p>
+        <p className="text-foreground-muted text-[10px] font-black tracking-[0.3em]">Ingresa tu número de orden para ver el estado técnico en tiempo real</p>
         <div className="flex flex-col md:flex-row max-w-xl mx-auto gap-4 pt-4">
           <input 
             type="text" 
