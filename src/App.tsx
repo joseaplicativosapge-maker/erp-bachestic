@@ -147,7 +147,7 @@ function Modal({ children, title, subtitle, onClose, isOpen, maxWidth = "max-w-4
                 <X size={24} />
               </button>
             </div>
-            <div className="overflow-y-auto custom-scrollbar max-h-[70vh]">
+            <div className="p-8 overflow-y-auto custom-scrollbar max-h-[70vh]">
               {children}
             </div>
           </motion.div>
