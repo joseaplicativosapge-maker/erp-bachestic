@@ -4088,13 +4088,13 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                         onClick={handleApproveDesign}
                         className="bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-green-600/20 flex items-center justify-center gap-3"
                       >
-                        <CheckCircle size={20} /> Aprobar Diseño
+                        <CheckCircle size={20} /> Aprobar
                       </button>
                       <button 
                         onClick={() => setShowRejectModal(true)}
                         className="bg-accent text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-accent/20 flex items-center justify-center gap-3"
                       >
-                        <MessageSquare size={20} /> Solicitar Cambios
+                        <MessageSquare size={20} /> Cambios
                       </button>
                     </div>
                   )}
