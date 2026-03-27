@@ -251,6 +251,24 @@ export default function App() {
   const handleLogin = (userData: User) => {
     setUser(userData);
     localStorage.setItem('bachestic_user', JSON.stringify(userData));
+    // 👇 lógica clave
+    const productionRoles = [
+      'Diseño',
+      'Impresión',
+      'Sublimación',
+      'Corte',
+      'Confección',
+      'Empaque',
+      'Transporte'
+    ];
+
+    if (productionRoles.includes(userData.role)) {
+      setView('kds'); // 👈 lo mandas al KDS
+    } else if (userData.role === 'Admin' || userData.role === 'Ventas') {
+      setView('dashboard');
+    } else {
+      setView('client');
+    }
   };
 
   const handleLogout = () => {
@@ -3630,6 +3648,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
         const fullOrder = await api.getOrder(order.id);
         setFoundOrder(fullOrder);
         setEditingItems(fullOrder.items || []);
+        
       } catch (error) {
         console.error(error);
         setFoundOrder(order);
@@ -3713,7 +3732,8 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     }
   };
 
-  const isDesignPhase = foundOrder && ['En diseño', 'Versión enviada', 'Corrección solicitada', 'Diseño aprobado', 'Arte final cargado'].includes(foundOrder.status);
+  const isDesignPhase = foundOrder && ['En diseño', 'Versión enviada', 'En corte', 'En impresión', 'En sublimación', 'En confección',
+    'En empaque', 'En transporte', 'Entregado', 'Corrección solicitada', 'Diseño aprobado', 'Arte final cargado'].includes(foundOrder.status);
 
   const steps: OrderStatus[] = [
     'Cotización', 'Abono confirmado', 'En diseño', 'Diseño aprobado', 'En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En transporte', 'Entregado'
@@ -5191,7 +5211,7 @@ function EmployeeManagement({}: { key?: string }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
           <div>
-            <h3 className="text-3xl font-black text-foreground-main tracking-tighter uppercase">Gestión de Personal</h3>
+            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Gestión de Personal</h3>
           </div>
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button 
