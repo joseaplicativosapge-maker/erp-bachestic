@@ -3897,9 +3897,9 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
 
           {/* Progress Bar */}
           <div className="relative pt-16 pb-8">
-            <div className="absolute top-[90px] left-0 w-full h-1 bg-foreground-main/5"></div>
+            <div className="absolute top-[85px] left-0 w-full h-1 bg-foreground-main/5"></div>
             <div 
-              className="absolute top-[90px] left-0 h-1 bg-accent transition-all duration-1000 shadow-[0_0_20px_var(--accent-glow)]"
+              className="absolute top-[85px] left-0 h-1 bg-accent transition-all duration-1000 shadow-[0_0_20px_var(--accent-glow)]"
               style={{ width: `${(Math.max(0, currentStepIndex) / (steps.length - 1)) * 100}%` }}
             ></div>
             
