@@ -59,6 +59,8 @@ import { format, differenceInDays } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Toaster, toast } from 'sonner';
+import QRCode from "react-qr-code";
+
 import { 
   BarChart, 
   Bar, 
@@ -145,7 +147,7 @@ function Modal({ children, title, subtitle, onClose, isOpen, maxWidth = "max-w-4
                 <X size={24} />
               </button>
             </div>
-            <div className="p-8 overflow-y-auto custom-scrollbar max-h-[70vh]">
+            <div className="overflow-y-auto custom-scrollbar max-h-[70vh]">
               {children}
             </div>
           </motion.div>
@@ -1905,11 +1907,14 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const exportToExcel = () => {
     if (!order) return;
 
-    console.log(order);
     // 🔹 1. Información general
     const orderInfo = [
       ["ORDEN", order.order_number],
       ["CLIENTE", order.client_name || "-"],
+      [
+        "DOCUMENTO",
+        `${order.client_doc_type || ""} ${order.client_doc || ""}`.trim() || "-"
+      ],
       ["ESTADO", order.status || "-"],
       ["FECHA", order.created_at || "-"],
       ["FECHA DE ENTREGA",
@@ -1955,38 +1960,56 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 
     // 🎨 ESTILOS
     const headerStyle = {
-      fill: { fgColor: { rgb: "D9EAF7" } }, // azul clarito
+      fill: { fgColor: { rgb: "D9EAF7" } },
       font: { bold: true },
       alignment: { horizontal: "center", vertical: "center" },
       border: {
-        top: { style: "thin" },
-        bottom: { style: "thin" },
-        left: { style: "thin" },
-        right: { style: "thin" }
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } }
+      }
+    };
+
+    const labelStyle = {
+      fill: { fgColor: { rgb: "D9EAF7" } },
+      font: { bold: true },
+      border: {
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } }
+      }
+    };
+
+    const valueStyle = {
+      border: {
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } }
       }
     };
 
     const cellBorder = {
       border: {
-        top: { style: "thin" },
-        bottom: { style: "thin" },
-        left: { style: "thin" },
-        right: { style: "thin" }
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } }
       }
     };
-
-    const bold = { font: { bold: true } };
 
     // 🔹 4. Header index
     const headerRowIndex = orderInfo.length;
 
-    // 🔹 5. Aplicar estilo a headers
+    // 🔹 5. Headers tabla
     headers[0].forEach((_, colIndex) => {
       const cell = XLSX.utils.encode_cell({ r: headerRowIndex, c: colIndex });
       if (worksheet[cell]) worksheet[cell].s = headerStyle;
     });
 
-    // 🔹 6. Bordes en filas de datos
+    // 🔹 6. Bordes en items
     itemsData.forEach((row, rowIndex) => {
       row.forEach((_, colIndex) => {
         const cell = XLSX.utils.encode_cell({
@@ -1997,14 +2020,17 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       });
     });
 
-    // 🔹 7. Negrita en info general
-    for (let i = 0; i < 4; i++) {
-      const cell = XLSX.utils.encode_cell({ r: i, c: 0 });
-      if (worksheet[cell]) worksheet[cell].s = bold;
+    // 🔹 7. Labels + valores
+    for (let i = 0; i <= 5; i++) {
+      const labelCell = XLSX.utils.encode_cell({ r: i, c: 0 });
+      if (worksheet[labelCell]) worksheet[labelCell].s = labelStyle;
+
+      const valueCell = XLSX.utils.encode_cell({ r: i, c: 1 });
+      if (worksheet[valueCell]) worksheet[valueCell].s = valueStyle;
     }
 
-    // 🔥 8. MERGE (colspan 9 columnas)
-    const detalleRowIndex = 5;
+    // 🔹 8. Merge DETALLE
+    const detalleRowIndex = 7;
 
     worksheet["!merges"] = [
       {
@@ -2013,35 +2039,39 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       }
     ];
 
-    // 🎨 Estilo título "DETALLE DE PRENDAS"
     const detalleCell = XLSX.utils.encode_cell({ r: detalleRowIndex, c: 0 });
 
     if (worksheet[detalleCell]) {
       worksheet[detalleCell].s = {
         font: { bold: true, sz: 14 },
-        alignment: { horizontal: "center", vertical: "center" },
-        fill: { fgColor: { rgb: "F2F2F2" } },
-        border: {
-          top: { style: "thin" },
-          bottom: { style: "thin" }
-        }
+        alignment: { horizontal: "center" },
+        fill: { fgColor: { rgb: "F2F2F2" } }
       };
     }
 
-    // 🔹 9. Ajuste columnas
-    worksheet["!cols"] = [
-      { wch: 18 },
-      { wch: 25 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 12 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 30 }
-    ];
+    // 🔥 9. AUTO WIDTH INTELIGENTE (TODO)
+    const colWidths = [];
 
-    // 🔹 10. Crear archivo
+    for (let col = 0; col < finalData[0].length; col++) {
+      let maxLength = 8;
+
+      finalData.forEach(row => {
+        const value = row[col];
+        if (value) {
+          const length = value.toString().length;
+          if (length > maxLength) maxLength = length;
+        }
+      });
+
+      // límites para que no quede feo
+      colWidths.push({
+        wch: Math.min(Math.max(maxLength + 2, 10), 40)
+      });
+    }
+
+    worksheet["!cols"] = colWidths;
+
+    // 🔹 10. Exportar
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Pedido");
 
@@ -3578,97 +3608,151 @@ function PaymentModal({ order, onCancel, onConfirm }: { order: Order, onCancel: 
 }
 
 // --- Receipt Component ---
-function Receipt({ order, payment }: { order: Order, payment: Payment }) {
+function Receipt({ order, payment }: { order: Order; payment: Payment }) {
+  const orderUrl = `http://localhost:3000/?order=${order.order_number}`;
+
   return (
-    <div id="receipt-content" className="bg-white text-black p-12 rounded-none font-mono text-xs w-full max-w-[8.5in] min-h-[11in] mx-auto shadow-2xl border border-black/10 flex flex-col">
-      <div className="text-center border-b border-dashed border-black pb-8 mb-8">
-        <h2 className="text-4xl font-black uppercase tracking-tighter mb-2">DOTS DOTS</h2>
-        <p className="text-sm font-bold uppercase tracking-[0.3em]">Personalización Textil</p>
-        <p className="text-xs mt-4">NIT: 123.456.789-0</p>
-        <p className="text-xs">Calle 123 #45-67, Ciudad</p>
-        <p className="text-xs">Tel: +57 300 123 4567</p>
+    <div
+      id="receipt-content"
+      className="bg-white text-black p-8 font-mono text-[11px] w-[320px] mx-auto border border-black"
+    >
+      {/* HEADER */}
+      <div className="text-center border-b border-dashed border-black pb-4 mb-4">
+        <img
+          src="/logo-bachestic.jpeg"
+          alt="Logo"
+          className="mx-auto h-28 object-contain mb-2"
+        />
+        <p className="text-[10px] mt-2">NIT: 123.456.789-0</p>
+        <p className="text-[10px]">Calle 123 #45-67</p>
+        <p className="text-[10px]">Tel: +57 300 123 4567</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
-        <div className="space-y-3">
-          <div className="flex justify-between border-b border-black/10 pb-1">
-            <span className="font-bold">RECIBO DE CAJA:</span>
-            <span className="font-black">#RC-{payment.id}</span>
-          </div>
-          <div className="flex justify-between border-b border-black/10 pb-1">
-            <span className="font-bold">FECHA:</span>
-            <span>{format(new Date(payment.created_at || new Date()), 'dd/MM/yyyy HH:mm')}</span>
-          </div>
-          <div className="flex justify-between border-b border-black/10 pb-1">
-            <span className="font-bold">ORDEN:</span>
-            <span className="font-black">{order.order_number}</span>
-          </div>
+      {/* INFO */}
+      <div className="space-y-2 mb-4">
+        <div className="flex justify-between">
+          <span className="font-bold">RECIBO:</span>
+          <span className="font-black">RC-{payment.id}</span>
         </div>
-        <div className="space-y-3">
-          <div className="flex justify-between border-b border-black/10 pb-1">
-            <span className="font-bold">CLIENTE:</span>
-            <span className="font-black uppercase">{order.client_name}</span>
-          </div>
-          <div className="flex justify-between border-b border-black/10 pb-1">
-            <span className="font-bold">CONCEPTO:</span>
-            <span>ABONO A PEDIDO</span>
-          </div>
-          <div className="flex justify-between border-b border-black/10 pb-1">
-            <span className="font-bold">MÉTODO:</span>
-            <span className="font-black uppercase">{payment.payment_method}</span>
-          </div>
+
+        <div className="flex justify-between">
+          <span className="font-bold">FECHA:</span>
+          <span>
+            {format(
+              new Date(payment.created_at || new Date()),
+              "dd/MM/yyyy HH:mm"
+            )}
+          </span>
+        </div>
+
+        <div className="flex justify-between">
+          <span className="font-bold">ORDEN:</span>
+          <span>{order.order_number}</span>
+        </div>
+        
+        <div className="flex justify-between">
+          <span className="font-bold">DOCUMENTO:</span>
+          <span className="uppercase">{order.client_doc_type} - {order.client_doc}</span>
+        </div>
+
+        <div className="flex justify-between">
+          <span className="font-bold">CLIENTE:</span>
+          <span className="uppercase">{order.client_name}</span>
+        </div>
+
+        <div className="flex justify-between">
+          <span className="font-bold">MÉTODO:</span>
+          <span className="uppercase">{payment.payment_method}</span>
         </div>
       </div>
 
-      <div className="flex-grow">
-        <div className="bg-gray-50 p-8 rounded-3xl border border-black/5 mb-8">
-          <div className="space-y-4">
-            <div className="flex justify-between text-2xl font-black border-b-2 border-black pb-4">
-              <span>VALOR ABONADO:</span>
-              <span>${(payment.amount || 0).toLocaleString()}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-8 pt-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500 uppercase font-bold">Total Pedido:</span>
-                  <span className="font-bold">${(order.total_amount || 0).toLocaleString()}</span>
+      <div className="border-t border-dashed border-black my-2"></div>
+
+      {/* DETALLE */}
+      {order.items && order.items.length > 0 && (
+        <div className="mb-4 text-[10px]">
+          <p className="font-bold text-center">DETALLE</p>
+          <div className="border-t border-dashed border-black my-2"></div>
+          <div className="space-y-2">
+            {order.items.map((item, index) => {
+              const quantity = item.quantity || 1;
+              const unitPrice = item.sale_price || 0;
+              const lineTotal = quantity * unitPrice;
+
+              return (
+                <div
+                  key={index}
+                  className="border-b border-dashed border-black pb-2"
+                >
+                  <div className="font-bold uppercase">
+                    {item.garment_type}
+                  </div>
+
+                  <div className="flex justify-between text-[9px]">
+                    <span>
+                      {quantity} x ${unitPrice.toLocaleString()}
+                    </span>
+                    <span className="font-bold">
+                      ${lineTotal.toLocaleString()}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500 uppercase font-bold">Total Abonado:</span>
-                  <span className="font-bold">${(order.total_paid || 0).toLocaleString()}</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-end text-xl font-black text-accent">
-                <span className="text-xs uppercase text-gray-400">Saldo Pendiente:</span>
-                <span>${((order.total_amount || 0) - (order.total_paid || 0)).toLocaleString()}</span>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
+      )}
 
-        {payment.notes && (
-          <div className="mb-8">
-            <p className="text-[10px] font-bold uppercase text-gray-400 mb-2">Observaciones:</p>
-            <p className="text-xs italic bg-gray-50 p-4 rounded-xl border border-black/5">{payment.notes}</p>
-          </div>
-        )}
+      {/* TOTALES */}
+      <div className="space-y-1 text-[10px] mb-2">
+        <div className="flex justify-between">
+          <span>Total Pedido:</span>
+          <span>
+            ${(order.total_amount || 0).toLocaleString()}
+          </span>
+        </div>
+
+        <div className="flex justify-between">
+          <span>Total Abonado:</span>
+          <span>
+            ${(order.total_paid || 0).toLocaleString()}
+          </span>
+        </div>
+
+        <div className="flex justify-between font-bold border-t border-black pt-1">
+          <span>Saldo:</span>
+          <span>
+            ${(
+              (order.total_amount || 0) -
+              (order.total_paid || 0)
+            ).toLocaleString()}
+          </span>
+        </div>
       </div>
 
-      <div className="mt-auto pt-12 border-t border-dashed border-black">
-        <div className="grid grid-cols-2 gap-12 items-end">
-          <div className="text-center space-y-2">
-            <div className="border-b border-black w-full h-12"></div>
-            <p className="text-[10px] uppercase font-black">Firma Autorizada</p>
-          </div>
-          <div className="text-center space-y-2">
-            <div className="border-b border-black w-full h-12"></div>
-            <p className="text-[10px] uppercase font-black">Recibido Conforme</p>
-          </div>
+      {/* OBS */}
+      {payment.notes && (
+        <div className="mb-4">
+          <p className="text-[10px] font-bold">OBS:</p>
+          <p className="text-[10px] italic">{payment.notes}</p>
         </div>
-        <div className="text-center mt-12 space-y-2">
-          <p className="text-sm font-black italic">¡Gracias por confiar en nosotros!</p>
-          <p className="text-[10px] opacity-50 uppercase tracking-[0.5em]">Este documento no es una factura legal</p>
+      )}
+
+      {/* QR */}
+      <div className="text-center mt-6">
+        <p className="text-[10px] uppercase mb-2">
+          Escanear para consultar pedido
+        </p>
+
+        <div className="bg-white p-2 inline-block border border-black">
+          <QRCode value={orderUrl} size={90} />
         </div>
+      </div>
+
+      {/* FOOTER */}
+      <div className="text-center mt-3 text-[10px]">
+        <p className="font-bold">¡Gracias por su compra!</p>
+        <p className="opacity-60">No es factura legal</p>
       </div>
     </div>
   );
@@ -3679,7 +3763,7 @@ function ReceiptModal({ order, payment, onClose }: { order: Order, payment: Paym
   return (
     <Modal isOpen={true} onClose={onClose} title="Recibo de Pago" maxWidth="max-w-5xl">
       <div className="space-y-8">
-        <div className="max-h-[70vh] overflow-y-auto bg-gray-100 p-8 rounded-[32px] border border-border-custom">
+        <div className="max-h-[70vh] overflow-y-auto bg-gray-100 p-8 border border-border-custom">
           <Receipt order={order} payment={payment} />
         </div>
         <div className="flex gap-4">
