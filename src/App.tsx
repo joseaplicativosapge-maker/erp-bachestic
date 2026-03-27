@@ -1982,7 +1982,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           >
             <DollarSign size={14} /> Registrar Abono
           </button>
-          <button className="p-3.5 bg-surface-hover hover:bg-surface-hover/80 rounded-2xl text-foreground-muted hover:text-foreground-main transition-all border border-border-custom"><MoreVertical size={20} /></button>
         </div>
       </div>
 
