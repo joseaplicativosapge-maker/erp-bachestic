@@ -4054,19 +4054,20 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                       <Palette size={18} className="text-accent" /> Propuesta del Diseñador
                     </h5>
                     <span className="px-4 py-1.5 bg-accent/10 text-accent rounded-full text-[9px] font-black uppercase tracking-widest">
-                      Versión #{foundOrder.versions[foundOrder.versions.length - 1].version_number}
+                      
+                      Versión #{foundOrder.versions[0].version_number}
                     </span>
                   </div>
                   
                   <div 
                     className="relative aspect-video rounded-[32px] overflow-hidden border border-border-custom shadow-2xl group cursor-pointer"
                     onClick={() => {
-                      setSelectedImageUrl(foundOrder.versions![foundOrder.versions!.length - 1].file_path);
+                      setSelectedImageUrl(foundOrder.versions![0].file_path);
                       setShowImageModal(true);
                     }}
                   >
                     <img 
-                      src={foundOrder.versions[foundOrder.versions.length - 1].file_path} 
+                      src={foundOrder.versions[0].file_path} 
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       referrerPolicy="no-referrer"
                     />
@@ -4077,7 +4078,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-8 flex flex-col justify-end pointer-events-none">
                       <p className="text-white font-bold text-sm mb-2">Comentarios del Diseñador:</p>
-                      <p className="text-white/80 text-xs italic">{foundOrder.versions[foundOrder.versions.length - 1].comments || 'Sin comentarios adicionales'}</p>
+                      <p className="text-white/80 text-xs italic">{foundOrder.versions[0].comments || 'Sin comentarios adicionales'}</p>
                     </div>
                   </div>
 
@@ -4299,7 +4300,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                   <History size={18} className="text-accent" /> Historial de Diseños
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {foundOrder.versions.slice(0, -1).reverse().map((v) => (
+                  {foundOrder.versions.map((v) => (
                     <div key={v.id} className="bg-surface p-6 rounded-[32px] border border-border-custom shadow-xl group">
                       <div className="flex justify-between items-center mb-4">
                         <span className="px-3 py-1 bg-background rounded-full text-[9px] font-black uppercase tracking-widest text-foreground-muted">
