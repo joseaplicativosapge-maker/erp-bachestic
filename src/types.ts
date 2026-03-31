@@ -29,6 +29,14 @@ export interface Payment {
   file_path?: string;
 }
 
+export interface Team {
+  id: number;
+  client_id: number;
+  name: string;
+  active: boolean;
+  created_at: string;
+}
+
 export interface Order {
   id: number;
   order_number: string;
@@ -53,6 +61,8 @@ export interface Order {
   history?: OrderHistory[];
   active: boolean;
   client_id?: number;
+  team_id?: number;
+  team_name?: string;
   assigned_employee_id?: number;
 }
 
@@ -67,6 +77,7 @@ export interface Client {
   email?: string;
   created_at: string;
   active: boolean;
+  teams?: Team[];
 }
 
 export interface OrderItem {

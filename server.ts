@@ -57,11 +57,22 @@ async function startServer() {
       advance_paid BOOLEAN DEFAULT 0,
       total_paid BOOLEAN DEFAULT 0,
       total_amount REAL DEFAULT 0,
+      team_id INTEGER,
       advance_amount REAL DEFAULT 0,
       assigned_employee_id INTEGER,
       active BOOLEAN DEFAULT 1,
       FOREIGN KEY(client_id) REFERENCES clients(id),
-      FOREIGN KEY(assigned_employee_id) REFERENCES employees(id)
+      FOREIGN KEY(assigned_employee_id) REFERENCES employees(id),
+      FOREIGN KEY(team_id) REFERENCES teams(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS teams (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      client_id INTEGER,
+      name TEXT NOT NULL,
+      active BOOLEAN DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(client_id) REFERENCES clients(id)
     );
   `);
 
@@ -80,6 +91,10 @@ async function startServer() {
 
   try {
     db.prepare('ALTER TABLE orders ADD COLUMN assigned_employee_id INTEGER REFERENCES employees(id)').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN team_id INTEGER REFERENCES teams(id)').run();
   } catch (e) {}
 
   try {
@@ -375,10 +390,11 @@ async function startServer() {
 
   app.get('/api/orders/:id', (req, res) => {
     const order = db.prepare(`
-      SELECT o.*, (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE order_id = o.id) as total_paid 
+      SELECT o.*, t.name as team_name, (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE order_id = o.id) as total_paid 
       FROM orders o 
+      LEFT JOIN teams t ON o.team_id = t.id
       WHERE o.id = ?
-    `).get(req.params.id);
+    `).get(req.params.id); // equipo aca
     if (!order) return res.status(404).json({ error: 'Order not found' });
     
     const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(req.params.id);
@@ -441,13 +457,13 @@ async function startServer() {
   });
 
   app.post('/api/orders', (req, res) => {
-    const { client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, total_amount, user_name } = req.body;
+    const { client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, total_amount, team_id, user_name } = req.body;
     const order_number = 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase();
     
     const info = db.prepare(`
-      INSERT INTO orders (order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, total_amount)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, total_amount);
+      INSERT INTO orders (order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, total_amount, team_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, total_amount, team_id);
     
     const order_id = info.lastInsertRowid;
     db.prepare('INSERT INTO order_history (order_id, user_name, action, details) VALUES (?, ?, ?, ?)').run(order_id, user_name || 'Sistema', 'Creación', `Orden ${order_number} creada`);
@@ -456,7 +472,7 @@ async function startServer() {
   });
 
   app.put('/api/orders/:id', (req, res) => {
-    const { client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, total_amount, items, active, user_name } = req.body;
+    const { client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, total_amount, items, active, team_id, user_name } = req.body;
     const order_id = req.params.id;
 
     const current = db.prepare('SELECT * FROM orders WHERE id = ?').get(order_id);
@@ -473,13 +489,14 @@ async function startServer() {
     const updatedDeliveryDate = delivery_date !== undefined ? delivery_date : current.delivery_date;
     const updatedTotalAmount = total_amount !== undefined ? total_amount : current.total_amount;
     const updatedActive = active !== undefined ? (active === 'true' || active === true ? 1 : 0) : current.active;
+    const updatedTeamId = team_id !== undefined ? team_id : current.team_id;
 
     const transaction = db.transaction(() => {
       db.prepare(`
         UPDATE orders 
-        SET client_id = ?, client_name = ?, client_doc = ?, client_doc_type = ?, client_phone = ?, client_address = ?, client_city = ?, contact_method = ?, delivery_date = ?, total_amount = ?, active = ?
+        SET client_id = ?, client_name = ?, client_doc = ?, client_doc_type = ?, client_phone = ?, client_address = ?, client_city = ?, contact_method = ?, delivery_date = ?, total_amount = ?, active = ?, team_id = ?
         WHERE id = ?
-      `).run(updatedClientId, updatedClientName, updatedClientDoc, updatedClientDocType, updatedClientPhone, updatedClientAddress, updatedClientCity, updatedContactMethod, updatedDeliveryDate, updatedTotalAmount, updatedActive, order_id);
+      `).run(updatedClientId, updatedClientName, updatedClientDoc, updatedClientDocType, updatedClientPhone, updatedClientAddress, updatedClientCity, updatedContactMethod, updatedDeliveryDate, updatedTotalAmount, updatedActive, updatedTeamId, order_id);
 
       if (items !== undefined) {
         db.prepare('DELETE FROM order_items WHERE order_id = ?').run(order_id);
@@ -524,6 +541,30 @@ async function startServer() {
     const { status, user_name } = req.body;
     db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, req.params.id);
     db.prepare('INSERT INTO order_history (order_id, user_name, action, details) VALUES (?, ?, ?, ?)').run(req.params.id, user_name || 'Sistema', 'Cambio de Estado', `Estado cambiado a: ${status}`);
+    res.json({ success: true });
+  });
+
+  // Team Routes // equipo aca
+  app.get('/api/clients/:id/teams', (req, res) => {
+    const teams = db.prepare('SELECT * FROM teams WHERE client_id = ? AND active = 1 ORDER BY name ASC').all(req.params.id);
+    res.json(teams);
+  });
+
+  app.post('/api/clients/:id/teams', (req, res) => {
+    const { name } = req.body;
+    const info = db.prepare('INSERT INTO teams (client_id, name) VALUES (?, ?)').run(req.params.id, name);
+    res.json({ id: info.lastInsertRowid });
+  });
+
+  app.put('/api/teams/:id', (req, res) => {
+    const { name, active } = req.body;
+    const current = db.prepare('SELECT * FROM teams WHERE id = ?').get(req.params.id);
+    if (!current) return res.status(404).json({ error: 'Team not found' });
+
+    const updatedName = name !== undefined ? name : current.name;
+    const updatedActive = active !== undefined ? (active ? 1 : 0) : current.active;
+
+    db.prepare('UPDATE teams SET name = ?, active = ? WHERE id = ?').run(updatedName, updatedActive, req.params.id);
     res.json({ success: true });
   });
 

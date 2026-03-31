@@ -54,7 +54,7 @@ import {
 import * as XLSX from "xlsx-js-style";
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from './api';
-import { Order, OrderItem, OrderStatus, Role, User, Client, OrderHistory, Employee, EmployeeReport, ProductionAssignment, Payment, Product } from './types';
+import { Order, OrderItem, OrderStatus, Role, User, Client, OrderHistory, Employee, EmployeeReport, ProductionAssignment, Payment, Product, Team } from './types';
 import { format, differenceInBusinessDays } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -208,7 +208,7 @@ export default function App() {
   const [employeeReport, setEmployeeReport] = useState<any[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [includeInactive, setIncludeInactive] = useState(false);
-
+  
   const queryParams = new URLSearchParams(window.location.search);
   const publicOrderNumber = queryParams.get('order');
 
@@ -232,7 +232,7 @@ export default function App() {
       }
     }
   }, []);
-
+  
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
@@ -336,7 +336,7 @@ export default function App() {
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
-
+  
   return (
     <div className="flex h-screen bg-background font-sans text-foreground-main">
       {/* Sidebar */}
@@ -352,7 +352,7 @@ export default function App() {
   
               <div className="flex items-center gap-4">
                 <img
-                  src="/logo-bachestic.jpeg"
+                  src="/logo-bachestic.png"
                   alt="Bachestic Logo"
                   className="h-30 object-contain"
                 />
@@ -645,7 +645,7 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
 function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, includeInactive, onToggleInactive, onUpdate, onShowRoadmap }: { orders: Order[], user: User, onOrderClick: (id: number) => void, onCreateClick: () => void, canCreate: boolean, includeInactive: boolean, onToggleInactive: () => void, onUpdate: () => void, onShowRoadmap: (orderNum: string) => void, key?: string }) {
   const [showConfirmToggle, setShowConfirmToggle] = useState(false);
   const [orderToToggle, setOrderToToggle] = useState<Order | null>(null);
-
+  
   const copyPublicLink = (e: React.MouseEvent, orderNumber: string) => {
     e.stopPropagation();
     const url = `${window.location.origin}/?order=${orderNumber}`;
@@ -846,11 +846,13 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
   const [clientSearch, setClientSearch] = useState('');
   const [searchResults, setSearchResults] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [clientTeams, setClientTeams] = useState<Team[]>([]);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   
   const [formData, setFormData] = useState({
     client_id: undefined as number | undefined,
+    team_id: undefined as number | undefined,
     client_name: '',
     client_doc: '',
     client_doc_type: 'CC',
@@ -893,6 +895,18 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
     setFormData(prev => ({ ...prev, total_amount: total }));
   };
   const [items, setItems] = useState<Partial<OrderItem>[]>([]);
+  const [advancePercent, setAdvancePercent] = useState(50);
+
+  const groupedItems = items.reduce((acc, item) => {
+    const key = item.garment_type || 'Camiseta';
+    if (!acc[key]) {
+      acc[key] = { garment_type: key, quantity: 0, sale_price: item.sale_price || 0 };
+    }
+    acc[key].quantity += 1;
+    return acc;
+  }, {} as Record<string, { garment_type: string; quantity: number; sale_price: number }>);
+
+  const groupedList = Object.values(groupedItems);
 
   useEffect(() => {
     if (step === 2) {
@@ -906,14 +920,14 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
 
   useEffect(() => {
     if (step === 2) {
-      const total = items.reduce((sum, item) => sum + (item.sale_price || 0), 0);
+      const total = groupedList.reduce((sum, g) => sum + g.quantity * g.sale_price, 0);
       setFormData(prev => ({ ...prev, total_amount: total }));
     } else {
       const total = Object.entries(quantities).reduce((sum, [name, qty]) => {
-        const product = products.find(p => p.name === name);
-        return sum + ((qty as number) * (product?.sale_price || 0));
-      }, 0);
-      setFormData(prev => ({ ...prev, total_amount: total }));
+          const product = products.find(p => p.name === name);
+          return sum + ((qty as number) * (product?.sale_price || 0));
+        }, 0);
+        setFormData(prev => ({ ...prev, total_amount: total }));
     }
   }, [items, quantities, products, step]);
 
@@ -934,11 +948,18 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
     return () => clearTimeout(delayDebounceFn);
   }, [clientSearch]);
 
-  const handleSelectClient = (client: Client) => {
+  const handleSelectClient = async (client: Client) => { // equipo aca
     setSelectedClient(client);
+    try {
+      const teams = await api.getClientTeams(client.id);
+      setClientTeams(teams.filter(t => t.active));
+    } catch (error) {
+      console.error('Error fetching client teams:', error);
+    }
     setFormData({
       ...formData,
       client_id: client.id,
+      team_id: undefined, // equipo aca
       client_name: client.name,
       client_doc: client.doc,
       client_doc_type: client.doc_type || 'CC',
@@ -1010,7 +1031,7 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
       await api.addItems(id, items);
       
       // Record the initial 50% payment
-      const advanceAmount = finalTotalAmount * 0.5;
+      const advanceAmount = Math.round(finalTotalAmount * (advancePercent / 100));
       const paymentFormData = new FormData();
       paymentFormData.append('amount', advanceAmount.toString());
       paymentFormData.append('payment_method', formData.payment_method);
@@ -1126,16 +1147,32 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                       <p className="font-black text-lg text-foreground-main tracking-tight">{formData.client_name}</p>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => {
-                      setSelectedClient(null);
-                      setIsCreatingClient(false);
-                      setFormData({...formData, client_id: undefined, client_name: '', client_doc: '', client_phone: '', client_address: '', client_city: ''});
-                    }}
-                    className="text-[10px] font-black text-accent uppercase tracking-widest hover:text-accent transition-colors"
-                  >
-                    Cambiar Cliente
-                  </button>
+                  <div className="flex items-center gap-6">
+                    {clientTeams.length > 0 && (
+                      <div className="w-48">
+                        <Select 
+                          label="Equipo"
+                          value={formData.team_id?.toString() || ''}
+                          onChange={e => setFormData({...formData, team_id: e.target.value ? Number(e.target.value) : undefined})}
+                          options={[
+                            { value: '', label: 'Sin Equipo' },
+                            ...clientTeams.map(t => ({ value: t.id.toString(), label: t.name }))
+                          ]}
+                        />
+                      </div>
+                    )}
+                    <button 
+                      onClick={() => {
+                        setSelectedClient(null);
+                        setClientTeams([]);
+                        setIsCreatingClient(false);
+                        setFormData({...formData, client_id: undefined, team_id: undefined, client_name: '', client_doc: '', client_phone: '', client_address: '', client_city: ''});
+                      }}
+                      className="text-[10px] font-black text-accent uppercase tracking-widest hover:text-accent transition-colors"
+                    >
+                      Cambiar Cliente
+                    </button>
+                  </div>
                 </div>
 
                 {isCreatingClient && (
@@ -1239,13 +1276,39 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                         </div>
                       </div>
                       
-                      <div className="bg-accent/10 p-6 rounded-[24px] border border-accent/20">
-                        <div className="flex justify-between items-center mb-2">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-accent">Abono Requerido (50%)</p>
-                          <p className="font-black text-xl text-foreground-main tracking-tighter">${(formData.total_amount / 2).toLocaleString()}</p>
+                      <div className="bg-accent/10 p-6 rounded-[24px] border border-accent/20 space-y-3">
+                        <div className="flex justify-between items-center">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-accent">Abono Requerido</p>
+                          <p className="font-black text-xl text-foreground-main tracking-tighter">
+                            ${Math.round(formData.total_amount * (advancePercent / 100)).toLocaleString()}
+                          </p>
                         </div>
-                        <p className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest italic">El pedido iniciará producción una vez confirmado el abono.</p>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={advancePercent}
+                            onChange={e => setAdvancePercent(Number(e.target.value))}
+                            className="flex-1 accent-accent cursor-pointer"
+                          />
+                          <div className="flex items-center gap-1 bg-background border border-border-custom rounded-xl px-3 py-2 w-20">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={advancePercent}
+                              onChange={e => setAdvancePercent(Math.min(100, Math.max(0, Number(e.target.value))))}
+                              className="w-full bg-transparent outline-none text-foreground-main font-black text-sm text-right"
+                            />
+                            <span className="text-foreground-muted font-black text-sm">%</span>
+                          </div>
+                        </div>
+                        <p className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest italic">
+                          El pedido iniciará producción una vez confirmado el abono.
+                        </p>
                       </div>
+                      
                     </div>
                   </div>
                 </div>
@@ -1264,17 +1327,32 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                   <p className="font-black text-lg text-foreground-main tracking-tight">{formData.client_name}</p>
                 </div>
               </div>
-              <button 
-                onClick={() => {
-                  setStep(1);
-                  setSelectedClient(null);
-                  setIsCreatingClient(false);
-                  setFormData({...formData, client_id: undefined, client_name: '', client_doc: '', client_phone: '', client_address: '', client_city: ''});
-                }}
-                className="text-[10px] font-black text-accent uppercase tracking-widest hover:text-accent transition-colors"
-              >
-                Cambiar Cliente
-              </button>
+              <div className="flex items-center gap-6">
+                {clientTeams.length > 0 && (
+                  <div className="w-48">
+                    <Select 
+                      label="Equipo"
+                      value={formData.team_id?.toString() || ''}
+                      onChange={e => setFormData({...formData, team_id: e.target.value ? Number(e.target.value) : undefined})}
+                      options={[
+                        { value: '', label: 'Sin Equipo' },
+                        ...clientTeams.map(t => ({ value: t.id.toString(), label: t.name }))
+                      ]}
+                    />
+                  </div>
+                )}
+                <button 
+                  onClick={() => {
+                    setStep(1);
+                    setSelectedClient(null);
+                    setIsCreatingClient(false);
+                    setFormData({...formData, client_id: undefined, client_name: '', client_doc: '', client_phone: '', client_address: '', client_city: ''});
+                  }}
+                  className="text-[10px] font-black text-accent uppercase tracking-widest hover:text-accent transition-colors"
+                >
+                  Cambiar Cliente
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1287,37 +1365,40 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                     <thead>
                       <tr className="bg-surface-hover text-[9px] uppercase font-black tracking-[0.2em] text-foreground-muted">
                         <th className="py-5 px-6">Prenda</th>
-                        <th className="py-5 px-6 text-right">P. Venta</th>
+                        <th className="py-5 px-6 text-center">Cant.</th>
+                        <th className="py-5 px-6 text-right">P. Unitario</th>
+                        <th className="py-5 px-6 text-right">Subtotal</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-custom">
-                      {items.map((item, idx) => (
+                      {groupedList.map((group, idx) => (
                         <tr key={idx} className="hover:bg-surface-hover transition-colors group">
                           <td className="py-4 px-6">
-                            <select 
-                              value={item.garment_type} 
-                              onChange={e => { const newItems = [...items]; newItems[idx].garment_type = e.target.value; setItems(newItems); }} 
-                              className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase"
-                            >
-                              <option className="bg-background">Camiseta</option>
-                              <option className="bg-background">Camisa</option>
-                              <option className="bg-background">Pantaloneta</option>
-                              <option className="bg-background">Medias</option>
-                              <option className="bg-background">Chaqueta</option>
-                            </select>
+                            <span className="text-foreground-muted font-bold text-[10px] uppercase">{group.garment_type}</span>
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <span className="font-black text-foreground-main text-[10px]">{group.quantity}</span>
                           </td>
                           <td className="py-4 px-6 text-right">
                             <input 
                               type="number" 
-                              value={item.sale_price || 0} 
+                              value={group.sale_price}
                               onChange={e => {
-                                const newItems = [...items];
-                                newItems[idx].sale_price = Number(e.target.value);
-                                setItems(newItems);
+                                const newPrice = Number(e.target.value);
+                                setItems(prev => prev.map(item =>
+                                  item.garment_type === group.garment_type
+                                    ? { ...item, sale_price: newPrice }
+                                    : item
+                                ));
                               }}
-                              className="w-20 bg-transparent outline-none text-accent font-black text-right text-[10px]"
+                              className="w-24 bg-transparent outline-none text-foreground-muted font-black text-right text-[10px]"
                               placeholder="0"
                             />
+                          </td>
+                          <td className="py-4 px-6 text-right">
+                            <span className="font-black text-accent text-[10px]">
+                              ${(group.quantity * group.sale_price).toLocaleString()}
+                            </span>
                           </td>
                         </tr>
                       ))}
@@ -1328,7 +1409,7 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                   <div className="text-right">
                     <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted/20 mb-1">Total Venta</p>
                     <p className="text-2xl font-black text-foreground-main tracking-tighter">
-                      ${ items.reduce((sum, item) => sum + (item.sale_price || 0), 0).toLocaleString() }
+                        ${ groupedList.reduce((sum, g) => sum + g.quantity * g.sale_price, 0).toLocaleString() }
                     </p>
                   </div>
                 </div>
@@ -1342,10 +1423,28 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                       <span className="text-sm font-bold text-foreground-muted">Valor Total:</span>
                       <span className="text-xl font-black text-foreground-main tracking-tighter">${formData.total_amount.toLocaleString()}</span>
                     </div>
+
                     <div className="flex justify-between items-center p-4 bg-accent/10 rounded-2xl border border-accent/20">
-                      <span className="text-sm font-black text-accent uppercase tracking-widest">Abono (50%):</span>
-                      <span className="text-2xl font-black text-accent tracking-tighter">${(formData.total_amount * 0.5).toLocaleString()}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black text-accent uppercase tracking-widest">Abono</span>
+                        <div className="flex items-center gap-1 bg-background border border-accent/20 rounded-lg px-2 py-1">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={advancePercent}
+                            onChange={e => setAdvancePercent(Math.min(100, Math.max(0, Number(e.target.value))))}
+                            className="w-10 bg-transparent outline-none text-accent font-black text-sm text-right"
+                          />
+                          <span className="text-accent font-black text-sm">%</span>
+                        </div>
+                        <span className="text-accent font-black text-sm">:</span>
+                      </div>
+                      <span className="text-2xl font-black text-accent tracking-tighter">
+                        ${Math.round(formData.total_amount * (advancePercent / 100)).toLocaleString()}
+                      </span>
                     </div>
+                  
                   </div>
                 </div>
 
@@ -1709,6 +1808,9 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
 // --- Order Details Component ---
 function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: number, onBack: () => void, onUpdate: () => void, user: User, canEdit: boolean, key?: string }) {
   const [order, setOrder] = useState<Order | null>(null);
+  const totalAmount = Number(order?.total_amount || 0);
+  const totalPaid = Number(order?.total_paid || 0);
+  const remaining = totalAmount - totalPaid;
   const [history, setHistory] = useState<OrderHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -2307,64 +2409,102 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-12 py-12 border-y border-border-custom relative z-10">
-              <div className="space-y-3">
-                <p className="font-black text-foreground-main">Documento</p>
-                {isEditing ? (
-                  <input 
-                    type="text" 
-                    value={editData.client_doc} 
-                    onChange={e => setEditData({...editData, client_doc: e.target.value})}
-                    className="font-black text-sm bg-surface-hover px-5 py-3 rounded-xl border border-border-custom outline-none w-full text-foreground-main focus:border-accent/50 transition-all"
-                  />
-                ) : (
-                  <p className="font-black text-foreground-main tracking-tight">
-                    {order.client_doc_type} - {order.client_doc}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-3">
-                <p className="font-black text-foreground-main">Teléfono</p>
-                {isEditing ? (
-                  <input 
-                    type="text" 
-                    value={editData.client_phone} 
-                    onChange={e => setEditData({...editData, client_phone: e.target.value})}
-                    className="font-black text-sm bg-surface-hover px-5 py-3 rounded-xl border border-border-custom outline-none w-full text-foreground-main focus:border-accent/50 transition-all"
-                  />
-                ) : (
-                  <p className="font-black text-foreground-main tracking-tight">{order.client_phone}</p>
-                )}
-              </div>
-              <div className="space-y-3">
-                <p className="font-black text-foreground-main">Entrega</p>
-                {isEditing ? (
-                  <input 
-                    type="date" 
-                    value={editData.delivery_date ? editData.delivery_date.split('T')[0] : ''} 
-                    onChange={e => setEditData({...editData, delivery_date: e.target.value})}
-                    className="font-black text-sm bg-surface-hover px-5 py-3 rounded-xl border border-border-custom outline-none w-full text-foreground-main focus:border-accent/50 transition-all [color-scheme:dark]"
-                  />
-                ) : (
-                  <p className="font-black text-foreground-main tracking-tight">{order.delivery_date ? format(new Date(order.delivery_date), 'dd/MM/yyyy') : 'N/A'}</p>
-                )}
-              </div>
-              <div className="space-y-3">
-                <p className="font-black text-foreground-main">Total Costura</p>
-                <p className="font-black text-accent tracking-tight">
-                  ${ (isEditing ? editItems : order.items || []).reduce((sum, item) => sum + (item.sewing_price || 0), 0).toLocaleString() }
+          <div className="flex flex-wrap gap-10 py-12 border-y border-border-custom relative z-10">
+
+            {/* DOCUMENTO */}
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Documento</p>
+              {isEditing ? (
+                <input 
+                  type="text" 
+                  value={editData.client_doc} 
+                  onChange={e => setEditData({...editData, client_doc: e.target.value})}
+                  className="font-black text-sm bg-surface-hover px-5 py-3 rounded-xl border border-border-custom outline-none w-full text-foreground-main focus:border-accent/50 transition-all"
+                />
+              ) : (
+                <p className="font-black text-foreground-main tracking-tight">
+                  {order.client_doc_type} - {order.client_doc}
                 </p>
-              </div>
-              <div className="space-y-3">
-                <p className="font-black text-foreground-main">Estado Pago</p>
-                <p className={cn(
-                  "font-black tracking-[0.3em] text-[11px] uppercase px-6 py-3 rounded-2xl inline-block border transition-all duration-500",
-                  order.total_paid >= order.total_amount ? "bg-green-500/10 text-green-500 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.1)]" : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20 shadow-[0_0_20px_rgba(234,179,8,0.1)]"
-                )}>
-                  {order.payment_status}
-                </p>
-              </div>
+              )}
             </div>
+
+            {/* TELÉFONO */}
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Teléfono</p>
+              {isEditing ? (
+                <input 
+                  type="text" 
+                  value={editData.client_phone} 
+                  onChange={e => setEditData({...editData, client_phone: e.target.value})}
+                  className="font-black text-sm bg-surface-hover px-5 py-3 rounded-xl border border-border-custom outline-none w-full text-foreground-main focus:border-accent/50 transition-all"
+                />
+              ) : (
+                <p className="font-black text-foreground-main tracking-tight">
+                  {order.client_phone}
+                </p>
+              )}
+            </div>
+
+            {/* ENTREGA */}
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Entrega</p>
+              {isEditing ? (
+                <input 
+                  type="date" 
+                  value={editData.delivery_date ? editData.delivery_date.split('T')[0] : ''} 
+                  onChange={e => setEditData({...editData, delivery_date: e.target.value})}
+                  className="font-black text-sm bg-surface-hover px-5 py-3 rounded-xl border border-border-custom outline-none w-full text-foreground-main focus:border-accent/50 transition-all [color-scheme:dark]"
+                />
+              ) : (
+                <p className="font-black text-foreground-main tracking-tight">
+                  {order.delivery_date ? format(new Date(order.delivery_date), 'dd/MM/yyyy') : 'N/A'}
+                </p>
+              )}
+            </div>
+
+            {/* TOTAL COSTURA */}
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Total Costura</p>
+              <p className="font-black text-accent tracking-tight">
+                ${ (isEditing ? editItems : order.items || [])
+                  .reduce((sum, item) => sum + (item.sewing_price || 0), 0)
+                  .toLocaleString() }
+              </p>
+            </div>
+
+            {/* TOTAL PAGADO */}
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Total Pagado</p>
+              <p className="font-black text-green-500 tracking-tight">
+                ${ totalPaid.toLocaleString() }
+              </p>
+            </div>
+
+            {/* SALDO PENDIENTE */}
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Saldo Pendiente</p>
+              <p className={cn(
+                "font-black tracking-tight",
+                remaining > 0 ? "text-red-500" : "text-green-500"
+              )}>
+                ${ remaining.toLocaleString() }
+              </p>
+            </div>
+
+            {/* ESTADO PAGO */}
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Estado Pago</p>
+              <p className={cn(
+                "font-black tracking-[0.3em] text-[11px] uppercase px-6 py-3 rounded-2xl inline-block border transition-all duration-500",
+                totalPaid >= totalAmount 
+                  ? "bg-green-500/10 text-green-500 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.1)]" 
+                  : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20 shadow-[0_0_20px_rgba(234,179,8,0.1)]"
+              )}>
+                {totalPaid >= totalAmount ? "PAGADO" : "PENDIENTE"}
+              </p>
+            </div>
+
+          </div>
 
           <div className="bg-surface rounded-[48px] border border-border-custom shadow-2xl overflow-hidden relative">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 blur-[100px] -mr-32 -mt-32"></div>
@@ -3551,6 +3691,33 @@ function PaymentModal({ order, onCancel, onConfirm }: { order: Order, onCancel: 
 function Receipt({ order, payment }: { order: Order; payment: Payment }) {
   const orderUrl = `http://localhost:3000/?order=${order.order_number}`;
 
+  // 🔹 AGRUPAR POR garment_type + sale_price
+  const groupedItems =
+    order.items && order.items.length > 0
+      ? Object.values(
+          order.items.reduce((acc, item) => {
+            const quantity = item.quantity || 1;
+            const unitPrice = item.sale_price || 0;
+
+            const key = `${item.garment_type}-${unitPrice}`;
+
+            if (!acc[key]) {
+              acc[key] = {
+                garment_type: item.garment_type,
+                quantity: 0,
+                unitPrice: unitPrice,
+                total: 0,
+              };
+            }
+
+            acc[key].quantity += quantity;
+            acc[key].total += quantity * unitPrice;
+
+            return acc;
+          }, {} as Record<string, any>)
+        )
+      : [];
+
   return (
     <div
       id="receipt-content"
@@ -3559,7 +3726,7 @@ function Receipt({ order, payment }: { order: Order; payment: Payment }) {
       {/* HEADER */}
       <div className="text-center border-b border-dashed border-black pb-4 mb-4">
         <img
-          src="/logo-bachestic.jpeg"
+          src="/logo-bachestic.png"
           alt="Logo"
           className="mx-auto h-28 object-contain mb-2"
         />
@@ -3589,10 +3756,12 @@ function Receipt({ order, payment }: { order: Order; payment: Payment }) {
           <span className="font-bold">ORDEN:</span>
           <span>{order.order_number}</span>
         </div>
-        
+
         <div className="flex justify-between">
           <span className="font-bold">DOCUMENTO:</span>
-          <span className="uppercase">{order.client_doc_type} - {order.client_doc}</span>
+          <span className="uppercase">
+            {order.client_doc_type} - {order.client_doc}
+          </span>
         </div>
 
         <div className="flex justify-between">
@@ -3608,37 +3777,32 @@ function Receipt({ order, payment }: { order: Order; payment: Payment }) {
 
       <div className="border-t border-dashed border-black my-2"></div>
 
-      {/* DETALLE */}
-      {order.items && order.items.length > 0 && (
+      {/* DETALLE AGRUPADO */}
+      {groupedItems.length > 0 && (
         <div className="mb-4 text-[10px]">
           <p className="font-bold text-center">DETALLE</p>
           <div className="border-t border-dashed border-black my-2"></div>
+
           <div className="space-y-2">
-            {order.items.map((item, index) => {
-              const quantity = item.quantity || 1;
-              const unitPrice = item.sale_price || 0;
-              const lineTotal = quantity * unitPrice;
-
-              return (
-                <div
-                  key={index}
-                  className="border-b border-dashed border-black pb-2"
-                >
-                  <div className="font-bold uppercase">
-                    {item.garment_type}
-                  </div>
-
-                  <div className="flex justify-between text-[9px]">
-                    <span>
-                      {quantity} x ${unitPrice.toLocaleString()}
-                    </span>
-                    <span className="font-bold">
-                      ${lineTotal.toLocaleString()}
-                    </span>
-                  </div>
+            {groupedItems.map((item, index) => (
+              <div
+                key={index}
+                className="border-b border-dashed border-black pb-2"
+              >
+                <div className="font-bold uppercase">
+                  {item.garment_type}
                 </div>
-              );
-            })}
+
+                <div className="flex justify-between text-[9px]">
+                  <span>
+                    {item.quantity} x ${item.unitPrice.toLocaleString()}
+                  </span>
+                  <span className="font-bold">
+                    ${item.total.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -3647,16 +3811,12 @@ function Receipt({ order, payment }: { order: Order; payment: Payment }) {
       <div className="space-y-1 text-[10px] mb-2">
         <div className="flex justify-between">
           <span>Total Pedido:</span>
-          <span>
-            ${(order.total_amount || 0).toLocaleString()}
-          </span>
+          <span>${(order.total_amount || 0).toLocaleString()}</span>
         </div>
 
         <div className="flex justify-between">
           <span>Total Abonado:</span>
-          <span>
-            ${(order.total_paid || 0).toLocaleString()}
-          </span>
+          <span>${(order.total_paid || 0).toLocaleString()}</span>
         </div>
 
         <div className="flex justify-between font-bold border-t border-black pt-1">
@@ -4895,6 +5055,159 @@ function ProductManagement({}: { key?: string }) {
   );
 }
 
+function TeamManagement({ client, onClose }: { client: Client, onClose: () => void }) {
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+
+  useEffect(() => {
+    fetchTeams();
+  }, [client.id]);
+
+  const fetchTeams = async () => {
+    try {
+      setLoading(true);
+      const data = await api.getClientTeams(client.id);
+      setTeams(data);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al cargar equipos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTeamName.trim()) return;
+    try {
+      if (editingTeam) {
+        await api.updateTeam(editingTeam.id, { name: newTeamName });
+        toast.success('Equipo actualizado');
+      } else {
+        await api.createTeam(client.id, newTeamName);
+        toast.success('Equipo creado');
+      }
+      setNewTeamName('');
+      setIsAdding(false);
+      setEditingTeam(null);
+      fetchTeams();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al guardar equipo');
+    }
+  };
+
+  const handleToggleTeam = async (team: Team) => {
+    try {
+      await api.updateTeam(team.id, { active: !team.active });
+      toast.success(`Equipo ${team.active ? 'desactivado' : 'activado'}`);
+      fetchTeams();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al cambiar estado del equipo');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h4 className="text-xl font-black text-foreground-main uppercase tracking-tight">Equipos de {client.name}</h4>
+          <p className="text-foreground-muted text-[10px] font-black uppercase tracking-widest mt-1">Gestiona los equipos asociados a este cliente</p>
+        </div>
+        {!isAdding && (
+          <button 
+            onClick={() => setIsAdding(true)}
+            className="bg-accent text-white px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-2 hover:scale-105 transition-all"
+          >
+            <Plus size={16} /> Nuevo Equipo
+          </button>
+        )}
+      </div>
+
+      {isAdding && (
+        <form onSubmit={handleAddTeam} className="bg-surface-hover p-6 rounded-2xl border border-border-custom space-y-4">
+          <Input 
+            label="Nombre del Equipo"
+            value={newTeamName}
+            onChange={e => setNewTeamName(e.target.value)}
+            placeholder="Ej. Equipo A, Sucursal Norte, etc."
+            required
+          />
+          <div className="flex justify-end gap-3">
+            <button 
+              type="button"
+              onClick={() => { setIsAdding(false); setEditingTeam(null); setNewTeamName(''); }}
+              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-foreground-muted hover:text-foreground-main"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit"
+              className="bg-accent text-white px-6 py-2 rounded-xl font-black uppercase tracking-widest text-[10px]"
+            >
+              {editingTeam ? 'Actualizar' : 'Guardar'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <LoadingState message="Cargando Equipos" />
+      ) : teams.length === 0 ? (
+        <div className="text-center py-12 border-2 border-dashed border-border-custom rounded-2xl bg-surface-hover">
+          <Users size={40} className="mx-auto text-foreground-muted/20 mb-4" />
+          <p className="text-foreground-muted text-sm font-bold">No hay equipos registrados para este cliente.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3">
+          {teams.map(team => (
+            <div 
+              key={team.id} 
+              className={cn(
+                "flex items-center justify-between p-4 bg-surface rounded-2xl border border-border-custom transition-all",
+                !team.active && "opacity-50"
+              )}
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
+                  <Users size={20} />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground-main">{team.name}</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+                    {team.active ? 'Activo' : 'Inactivo'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => { setEditingTeam(team); setNewTeamName(team.name); setIsAdding(true); }}
+                  className="p-2 hover:bg-accent/10 rounded-lg text-foreground-muted hover:text-foreground-main transition-all"
+                >
+                  <Edit2 size={16} />
+                </button>
+                <button 
+                  onClick={() => handleToggleTeam(team)}
+                  className={cn(
+                    "p-2 rounded-lg transition-all",
+                    team.active ? "hover:bg-accent/20 text-foreground-muted hover:text-accent" : "bg-accent text-white"
+                  )}
+                >
+                  {team.active ? <Trash2 size={16} /> : <RefreshCw size={16} />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ClientManagement({}: { key?: string }) {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -4904,6 +5217,8 @@ function ClientManagement({}: { key?: string }) {
   const [includeInactive, setIncludeInactive] = useState(false);
   const [showConfirmToggle, setShowConfirmToggle] = useState(false);
   const [clientToToggle, setClientToToggle] = useState<Client | null>(null);
+  const [showTeamManagement, setShowTeamManagement] = useState(false);
+  const [selectedClientForTeams, setSelectedClientForTeams] = useState<Client | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     doc: '',
@@ -5002,7 +5317,8 @@ function ClientManagement({}: { key?: string }) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-8">
           <div>
-            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Directorio de Clientes</h3>
+            <h3 className="text-3xl font-black text-foreground-main tracking-tighter uppercase">Directorio de Clientes</h3>
+            <p className="text-foreground-muted text-[10px] font-black uppercase tracking-widest mt-1">Gestiona tu base de datos de clientes</p>
           </div>
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button 
@@ -5202,6 +5518,13 @@ function ClientManagement({}: { key?: string }) {
               </div>
               <div className="flex gap-3">
                 <button 
+                  onClick={() => { setSelectedClientForTeams(client); setShowTeamManagement(true); }}
+                  className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
+                  title="Gestionar equipos"
+                >
+                  <Users size={18} />
+                </button>
+                <button 
                   onClick={() => handleEdit(client)}
                   className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
                   title="Editar cliente"
@@ -5239,6 +5562,20 @@ function ClientManagement({}: { key?: string }) {
           </Card>
         ))}
       </div>
+
+      <Modal
+        isOpen={showTeamManagement}
+        onClose={() => setShowTeamManagement(false)}
+        title="Gestión de Equipos"
+        maxWidth="max-w-2xl"
+      >
+        {selectedClientForTeams && (
+          <TeamManagement 
+            client={selectedClientForTeams} 
+            onClose={() => setShowTeamManagement(false)} 
+          />
+        )}
+      </Modal>
     </div>
   );
 }
@@ -5718,11 +6055,11 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
     >
 
       {/* HEADER */}
-      <div className="mb-8 text-center">
+      <div className="text-center">
         <img
-          src="/logo-bachestic.jpeg"
+          src="/logo-bachestic.png"
           alt="Bachestic Logo"
-          className="h-30 mx-auto object-contain mb-4"
+          className="h-40 mx-auto object-contain mb-4"
         />
       </div>
 

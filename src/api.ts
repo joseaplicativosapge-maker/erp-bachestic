@@ -1,4 +1,4 @@
-import { Order, OrderItem, OrderStatus, Employee, ProductionAssignment, EmployeeReport, User, Client, OrderHistory, Payment, Product } from './types';
+import { Order, OrderItem, OrderStatus, Employee, ProductionAssignment, EmployeeReport, User, Client, OrderHistory, Payment, Product, Team } from './types';
 
 const API_BASE = '/api';
 
@@ -181,6 +181,27 @@ export const api = {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(client),
+    });
+    await handleResponse(res);
+  },
+  // Team API
+  getClientTeams: async (clientId: number): Promise<Team[]> => {
+    const res = await fetch(`${API_BASE}/clients/${clientId}/teams`);
+    return handleResponse(res);
+  },
+  createTeam: async (clientId: number, name: string): Promise<{ id: number }> => {
+    const res = await fetch(`${API_BASE}/clients/${clientId}/teams`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    return handleResponse(res);
+  },
+  updateTeam: async (id: number, team: Partial<Team>): Promise<void> => {
+    const res = await fetch(`${API_BASE}/teams/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(team),
     });
     await handleResponse(res);
   },
