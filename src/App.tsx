@@ -722,7 +722,8 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
             />
           </div>
         ) : (
-          orders.filter(o => includeInactive ? !o.active : o.active).map(order => (
+          orders.filter(o => includeInactive ? !o.active : o.active).map(order => {
+            return (
             <Card 
               key={order.id} 
               onClick={() => onOrderClick(order.id)}
@@ -759,6 +760,17 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
                   <LayoutDashboard size={16} className="text-accent" />
                   <span>Estado: <span className="font-black text-foreground-main">{order.status}</span></span>
                 </div>
+                {order.team_name ? (
+                  <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
+                    <Users size={16} className="text-accent" />
+                    <span>Equipo: <span className="font-black text-foreground-main">{order.team_name}</span></span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
+                    <Users size={16} className="text-foreground-muted/30" />
+                    <span className="text-foreground-muted/30">Sin equipo asignado</span>
+                  </div>
+                )}
               </div>
 
               <div className="pt-6 border-t border-border-custom flex justify-between items-center">
@@ -784,7 +796,8 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
                 </div>
               </div>
             </Card>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -1125,15 +1138,7 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                     </div>
                   )}
                 </div>
-                <div className="text-center py-12 border-2 border-dashed border-border-custom rounded-[32px] bg-surface-hover">
-                  <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mb-6">¿No encuentras al cliente?</p>
-                  <button 
-                    onClick={() => setIsCreatingClient(true)}
-                    className="bg-foreground-main text-background px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 mx-auto hover:scale-105 transition-all active:scale-95"
-                  >
-                    <UserPlus size={20} /> Crear Nuevo Cliente
-                  </button>
-                </div>
+
               </div>
             ) : (
               <div className="space-y-8">
@@ -1319,7 +1324,7 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
           <div className="space-y-8">
             <div className="flex justify-between items-center bg-accent/5 p-6 rounded-[24px] border border-accent/20">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-foreground-main shadow-lg shadow-accent/20">
+                <div className="w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-foreground-main shadow-lg shadow-accent/20 text-white">
                   <Contact size={24} />
                 </div>
                 <div>

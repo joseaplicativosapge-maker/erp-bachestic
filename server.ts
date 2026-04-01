@@ -368,8 +368,8 @@ async function startServer() {
   app.get('/api/orders', (req, res) => {
     const includeInactive = req.query.includeInactive === 'true';
     const query = includeInactive 
-      ? `SELECT o.*, (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE order_id = o.id) as total_paid FROM orders o ORDER BY o.created_at DESC` 
-      : `SELECT o.*, (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE order_id = o.id) as total_paid FROM orders o WHERE o.active = 1 ORDER BY o.created_at DESC`;
+            ? `SELECT o.*, t.name as team_name, (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE order_id = o.id) as total_paid FROM orders o LEFT JOIN teams t ON o.team_id = t.id ORDER BY o.created_at DESC` 
+            : `SELECT o.*, t.name as team_name, (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE order_id = o.id) as total_paid FROM orders o LEFT JOIN teams t ON o.team_id = t.id WHERE o.active = 1 ORDER BY o.created_at DESC`;
     
     const orders = db.prepare(query).all();
     
