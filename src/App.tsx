@@ -202,7 +202,9 @@ export default function App() {
   const [view, setView] = useState<'dashboard' | 'orders' | 'kds' | 'client' | 'create-order' | 'order-details' | 'employees' | 'clients' | 'products'>('dashboard');
   const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [showRoadmapModal, setShowRoadmapModal] = useState<string | null>(null);
+  //const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [previousView, setPreviousView] = useState<'orders' | 'kds'>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState({ activeOrders: 0, monthlySales: 0, delayedOrders: 0 });
   const [employeeReport, setEmployeeReport] = useState<any[]>([]);
@@ -299,8 +301,9 @@ export default function App() {
     }
   };
 
-  const navigateToOrder = (id: number) => {
+  const navigateToOrder = (id: number, from: 'orders' | 'kds' = 'orders') => {
     setSelectedOrderId(id);
+    setPreviousView(from);
     setView('order-details');
   };
 
@@ -442,8 +445,8 @@ export default function App() {
                 </div>
               </div>
             )}
-            {view === 'order-details' && selectedOrderId && <OrderDetails key="details" orderId={selectedOrderId} onBack={() => setView('orders')} onUpdate={fetchData} user={user!} canEdit={canEditOrders} />}
-            {view === 'kds' && <KDS key="kds" orders={orders} user={user!} onOrderClick={navigateToOrder} onUpdate={fetchData} />}
+            {view === 'order-details' && selectedOrderId && <OrderDetails key="details" orderId={selectedOrderId} onBack={() => setView(previousView)} onUpdate={fetchData} user={user!} canEdit={canEditOrders} />}
+            {view === 'kds' && <KDS key="kds" orders={orders} user={user!} onOrderClick={(id) => navigateToOrder(id, 'kds')} onUpdate={fetchData} />}
             {view === 'employees' && <EmployeeManagement key="employees" />}
             {view === 'products' && <ProductManagement key="products" />}
             {view === 'clients' && <ClientManagement key="clients" />}
@@ -645,7 +648,34 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
 function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, includeInactive, onToggleInactive, onUpdate, onShowRoadmap }: { orders: Order[], user: User, onOrderClick: (id: number) => void, onCreateClick: () => void, canCreate: boolean, includeInactive: boolean, onToggleInactive: () => void, onUpdate: () => void, onShowRoadmap: (orderNum: string) => void, key?: string }) {
   const [showConfirmToggle, setShowConfirmToggle] = useState(false);
   const [orderToToggle, setOrderToToggle] = useState<Order | null>(null);
-  
+  const [teamFilter, setTeamFilter] = useState<string>('Todos');
+  const [dateField, setDateField] = useState<'created_at' | 'delivery_date'>('delivery_date');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const availableTeams = ['Todos', ...Array.from(new Set(
+    orders.filter(o => o.team_name).map(o => o.team_name as string)
+  ))];
+
+  const filteredOrders = orders.filter(o => {
+    const matchesActive = includeInactive ? !o.active : o.active;
+    const matchesTeam = teamFilter === 'Todos' || o.team_name === teamFilter;
+
+    let matchesDate = true;
+    if (dateFrom || dateTo) {
+      const raw = o[dateField];
+      if (!raw) {
+        matchesDate = false;
+      } else {
+        const orderDate = new Date(raw).toISOString().split('T')[0];
+        if (dateFrom && orderDate < dateFrom) matchesDate = false;
+        if (dateTo && orderDate > dateTo) matchesDate = false;
+      }
+    }
+
+    return matchesActive && matchesTeam && matchesDate;
+  });
+
   const copyPublicLink = (e: React.MouseEvent, orderNumber: string) => {
     e.stopPropagation();
     const url = `${window.location.origin}/?order=${orderNumber}`;
@@ -675,11 +705,25 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-8">
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
           <h3 className="text-3xl font-black tracking-tighter text-foreground-main">Gestión de Pedidos</h3>
+          {canCreate && (
+            <button
+              onClick={onCreateClick}
+              className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
+            >
+              <Plus size={20} />
+              Nueva Orden
+            </button>
+          )}
+        </div>
+
+        {/* BARRA DE FILTROS */}
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Toggle Activos/Desactivados */}
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
-            <button 
+            <button
               onClick={() => includeInactive && onToggleInactive()}
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
@@ -688,7 +732,7 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
             >
               Activos
             </button>
-            <button 
+            <button
               onClick={() => !includeInactive && onToggleInactive()}
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
@@ -698,34 +742,74 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
               Desactivados
             </button>
           </div>
-        </div>
-        {canCreate && (
-          <button 
-            onClick={onCreateClick}
-            className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
+
+          {/* Filtro por Equipo */}
+          <select
+            value={teamFilter}
+            onChange={e => setTeamFilter(e.target.value)}
+            className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main transition-all appearance-none cursor-pointer"
           >
-            <Plus size={20} />
-            Nueva Orden
-          </button>
-        )}
+            {availableTeams.map(team => (
+              <option key={team} value={team} className="bg-surface">{team}</option>
+            ))}
+          </select>
+
+          {/* Filtro por Fechas */}
+          <div className="flex items-center gap-3 bg-surface border border-border-custom rounded-2xl px-5 py-2.5">
+            <select
+              value={dateField}
+              onChange={e => setDateField(e.target.value as any)}
+              className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none text-foreground-muted cursor-pointer appearance-none"
+            >
+              <option value="delivery_date">Entrega</option>
+              <option value="created_at">Creación</option>
+            </select>
+            <div className="w-[1px] h-4 bg-border-custom" />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:dark] w-32"
+            />
+            <span className="text-[10px] font-black text-foreground-muted">—</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:dark] w-32"
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(''); setDateTo(''); }}
+                className="text-foreground-muted hover:text-accent transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Contador de resultados */}
+          <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+            {filteredOrders.length} {filteredOrders.length === 1 ? 'orden' : 'órdenes'}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {orders.filter(o => includeInactive ? !o.active : o.active).length === 0 ? (
+        {filteredOrders.length === 0 ? (
           <div className="md:col-span-2 lg:col-span-3">
-            <EmptyState 
-              icon={ShoppingCart} 
-              title={includeInactive ? "No hay órdenes inactivas" : "No hay órdenes activas"} 
+            <EmptyState
+              icon={ShoppingCart}
+              title={includeInactive ? "No hay órdenes inactivas" : "No hay órdenes activas"}
               message={includeInactive ? "No se han encontrado pedidos en el archivo." : "Aún no se han registrado pedidos. Comienza creando uno nuevo para iniciar el proceso de producción."}
               actionLabel={!includeInactive && canCreate ? "Crear Nueva Orden" : undefined}
               onAction={onCreateClick}
             />
           </div>
         ) : (
-          orders.filter(o => includeInactive ? !o.active : o.active).map(order => {
-            return (
-            <Card 
-              key={order.id} 
+          filteredOrders.map(order => (
+            <Card
+              key={order.id}
               onClick={() => onOrderClick(order.id)}
               noPadding
               className={cn(
@@ -750,7 +834,7 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
                   {order.payment_status}
                 </span>
               </div>
-              
+
               <div className="space-y-4 mb-8">
                 <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
                   <Clock size={16} className="text-accent" />
@@ -776,7 +860,7 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
               <div className="pt-6 border-t border-border-custom flex justify-between items-center">
                 <p className="font-black text-2xl text-foreground-main tracking-tighter">${(order.total_amount || 0).toLocaleString()}</p>
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     onClick={(e) => confirmToggleActive(e, order)}
                     className={cn(
                       "p-3 rounded-xl transition-all",
@@ -786,7 +870,7 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
                   >
                     {order.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
                   </button>
-                  <button 
+                  <button
                     onClick={(e) => copyPublicLink(e, order.order_number)}
                     className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
                     title="Copiar enlace público"
@@ -796,14 +880,13 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
                 </div>
               </div>
             </Card>
-            );
-          })
+          ))
         )}
       </div>
 
-      <Modal 
-        isOpen={showConfirmToggle} 
-        onClose={() => setShowConfirmToggle(false)} 
+      <Modal
+        isOpen={showConfirmToggle}
+        onClose={() => setShowConfirmToggle(false)}
         title="Confirmar Cambio de Estado"
         maxWidth="max-w-md"
       >
@@ -816,19 +899,19 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
               ¿Estás seguro de {orderToToggle?.active ? 'desactivar' : 'activar'} este pedido?
             </h4>
             <p className="text-foreground-muted text-sm mt-2">
-              {orderToToggle?.active 
-                ? 'El pedido se moverá a la pestaña de inactivos y no será visible en la lista principal.' 
+              {orderToToggle?.active
+                ? 'El pedido se moverá a la pestaña de inactivos y no será visible en la lista principal.'
                 : 'El pedido volverá a la lista principal de pedidos activos.'}
             </p>
           </div>
           <div className="flex gap-4 pt-4">
-            <button 
+            <button
               onClick={() => setShowConfirmToggle(false)}
               className="flex-1 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
             >
               Cancelar
             </button>
-            <button 
+            <button
               onClick={handleToggleActive}
               className="flex-1 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] bg-accent text-white hover:scale-105 transition-all shadow-xl shadow-accent/20"
             >
@@ -2509,6 +2592,21 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               </p>
             </div>
 
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Equipo</p>
+              {order.team_name ? (
+                <p className="font-black text-accent tracking-tight flex items-center gap-2">
+                  <Users size={16} />
+                  {order.team_name}
+                </p>
+              ) : (
+                <p className="font-black text-foreground-muted/30 tracking-tight flex items-center gap-2">
+                  <Users size={16} />
+                  Sin equipo
+                </p>
+              )}
+            </div>
+
           </div>
 
           <div className="bg-surface rounded-[48px] border border-border-custom shadow-2xl overflow-hidden relative">
@@ -3303,6 +3401,14 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
   const [showAssign, setShowAssign] = useState<Order | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
   const [assignment, setAssignment] = useState({ employee_id: '', garment_count: 0, price_per_unit: 0 });
+  const [teamFilter, setTeamFilter] = useState<string>('Todos');
+  const [dateField, setDateField] = useState<'created_at' | 'delivery_date'>('delivery_date');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const availableTeams = ['Todos', ...Array.from(new Set(
+    orders.filter(o => o.team_name).map(o => o.team_name as string)
+  ))];
 
   useEffect(() => {
     if (role === 'Admin' || role === 'Confección' || role === 'Empaque') {
@@ -3365,18 +3471,11 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     const nextStatus = nextStatusMap[order.status];
     if (nextStatus === order.status) return;
 
-    // If advancing to a production step, we might want to assign an employee
     if (['En confección', 'En empaque'].includes(nextStatus)) {
       setShowAssign(order);
       const totalGarments = order.items?.length || 0;
-      // Default to the sewing price of the first item if in Confección
       const defaultPrice = nextStatus === 'En confección' ? (order.items?.[0]?.sewing_price || 0) : 0;
-      
-      setAssignment({ 
-        employee_id: '', 
-        garment_count: totalGarments, 
-        price_per_unit: defaultPrice 
-      });
+      setAssignment({ employee_id: '', garment_count: totalGarments, price_per_unit: defaultPrice });
       return;
     }
 
@@ -3395,11 +3494,8 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
   const handleConfirmAssignment = async () => {
     if (!showAssign) return;
     const nextStatus = nextStatusMap[showAssign.status];
-
     try {
       setUpdatingId(showAssign.id);
-      
-      // Create assignment
       await api.createAssignment({
         order_id: showAssign.id,
         employee_id: parseInt(assignment.employee_id),
@@ -3407,10 +3503,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
         garment_count: assignment.garment_count,
         price_per_unit: assignment.price_per_unit
       });
-
-      // Update status
       await api.updateStatus(showAssign.id, nextStatus, user.name);
-      
       setShowAssign(null);
       onUpdate();
     } catch (error) {
@@ -3425,7 +3518,6 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     e.stopPropagation();
     const prevStatus = previousStatusMap[order.status];
     if (prevStatus === order.status) return;
-
     try {
       setUpdatingId(order.id);
       await api.updateStatus(order.id, prevStatus);
@@ -3440,43 +3532,40 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
 
   const filteredOrders = orders.filter(o => {
     if (o.status === 'Entregado' || o.status === 'Cotización') return false;
-    
-    if (role === 'Admin') {
-      if (statusFilter !== 'Todos' && o.status !== statusFilter) return false;
-      return true;
+
+    if (role !== 'Admin' && !departmentMap[role]?.includes(o.status)) return false;
+    if (role === 'Admin' && statusFilter !== 'Todos' && o.status !== statusFilter) return false;
+
+    const matchesTeam = teamFilter === 'Todos' || o.team_name === teamFilter;
+    if (!matchesTeam) return false;
+
+    if (dateFrom || dateTo) {
+      const raw = o[dateField];
+      if (!raw) return false;
+      const orderDate = new Date(raw).toISOString().split('T')[0];
+      if (dateFrom && orderDate < dateFrom) return false;
+      if (dateTo && orderDate > dateTo) return false;
     }
-    
-    return departmentMap[role]?.includes(o.status);
+
+    return true;
   });
 
   const allStatuses: OrderStatus[] = [
-    'Abono pendiente', 'Abono confirmado', 'En diseño', 'Versión enviada', 
-    'Corrección solicitada', 'Diseño aprobado', 'Arte final cargado', 
-    'En impresión', 'En sublimación', 'En corte', 'En confección', 
+    'Abono pendiente', 'Abono confirmado', 'En diseño', 'Versión enviada',
+    'Corrección solicitada', 'Diseño aprobado', 'Arte final cargado',
+    'En impresión', 'En sublimación', 'En corte', 'En confección',
     'En empaque', 'En despacho', 'En transporte'
   ];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <h3 className="text-4xl font-black text-foreground-main tracking-tighter uppercase">
-            KDS: {role}
-          </h3>
-        </div>
-        <div className="flex flex-wrap items-center gap-6">
-          {role === 'Admin' && (
-            <select 
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="bg-background border border-border-custom rounded-2xl px-6 py-3 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main transition-all hover:bg-surface"
-            >
-              <option value="Todos" className="bg-surface">Todos los estados</option>
-              {allStatuses.map(s => (
-                <option key={s} value={s} className="bg-surface">{s}</option>
-              ))}
-            </select>
-          )}
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <h3 className="text-4xl font-black text-foreground-main tracking-tighter uppercase">
+              KDS: {role}
+            </h3>
+          </div>
           <div className="flex items-center gap-6 bg-surface px-6 py-3 rounded-2xl border border-border-custom">
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
@@ -3492,33 +3581,95 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
             </div>
           </div>
         </div>
+
+        {/* BARRA DE FILTROS */}
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Filtro de estado (solo Admin) */}
+          {role === 'Admin' && (
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main transition-all appearance-none cursor-pointer"
+            >
+              <option value="Todos" className="bg-surface">Todos los estados</option>
+              {allStatuses.map(s => (
+                <option key={s} value={s} className="bg-surface">{s}</option>
+              ))}
+            </select>
+          )}
+
+          {/* Filtro por Equipo */}
+          <select
+            value={teamFilter}
+            onChange={e => setTeamFilter(e.target.value)}
+            className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main transition-all appearance-none cursor-pointer"
+          >
+            {availableTeams.map(team => (
+              <option key={team} value={team} className="bg-surface">{team}</option>
+            ))}
+          </select>
+
+          {/* Filtro por Fechas */}
+          <div className="flex items-center gap-3 bg-surface border border-border-custom rounded-2xl px-5 py-2.5">
+            <select
+              value={dateField}
+              onChange={e => setDateField(e.target.value as any)}
+              className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none text-foreground-muted cursor-pointer appearance-none"
+            >
+              <option value="delivery_date">Entrega</option>
+              <option value="created_at">Creación</option>
+            </select>
+            <div className="w-[1px] h-4 bg-border-custom" />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:dark] w-32"
+            />
+            <span className="text-[10px] font-black text-foreground-muted">—</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:dark] w-32"
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(''); setDateTo(''); }}
+                className="text-foreground-muted hover:text-accent transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Contador */}
+          <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+            {filteredOrders.length} {filteredOrders.length === 1 ? 'orden' : 'órdenes'}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {filteredOrders.map(order => {
-
-          // 🔥 CAMBIO AQUÍ — ahora usa días hábiles
           const daysLeft = order.delivery_date
-            ? differenceInBusinessDays(
-                new Date(order.delivery_date),
-                new Date()
-              )
+            ? differenceInBusinessDays(new Date(order.delivery_date), new Date())
             : 0;
 
-          const colorClass = daysLeft < 0 
-            ? "border-accent shadow-accent/20" 
-            : daysLeft < 3 
-            ? "border-yellow-500 shadow-yellow-500/20" 
+          const colorClass = daysLeft < 0
+            ? "border-accent shadow-accent/20"
+            : daysLeft < 3
+            ? "border-yellow-500 shadow-yellow-500/20"
             : "border-green-500 shadow-green-500/20";
 
-          const statusColorClass = daysLeft < 0 
-            ? "text-accent" 
-            : daysLeft < 3 
-            ? "text-yellow-500" 
+          const statusColorClass = daysLeft < 0
+            ? "text-accent"
+            : daysLeft < 3
+            ? "text-yellow-500"
             : "text-green-500";
 
           return (
-            <motion.div 
+            <motion.div
               key={order.id}
               whileHover={{ y: -5 }}
               onClick={() => onOrderClick(order.id)}
@@ -3535,38 +3686,38 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">
                   {order.order_number}
                 </p>
-
                 <div className={cn(
                   "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-background border border-border-custom",
                   statusColorClass
                 )}>
-                  {daysLeft < 0 
-                    ? `Vencido ${Math.abs(daysLeft)}d` 
+                  {daysLeft < 0
+                    ? `Vencido ${Math.abs(daysLeft)}d`
                     : `${daysLeft} días`}
                 </div>
               </div>
-              
-              <h4 className="font-black text-lg mb-4 text-foreground-main tracking-tight leading-tight">
+
+              <h4 className="font-black text-lg mb-1 text-foreground-main tracking-tight leading-tight">
                 {order.client_name}
               </h4>
-              
+
+              {order.team_name && (
+                <p className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-1.5 mb-4">
+                  <Users size={12} /> {order.team_name}
+                </p>
+              )}
+
               <div className="flex-1 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
-                    Prendas
-                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">Prendas</span>
                   <span className="text-sm font-black text-foreground-main tracking-tighter">
                     {order.items?.length || 0}
                   </span>
                 </div>
-
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
-                    Estado
-                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">Estado</span>
                   <span className={cn(
                     "text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border",
-                    order.status === 'Abono confirmado' 
+                    order.status === 'Abono confirmado'
                       ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
                       : order.status === 'Entregado'
                       ? "bg-green-500/10 text-green-500 border-green-500/20"
@@ -3576,7 +3727,6 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
                   </span>
                 </div>
               </div>
-
             </motion.div>
           );
         })}
@@ -5322,8 +5472,7 @@ function ClientManagement({}: { key?: string }) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-8">
           <div>
-            <h3 className="text-3xl font-black text-foreground-main tracking-tighter uppercase">Directorio de Clientes</h3>
-            <p className="text-foreground-muted text-[10px] font-black uppercase tracking-widest mt-1">Gestiona tu base de datos de clientes</p>
+            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Directorio de Clientes</h3>
           </div>
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button 
