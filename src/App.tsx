@@ -4536,7 +4536,6 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                       <Palette size={18} className="text-accent" /> Propuesta del Diseñador
                     </h5>
                     <span className="px-4 py-1.5 bg-accent/10 text-accent rounded-full text-[9px] font-black uppercase tracking-widest">
-                      
                       Versión #{foundOrder.versions[0].version_number}
                     </span>
                   </div>
@@ -4606,6 +4605,18 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                       <Shirt size={18} className="text-accent" /> Detalle de Prendas
                     </h5>
                     <p className="text-foreground-muted text-[10px] font-black uppercase tracking-widest">Completa la información técnica de cada prenda para producción</p>
+                    <br/>
+                    {foundOrder.team_name ? (
+                      <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
+                        <Users size={16} className="text-accent" />
+                        <span>Equipo: <span className="font-black text-foreground-main">{foundOrder.team_name}</span></span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
+                        <Users size={16} className="text-foreground-muted/30" />
+                        <span className="text-foreground-muted/30">Sin equipo asignado</span>
+                      </div>
+                    )}
                   </div>
                   <button 
                     onClick={handleSaveItems}
