@@ -559,7 +559,7 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
               <span className="text-[10px] uppercase tracking-widest text-foreground-muted font-bold">Órdenes</span>
             </div>
           </div>
-          <div className="space-y-6 flex-1 flex flex-col justify-center">
+          <div className="max-h-80 overflow-y-auto pr-2">
             {[
               { name: 'Cotización', color: 'var(--accent)' },
               { name: 'Abono pendiente', color: '#F59E0B' },
@@ -574,7 +574,6 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
             ].map((status, i) => {
               const count = orders.filter(o => o.status === status.name).length;
               const percentage = orders.length > 0 ? (count / orders.length) * 100 : 0;
-              if (count === 0) return null;
               return (
                 <div key={i} className="space-y-2 group">
                   <div className="flex justify-between items-end">
