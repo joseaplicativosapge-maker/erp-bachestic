@@ -216,23 +216,33 @@ export default function App() {
 
   useEffect(() => {
     if (publicOrderNumber) {
-      setView('client');
+    setView('client');
+    // ← Agregar esto:
+    const savedTheme = localStorage.getItem('bachestic_theme');
+    if (savedTheme === 'light') {
+      setTheme('light');
+      document.documentElement.classList.add('light');
     } else {
-      const savedUser = localStorage.getItem('bachestic_user');
-      if (savedUser) {
-        try {
-          setUser(JSON.parse(savedUser));
-        } catch (e) {
-          console.error('Error parsing saved user:', e);
-          localStorage.removeItem('bachestic_user');
+      // Forzar light por defecto en vista pública
+      setTheme('light');
+      document.documentElement.classList.add('light');
+    }
+    } else {
+        const savedUser = localStorage.getItem('bachestic_user');
+        if (savedUser) {
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch (e) {
+            console.error('Error parsing saved user:', e);
+            localStorage.removeItem('bachestic_user');
+          }
+        }
+        const savedTheme = localStorage.getItem('bachestic_theme');
+        if (savedTheme === 'light') {
+          setTheme('light');
+          document.documentElement.classList.add('light');
         }
       }
-      const savedTheme = localStorage.getItem('bachestic_theme');
-      if (savedTheme === 'light') {
-        setTheme('light');
-        document.documentElement.classList.add('light');
-      }
-    }
   }, []);
   
   const toggleTheme = () => {
@@ -326,10 +336,6 @@ export default function App() {
     return (
       <div className="min-h-screen bg-background p-8">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-accent/20">B</div>
-            <h1 className="font-bold text-xl tracking-tight text-foreground-main">BACHESTIC</h1>
-          </div>
           <ClientRoadmap orders={orders} initialSearch={publicOrderNumber} role={role} />
         </div>
       </div>
@@ -3787,23 +3793,27 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   useEffect(() => {
     const fetchInitialOrder = async () => {
       if (initialSearch) {
-        const order = orders.find(o => o.order_number.toLowerCase() === initialSearch.toLowerCase());
-        if (order) {
-          try {
+        try {
+          // Busca directo en la API, no en el array local
+          const allOrders = await api.getOrders(false);
+          const order = allOrders.find(o => 
+            o.order_number.toLowerCase() === initialSearch.toLowerCase()
+          );
+          if (order) {
             const fullOrder = await api.getOrder(order.id);
             setFoundOrder(fullOrder);
             setEditingItems(fullOrder.items || []);
-          } catch (error) {
-            console.error(error);
-            setFoundOrder(order);
+          } else {
+            setFoundOrder(null);
           }
-        } else {
+        } catch (error) {
+          console.error(error);
           setFoundOrder(null);
         }
       }
     };
     fetchInitialOrder();
-  }, [initialSearch, orders]);
+  }, [initialSearch]);
 
   const handleSearch = async () => {
     const order = orders.find(o => o.order_number.toLowerCase() === search.toLowerCase());
@@ -3997,22 +4007,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mx-auto space-y-16">
       <div className="text-center space-y-6">
         <h3 className="text-4xl font-black tracking-tighter text-foreground-main">Sigue tu Pedido</h3>
-        <p className="text-foreground-muted text-[10px] font-black tracking-[0.3em]">Ingresa tu número de orden para ver el estado técnico en tiempo real</p>
-        <div className="flex flex-col md:flex-row max-w-xl mx-auto gap-4 pt-4">
-          <input 
-            type="text" 
-            placeholder="EJ. ORD-ABC123" 
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="flex-1 px-8 py-5 rounded-[24px] border border-border-custom bg-surface text-foreground-main focus:ring-2 focus:ring-accent/20 outline-none transition-all font-black uppercase tracking-widest text-sm placeholder:text-foreground-muted/30"
-          />
-          <button 
-            onClick={handleSearch}
-            className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
-          >
-            Buscar Orden
-          </button>
-        </div>
+        <p className="text-foreground-muted text-[10px] font-black tracking-[0.3em]">Ac&aacute; podras ver la orden para ver el estado técnico en tiempo real</p>
       </div>
 
       {foundOrder ? (
