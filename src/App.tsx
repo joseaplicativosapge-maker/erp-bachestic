@@ -483,7 +483,6 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {[
           { label: 'Órdenes Activas', value: stats.activeOrders, icon: ShoppingCart, color: 'text-accent', trend: '+12%' },
-          { label: 'Ventas del Mes', value: `$${(stats.monthlySales || 0).toLocaleString()}`, icon: DollarSign, color: 'text-foreground-main', trend: '+8%' },
           { label: 'Órdenes Retrasadas', value: stats.delayedOrders, icon: AlertCircle, color: 'text-accent', trend: '-2%' },
         ].map((stat, i) => (
           <Card key={i} className="flex items-center justify-between group">
@@ -827,12 +826,6 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
                   <p className="text-[10px] uppercase tracking-[0.2em] font-black text-foreground-muted mb-1">{order.order_number}</p>
                   <h4 className="font-black text-xl text-foreground-main tracking-tight group-hover:text-accent transition-colors">{order.client_name}</h4>
                 </div>
-                <span className={cn(
-                  "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest",
-                  order.payment_status === 'Pagado Total' ? "bg-green-500/10 text-green-500" : "bg-yellow-500/10 text-yellow-500"
-                )}>
-                  {order.payment_status}
-                </span>
               </div>
 
               <div className="space-y-4 mb-8">
@@ -858,7 +851,7 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
               </div>
 
               <div className="pt-6 border-t border-border-custom flex justify-between items-center">
-                <p className="font-black text-2xl text-foreground-main tracking-tighter">${(order.total_amount || 0).toLocaleString()}</p>
+                <p className="font-black text-2xl text-foreground-main tracking-tighter"></p>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={(e) => confirmToggleActive(e, order)}
@@ -1493,14 +1486,6 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                     </tbody>
                   </table>
                 </div>
-                <div className="flex items-center justify-end gap-12 px-6">
-                  <div className="text-right">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted/20 mb-1">Total Venta</p>
-                    <p className="text-2xl font-black text-foreground-main tracking-tighter">
-                        ${ groupedList.reduce((sum, g) => sum + g.quantity * g.sale_price, 0).toLocaleString() }
-                    </p>
-                  </div>
-                </div>
               </div>
 
               <div className="space-y-8">
@@ -1771,7 +1756,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
                   <th className="py-4 px-4 text-center">Tipo</th>
                   <th className="py-4 px-4 text-center">Horma</th>
                   <th className="py-4 px-4">Observaciones</th>
-                  <th className="py-4 px-4 text-center">P. Venta</th>
                   <th className="py-4 px-4 text-right"></th>
                 </tr>
               </thead>
@@ -1840,19 +1824,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
                       </select>
                     </td>
                     <td className="py-3 px-4"><input type="text" value={item.observations || ''} onChange={e => { const newItems = [...items]; newItems[idx].observations = e.target.value; setItems(newItems); }} className="w-full bg-transparent outline-none text-foreground-muted text-[10px]" placeholder="Obs..." /></td>
-                    <td className="py-3 px-4 text-center">
-                      <input 
-                        type="number" 
-                        value={item.sale_price || 0} 
-                        onChange={e => {
-                          const newItems = [...items];
-                          newItems[idx].sale_price = Number(e.target.value);
-                          setItems(newItems);
-                        }}
-                        className="w-20 bg-transparent outline-none text-accent font-black text-center text-[10px]"
-                        placeholder="0"
-                      />
-                    </td>
                     <td className="py-3 px-4 text-right">
                       <button 
                         onClick={() => setItems(items.filter((_, i) => i !== idx))}
@@ -1870,12 +1841,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
 
         <div className="flex items-center justify-between pt-6 border-t border-border-custom">
           <div className="flex gap-12">
-            <div className="text-left">
-              <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted/20 mb-1">Total Venta</p>
-              <p className="text-xl font-black text-foreground-main tracking-tighter">
-                ${ items.reduce((sum, item) => sum + (item.sale_price || 0), 0).toLocaleString() }
-              </p>
-            </div>
             <div className="text-left">
               <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted/20 mb-1">Total Costura</p>
               <p className="text-xl font-black text-accent tracking-tighter">
@@ -1896,9 +1861,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
 // --- Order Details Component ---
 function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: number, onBack: () => void, onUpdate: () => void, user: User, canEdit: boolean, key?: string }) {
   const [order, setOrder] = useState<Order | null>(null);
-  const totalAmount = Number(order?.total_amount || 0);
-  const totalPaid = Number(order?.total_paid || 0);
-  const remaining = totalAmount - totalPaid;
   const [history, setHistory] = useState<OrderHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -1922,7 +1884,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const [newReferences, setNewReferences] = useState<File[]>([]);
   const [newReferencePreviews, setNewReferencePreviews] = useState<string[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
   const [isSubmittingReject, setIsSubmittingReject] = useState(false);
@@ -2039,24 +2000,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       toast.error('Error al solicitar correcciones');
     } finally {
       setIsSubmittingReject(false);
-    }
-  };
-
-  const handlePayment = async (formData: FormData) => {
-    try {
-      setError(null);
-      if (user) formData.append('user_name', user.name);
-      await api.addPayment(orderId, formData);
-      const updatedPayments = await api.getPayments(orderId);
-      setPayments(updatedPayments);
-      setLastPayment(updatedPayments[0]);
-      setShowPaymentModal(false);
-      setShowReceiptModal(true);
-      await loadOrder();
-      onUpdate();
-    } catch (err: any) {
-      setError(err.message || 'Error al registrar el pago');
-      console.error('Error recording payment:', err);
     }
   };
 
@@ -2344,22 +2287,8 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           >
             <Download size={14} /> Exportar Excel
           </button>
-          <button 
-            onClick={() => setShowPaymentModal(true)}
-            className="bg-green-600 text-white px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-green-600/20 flex items-center gap-2"
-          >
-            <DollarSign size={14} /> Registrar Abono
-          </button>
         </div>
       </div>
-
-      {showPaymentModal && (
-        <PaymentModal 
-          order={order}
-          onCancel={() => setShowPaymentModal(false)}
-          onConfirm={handlePayment}
-        />
-      )}
 
       {showReceiptModal && lastPayment && (
         <ReceiptModal 
@@ -2476,24 +2405,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                   </div>
                 )}
               </div>
-              <div className="text-right relative z-10">
-                <p className="text-[11px] uppercase tracking-[0.5em] font-black text-foreground-main mb-4">Valor Total</p>
-                {isEditing ? (
-                  <div className="flex items-baseline gap-2 justify-end group">
-                    <span className="font-black text-accent tracking-tighter group-hover:scale-110 transition-transform duration-500">$</span>
-                    <p className="text-5xl font-black tracking-tighter text-foreground-main leading-none drop-shadow-[0_10px_30px_rgba(255,255,255,0.1)]">
-                      { (editData.total_amount || 0).toLocaleString() }
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex items-baseline gap-2 justify-end group">
-                    <span className="font-black text-accent tracking-tighter group-hover:scale-110 transition-transform duration-500">$</span>
-                    <p className="text-5xl font-black tracking-tighter text-foreground-main leading-none drop-shadow-[0_10px_30px_rgba(255,255,255,0.1)]">
-                      { (order.total_amount || 0).toLocaleString() }
-                    </p>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
@@ -2550,48 +2461,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               )}
             </div>
 
-            {/* TOTAL COSTURA */}
-            <div className="min-w-[150px] flex-1 space-y-3">
-              <p className="font-black text-foreground-main">Total Costura</p>
-              <p className="font-black text-accent tracking-tight">
-                ${ (isEditing ? editItems : order.items || [])
-                  .reduce((sum, item) => sum + (item.sewing_price || 0), 0)
-                  .toLocaleString() }
-              </p>
-            </div>
-
-            {/* TOTAL PAGADO */}
-            <div className="min-w-[150px] flex-1 space-y-3">
-              <p className="font-black text-foreground-main">Total Pagado</p>
-              <p className="font-black text-green-500 tracking-tight">
-                ${ totalPaid.toLocaleString() }
-              </p>
-            </div>
-
-            {/* SALDO PENDIENTE */}
-            <div className="min-w-[150px] flex-1 space-y-3">
-              <p className="font-black text-foreground-main">Saldo Pendiente</p>
-              <p className={cn(
-                "font-black tracking-tight",
-                remaining > 0 ? "text-red-500" : "text-green-500"
-              )}>
-                ${ remaining.toLocaleString() }
-              </p>
-            </div>
-
-            {/* ESTADO PAGO */}
-            <div className="min-w-[150px] flex-1 space-y-3">
-              <p className="font-black text-foreground-main">Estado Pago</p>
-              <p className={cn(
-                "font-black tracking-[0.3em] text-[11px] uppercase px-6 py-3 rounded-2xl inline-block border transition-all duration-500",
-                totalPaid >= totalAmount 
-                  ? "bg-green-500/10 text-green-500 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.1)]" 
-                  : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20 shadow-[0_0_20px_rgba(234,179,8,0.1)]"
-              )}>
-                {totalPaid >= totalAmount ? "PAGADO" : "PENDIENTE"}
-              </p>
-            </div>
-
             <div className="min-w-[150px] flex-1 space-y-3">
               <p className="font-black text-foreground-main">Equipo</p>
               {order.team_name ? (
@@ -2638,8 +2507,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                     <th className="py-10 px-6 border-b border-border-custom text-center">Cuello</th>
                     <th className="py-10 px-6 border-b border-border-custom text-center">Tipo</th>
                     <th className="py-10 px-6 border-b border-border-custom text-center">Horma</th>
-                    <th className="py-10 px-6 border-b border-border-custom text-center">P. Costura</th>
-                    <th className="py-10 px-6 border-b border-border-custom text-center">P. Venta</th>
                     <th className="py-10 px-8 border-b border-border-custom">Prenda</th>
                     <th className="py-10 px-10 border-b border-border-custom">Observaciones</th>
                     {isEditing && <th className="py-10 px-10 border-b border-border-custom text-right">Acción</th>}
@@ -2767,36 +2634,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                           </select>
                         ) : <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.fit || '-'}</span>}
                       </td>
-                      <td className="py-12 px-6 text-center">
-                        {isEditing ? (
-                          <input 
-                            type="number" 
-                            value={item.sewing_price} 
-                            onChange={e => {
-                              const newItems = [...editItems];
-                              newItems[idx] = { ...newItems[idx], sewing_price: Number(e.target.value) };
-                              setEditItems(newItems);
-                            }}
-                            className="bg-surface-hover px-4 py-4 rounded-2xl border border-border-custom outline-none w-24 text-foreground-main font-black text-center focus:border-accent/50 transition-all shadow-inner"
-                            placeholder="0"
-                          />
-                        ) : <span className="font-black text-foreground-main text-xl tracking-tighter group-hover:text-accent transition-all duration-500">${(item.sewing_price || 0).toLocaleString()}</span>}
-                      </td>
-                      <td className="py-12 px-6 text-center">
-                        {isEditing ? (
-                          <input 
-                            type="number" 
-                            value={item.sale_price} 
-                            onChange={e => {
-                              const newItems = [...editItems];
-                              newItems[idx] = { ...newItems[idx], sale_price: Number(e.target.value) };
-                              setEditItems(newItems);
-                            }}
-                            className="bg-surface-hover px-4 py-4 rounded-2xl border border-border-custom outline-none w-24 text-accent font-black text-center focus:border-accent/50 transition-all shadow-inner"
-                            placeholder="0"
-                          />
-                        ) : <span className="font-black text-accent text-xl tracking-tighter group-hover:scale-110 transition-all duration-500">${(item.sale_price || 0).toLocaleString()}</span>}
-                      </td>
                       <td className="py-10 px-8">
                         {isEditing ? (
                           <select 
@@ -2904,16 +2741,12 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           {/* Payment History */}
           <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
             <h4 className="font-black text-foreground-main text-[10px] uppercase tracking-[0.3em] flex items-center gap-3">
-              <DollarSign size={16} className="text-accent" /> Historial de Abonos
+              <DollarSign size={16} className="text-accent" /> Historial de Ordenes
             </h4>
             <div className="space-y-4">
               {payments.map((p) => (
                 <div key={p.id} className="p-6 rounded-3xl bg-background border border-border-custom hover:border-accent/30 transition-all group">
                   <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <p className="font-black text-foreground-main text-lg tracking-tighter group-hover:text-accent transition-colors">${p.amount.toLocaleString()}</p>
-                      <p className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest mt-1">{p.payment_method} • {p.reference}</p>
-                    </div>
                     <span className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest bg-surface-hover px-2 py-1 rounded-lg">
                       {format(new Date(p.created_at), 'dd/MM HH:mm')}
                     </span>
@@ -3131,14 +2964,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </h4>
             
             <div className="space-y-4">
-              {order.status === 'Cotización' && (
-                <button 
-                  onClick={() => setShowPaymentModal(true)}
-                  className="w-full bg-green-600 hover:bg-green-500 text-foreground-main py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all shadow-[0_0_20px_rgba(22,163,74,0.2)]"
-                >
-                  <DollarSign size={18} /> Confirmar Anticipo (50%)
-                </button>
-              )}
 
               {order.status === 'Abono confirmado' && (role === 'Admin' || role === 'Ventas') && (
                 <button 
@@ -3223,6 +3048,35 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 >
                   <Printer size={18} /> Liberar a Producción
                 </button>
+              )}
+
+              {/* Botones de avance para estados de producción */}
+              {(['En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En despacho', 'En transporte'] as OrderStatus[]).includes(order.status) && (role === 'Admin' || role === 'Ventas' || role === 'Impresión' || role === 'Sublimación' || role === 'Corte' || role === 'Confección' || role === 'Empaque' || role === 'Transporte') && (() => {
+                const nextMap: Partial<Record<OrderStatus, OrderStatus>> = {
+                  'En impresión': 'En sublimación',
+                  'En sublimación': 'En corte',
+                  'En corte': 'En confección',
+                  'En confección': 'En empaque',
+                  'En empaque': 'En despacho',
+                  'En despacho': 'En transporte',
+                  'En transporte': 'Entregado',
+                };
+                const next = nextMap[order.status];
+                if (!next) return null;
+                return (
+                  <button
+                    onClick={() => handleStatusUpdate(next)}
+                    className="w-full bg-foreground-main text-background py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main/90 transition-all"
+                  >
+                    <CheckCircle2 size={18} /> Avanzar a: {next}
+                  </button>
+                );
+              })()}
+
+              {order.status === 'Entregado' && (
+                <div className="p-4 bg-green-500/10 rounded-2xl border border-green-500/20 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-green-500">✓ Orden completada y entregada</p>
+                </div>
               )}
             </div>
           </div>
@@ -3324,15 +3178,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
         </div>
-
-        {/* Modals */}
-        {showPaymentModal && order && (
-          <PaymentModal 
-            order={order}
-            onCancel={() => setShowPaymentModal(false)}
-            onConfirm={handlePayment}
-          />
-        )}
 
         {showReceiptModal && lastPayment && order && (
           <ReceiptModal 
@@ -3735,113 +3580,6 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
   );
 }
 
-// --- Payment Modal Component ---
-function PaymentModal({ order, onCancel, onConfirm }: { order: Order, onCancel: () => void, onConfirm: (data: FormData) => void }) {
-  const [amount, setAmount] = useState(order.total_amount - (order.total_paid || 0));
-  const [method, setMethod] = useState('Efectivo');
-  const [notes, setNotes] = useState('');
-  const [cashReceived, setCashReceived] = useState<number>(0);
-  const [document, setDocument] = useState<File | null>(null);
-
-  const change = Math.max(0, cashReceived - amount);
-
-  const handleConfirm = () => {
-    const formData = new FormData();
-    formData.append('amount', amount.toString());
-    formData.append('payment_method', method);
-    formData.append('notes', notes);
-    if (document) {
-      formData.append('document', document);
-    }
-    if (method === 'Efectivo') {
-      formData.append('notes', `${notes} (Efectivo Recibido: $${cashReceived.toLocaleString()}, Cambio: $${change.toLocaleString()})`.trim());
-    }
-    onConfirm(formData);
-  };
-
-  return (
-    <Modal isOpen={true} onClose={onCancel} title="Registrar Abono" subtitle={order.order_number}>
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 bg-surface rounded-2xl border border-border-custom">
-            <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted mb-1">Total Orden</p>
-            <p className="font-black text-foreground-main tracking-tighter">${(order.total_amount || 0).toLocaleString()}</p>
-          </div>
-          <div className="p-4 bg-accent/5 rounded-2xl border border-accent/20">
-            <p className="text-[10px] font-black uppercase tracking-widest text-accent mb-1">Saldo Pendiente</p>
-            <p className="font-black text-accent tracking-tighter">${((order.total_amount || 0) - (order.total_paid || 0)).toLocaleString()}</p>
-          </div>
-        </div>
-
-        <Input 
-          label="Monto del Abono"
-          type="number"
-          value={amount.toString()}
-          onChange={e => setAmount(Number(e.target.value))}
-          required
-        />
-
-        <Select 
-          label="Método de Pago"
-          value={method}
-          onChange={e => setMethod(e.target.value)}
-          options={[
-            { value: 'Efectivo', label: 'Efectivo' },
-            { value: 'Transferencia', label: 'Transferencia' },
-            { value: 'Nequi', label: 'Nequi' },
-            { value: 'Bancolombia', label: 'Bancolombia' },
-            { value: 'Tarjeta', label: 'Tarjeta' }
-          ]}
-        />
-
-        {method === 'Efectivo' ? (
-          <div className="space-y-4 p-6 bg-surface-hover rounded-2xl border border-border-custom">
-            <Input 
-              label="Efectivo Recibido"
-              type="number"
-              value={cashReceived.toString()}
-              onChange={e => setCashReceived(Number(e.target.value))}
-              placeholder="0"
-            />
-            <div className="flex justify-between items-center pt-2 border-t border-border-custom">
-              <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">Cambio (Vuelto)</p>
-              <p className="font-black text-xl text-green-500 tracking-tighter">${change.toLocaleString()}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted ml-1">Comprobante de Pago</p>
-            <div className="relative group">
-              <input 
-                type="file" 
-                onChange={e => setDocument(e.target.files?.[0] || null)}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                accept="image/*,application/pdf"
-              />
-              <div className={cn(
-                "w-full py-4 px-6 rounded-2xl border-2 border-dashed transition-all flex items-center justify-center gap-3",
-                document ? "border-accent bg-accent/5 text-accent" : "border-border-custom bg-surface hover:border-accent/50 text-foreground-muted"
-              )}>
-                <Upload size={18} />
-                <span className="text-[11px] font-bold uppercase tracking-widest">
-                  {document ? document.name : 'Adjuntar Documento'}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <button 
-          onClick={handleConfirm}
-          className="w-full bg-accent text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-2xl shadow-accent/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-        >
-          Confirmar Pago
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
 // --- Receipt Component ---
 function Receipt({ order, payment }: { order: Order; payment: Payment }) {
   const orderUrl = `http://localhost:3000/?order=${order.order_number}`;
@@ -3923,11 +3661,6 @@ function Receipt({ order, payment }: { order: Order; payment: Payment }) {
           <span className="font-bold">CLIENTE:</span>
           <span className="uppercase">{order.client_name}</span>
         </div>
-
-        <div className="flex justify-between">
-          <span className="font-bold">MÉTODO:</span>
-          <span className="uppercase">{payment.payment_method}</span>
-        </div>
       </div>
 
       <div className="border-t border-dashed border-black my-2"></div>
@@ -3945,15 +3678,8 @@ function Receipt({ order, payment }: { order: Order; payment: Payment }) {
                 className="border-b border-dashed border-black pb-2"
               >
                 <div className="font-bold uppercase">
-                  {item.garment_type}
-                </div>
-
-                <div className="flex justify-between text-[9px]">
-                  <span>
-                    {item.quantity} x ${item.unitPrice.toLocaleString()}
-                  </span>
-                  <span className="font-bold">
-                    ${item.total.toLocaleString()}
+                  {item.garment_type} x <span>
+                    {item.quantity}
                   </span>
                 </div>
               </div>
@@ -3961,29 +3687,6 @@ function Receipt({ order, payment }: { order: Order; payment: Payment }) {
           </div>
         </div>
       )}
-
-      {/* TOTALES */}
-      <div className="space-y-1 text-[10px] mb-2">
-        <div className="flex justify-between">
-          <span>Total Pedido:</span>
-          <span>${(order.total_amount || 0).toLocaleString()}</span>
-        </div>
-
-        <div className="flex justify-between">
-          <span>Total Abonado:</span>
-          <span>${(order.total_paid || 0).toLocaleString()}</span>
-        </div>
-
-        <div className="flex justify-between font-bold border-t border-black pt-1">
-          <span>Saldo:</span>
-          <span>
-            ${(
-              (order.total_amount || 0) -
-              (order.total_paid || 0)
-            ).toLocaleString()}
-          </span>
-        </div>
-      </div>
 
       {/* OBS */}
       {payment.notes && (
@@ -4045,7 +3748,6 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   const [search, setSearch] = useState(initialSearch);
   const [foundOrder, setFoundOrder] = useState<Order | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [lastPayment, setLastPayment] = useState<Payment | null>(null);
   const [editingItems, setEditingItems] = useState<OrderItem[]>([]);
@@ -4064,7 +3766,6 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
       await api.addPayment(foundOrder.id, formData);
       const updatedPayments = await api.getPayments(foundOrder.id);
       setLastPayment(updatedPayments[0]);
-      setShowPaymentModal(false);
       setShowReceiptModal(true);
       handleSearch();
     } catch (error) {
@@ -4329,22 +4030,8 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground-muted mb-3">Fecha Estimada de Entrega</p>
                 <h4 className="text-3xl font-black text-foreground-main tracking-tighter">{foundOrder.delivery_date ? format(new Date(foundOrder.delivery_date), 'dd MMM, yyyy') : 'PENDIENTE'}</h4>
               </div>
-              {/*<button 
-                onClick={() => setShowPaymentModal(true)}
-                className="bg-green-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-green-600/20"
-              >
-                <DollarSign size={18} /> Abonar a la Orden
-              </button>*/}
             </div>
           </div>
-
-          {showPaymentModal && (
-            <PaymentModal 
-              order={foundOrder}
-              onCancel={() => setShowPaymentModal(false)}
-              onConfirm={handlePayment}
-            />
-          )}
 
           {showReceiptModal && lastPayment && (
             <ReceiptModal 
@@ -4419,23 +4106,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-12 border-t border-border-custom">
-            <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom h-fit">
-              <h5 className="font-black mb-6 flex items-center gap-3 text-foreground-main text-[10px] uppercase tracking-[0.2em]"><DollarSign size={18} className="text-accent" /> Resumen de Pagos</h5>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-4 bg-surface rounded-2xl border border-border-custom">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">Total de la Orden</span>
-                  <span className="font-black text-foreground-main">${(foundOrder.total_amount || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center p-4 bg-surface rounded-2xl border border-border-custom">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">Total Abonado</span>
-                  <span className="font-black text-green-600">${(foundOrder.total_paid || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center p-4 bg-accent/5 rounded-2xl border border-accent/20">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-accent">Saldo Pendiente</span>
-                  <span className="font-black text-accent">${((foundOrder.total_amount || 0) - (foundOrder.total_paid || 0)).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
+            
 
             <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom h-fit">
               <h5 className="font-black mb-6 flex items-center gap-3 text-foreground-main text-[10px] uppercase tracking-[0.2em]"><Palette size={18} className="text-accent" /> Diseño Actual</h5>
@@ -5147,10 +4818,6 @@ function ProductManagement({}: { key?: string }) {
                 </div>
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-custom">
                   <div>
-                    <p className="text-[9px] font-black text-foreground-muted uppercase tracking-widest mb-1">Precio Venta</p>
-                    <p className="text-lg font-black text-foreground-main">${(product.sale_price || 0).toLocaleString()}</p>
-                  </div>
-                  <div>
                     <p className="text-[9px] font-black text-foreground-muted uppercase tracking-widest mb-1">Costo Costura</p>
                     <p className="text-lg font-black text-foreground-main">${(product.sewing_cost || 0).toLocaleString()}</p>
                   </div>
@@ -5188,13 +4855,6 @@ function ProductManagement({}: { key?: string }) {
             ]}
           />
           <div className="grid grid-cols-2 gap-4">
-            <Input 
-              label="Precio de Venta"
-              type="number"
-              value={newProduct.sale_price.toString()}
-              onChange={e => setNewProduct({...newProduct, sale_price: Number(e.target.value)})}
-              required
-            />
             <Input 
               label="Costo de Costura"
               type="number"
