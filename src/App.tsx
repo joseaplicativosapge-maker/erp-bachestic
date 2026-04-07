@@ -1146,13 +1146,11 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
       await api.addPayment(id, paymentFormData);
       
       // Fetch the created order and payment for the receipt
-      const [orderData, paymentsData] = await Promise.all([
-        api.getOrder(id),
-        api.getPayments(id)
+      const [orderData] = await Promise.all([
+        api.getOrder(id)
       ]);
       
       setCreatedOrder(orderData);
-      setCreatedPayment(paymentsData[0]);
       toast.success('Orden creada correctamente');
       setShowReceipt(true);
     } catch (error) {
@@ -1925,14 +1923,12 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     try {
       setLoading(true);
       setError(null);
-      const [orderData, historyData, paymentsData] = await Promise.all([
+      const [orderData, historyData] = await Promise.all([
         api.getOrder(orderId),
-        api.getOrderHistory(orderId),
-        api.getPayments(orderId)
+        api.getOrderHistory(orderId)
       ]);
       setOrder(orderData);
       setHistory(historyData);
-      setPayments(paymentsData);
       setEditData(orderData);
       setEditItems(orderData.items || []);
     } catch (err: any) {
@@ -3152,6 +3148,8 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           </div>
         </div>
 
+        </div>
+
         {/* Order History */}
           <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
             <div className="flex items-center justify-between">
@@ -3182,8 +3180,8 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 <p className="text-[10px] text-foreground-muted font-black uppercase tracking-widest italic text-center py-8">Sin historial registrado</p>
               )}
             </div>
+            
           </div>
-        </div>
 
         {showReceiptModal && lastPayment && order && (
           <ReceiptModal 
@@ -3763,21 +3761,6 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   const [isSubmittingReject, setIsSubmittingReject] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState('');
-
-  const handlePayment = async (formData: FormData) => {
-    if (!foundOrder) return;
-    try {
-      if (user) formData.append('user_name', user.name);
-      else formData.append('user_name', 'Cliente');
-      await api.addPayment(foundOrder.id, formData);
-      const updatedPayments = await api.getPayments(foundOrder.id);
-      setLastPayment(updatedPayments[0]);
-      setShowReceiptModal(true);
-      handleSearch();
-    } catch (error) {
-      console.error(error);
-    }
-  };
 
   const handleConfirmOrder = async () => {
     if (!foundOrder) return;

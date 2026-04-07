@@ -204,20 +204,7 @@ export const api = {
       body: JSON.stringify(team),
     });
     await handleResponse(res);
-  },
-  getPayments: async (orderId: number): Promise<Payment[]> => {
-    const res = await fetch(`${API_BASE}/orders/${orderId}/payments`);
-    return handleResponse(res);
-  },
-  addPayment: async (orderId: number, data: FormData | (Partial<Payment> & { user_name?: string })): Promise<void> => {
-    const isFormData = data instanceof FormData;
-    const res = await fetch(`${API_BASE}/orders/${orderId}/payments`, {
-      method: 'POST',
-      headers: isFormData ? {} : { 'Content-Type': 'application/json' },
-      body: isFormData ? data : JSON.stringify(data),
-    });
-    await handleResponse(res);
-  },
+  },  
   uploadItemDesign: async (itemId: number, formData: FormData): Promise<{ path: string }> => {
     const res = await fetch(`${API_BASE}/items/${itemId}/design`, {
       method: 'POST',
