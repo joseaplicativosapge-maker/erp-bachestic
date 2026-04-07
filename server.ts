@@ -108,6 +108,10 @@ async function startServer() {
     db.prepare('ALTER TABLE design_versions ADD COLUMN client_comments TEXT').run();
   } catch (e) {}
 
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN soligem_code TEXT').run();
+  } catch (e) {}
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS order_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -382,14 +386,14 @@ async function startServer() {
     const {
       client_id, client_name, client_doc, client_doc_type, client_phone,
       client_address, client_city, contact_method, delivery_date,
-      team_id, user_name
+      team_id, user_name, soligem_code
     } = req.body;
     const order_number = 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase();
 
     const info = db.prepare(`
-      INSERT INTO orders (order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, team_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, team_id);
+      INSERT INTO orders (order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, team_id, soligem_code)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, team_id, soligem_code || null);
 
     const order_id = info.lastInsertRowid;
     db.prepare('INSERT INTO order_history (order_id, user_name, action, details) VALUES (?, ?, ?, ?)').run(order_id, user_name || 'Sistema', 'Creación', `Orden ${order_number} creada`);
@@ -401,7 +405,7 @@ async function startServer() {
     const {
       client_id, client_name, client_doc, client_doc_type, client_phone,
       client_address, client_city, contact_method, delivery_date,
-      items, active, team_id, user_name
+      items, active, team_id, user_name, soligem_code
     } = req.body;
     const order_id = req.params.id;
 
@@ -419,18 +423,20 @@ async function startServer() {
     const updatedDeliveryDate  = delivery_date     !== undefined ? delivery_date    : current.delivery_date;
     const updatedActive        = active            !== undefined ? (active === 'true' || active === true ? 1 : 0) : current.active;
     const updatedTeamId        = team_id           !== undefined ? team_id          : current.team_id;
+    const updatedSoligemCode = soligem_code !== undefined ? soligem_code : current.soligem_code;
 
     const transaction = db.transaction(() => {
       db.prepare(`
         UPDATE orders
         SET client_id = ?, client_name = ?, client_doc = ?, client_doc_type = ?, client_phone = ?,
             client_address = ?, client_city = ?, contact_method = ?, delivery_date = ?,
-            active = ?, team_id = ?
+            active = ?, team_id = ?, soligem_code = ?
         WHERE id = ?
       `).run(
         updatedClientId, updatedClientName, updatedClientDoc, updatedClientDocType,
         updatedClientPhone, updatedClientAddress, updatedClientCity, updatedContactMethod,
-        updatedDeliveryDate, updatedActive, updatedTeamId, order_id
+        updatedDeliveryDate, updatedActive, updatedTeamId, updatedTeamId, updatedSoligemCode, 
+        order_id
       );
 
       if (items !== undefined) {
