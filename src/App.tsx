@@ -202,7 +202,6 @@ export default function App() {
   const [view, setView] = useState<'dashboard' | 'orders' | 'kds' | 'client' | 'create-order' | 'order-details' | 'employees' | 'clients' | 'products'>('dashboard');
   const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [showRoadmapModal, setShowRoadmapModal] = useState<string | null>(null);
-  //const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [previousView, setPreviousView] = useState<'orders' | 'kds'>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -213,7 +212,7 @@ export default function App() {
   
   const queryParams = new URLSearchParams(window.location.search);
   const publicOrderNumber = queryParams.get('order');
-
+  
   useEffect(() => {
     if (publicOrderNumber) {
     setView('client');
@@ -335,7 +334,7 @@ export default function App() {
   if (publicOrderNumber && view === 'client') {
     return (
       <div className="min-h-screen bg-background p-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="mx-auto">
           <ClientRoadmap orders={orders} initialSearch={publicOrderNumber} role={role} />
         </div>
       </div>
@@ -2043,7 +2042,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       setIsUploading(false);
     }
   };
-
+  const SIZES = ['2','4','6','8','10','12','14','16','S','M','L','XL','XXL'];
   const exportToExcel = () => {
     if (!order) return;
 
@@ -2553,17 +2552,18 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                       </td>
                       <td className="py-12 px-6 text-center">
                         {isEditing ? (
-                          <input 
-                            type="text" 
-                            value={item.size || ''} 
-                            onChange={e => {
+                          <select value={item.size || ''} onChange={e => {
                               const newItems = [...editItems];
                               newItems[idx] = { ...newItems[idx], size: e.target.value };
                               setEditItems(newItems);
                             }}
-                            className="bg-surface-hover px-4 py-4 rounded-2xl border border-border-custom outline-none w-20 text-foreground-main font-black text-center focus:border-accent/50 transition-all shadow-inner"
-                            placeholder="M"
-                          />
+                            className="bg-surface border border-border-custom rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest appearance-none cursor-pointer transition-all"
+                          >
+                            <option value="">Talla</option>
+                            {SIZES.map(size => (
+                              <option key={size} value={size}>{size}</option>
+                            ))}
+                          </select>
                         ) : <span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500">{item.size || '-'}</span>}
                       </td>
                       <td className="py-12 px-6 text-center">
@@ -2579,7 +2579,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                           >
                             <option value="Corta">Corta</option>
                             <option value="Larga">Larga</option>
-                            <option value="Sisa">Sisa</option>
                           </select>
                         ) : <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.sleeve || '-'}</span>}
                       </td>
@@ -3980,6 +3979,8 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
 
   const currentStepIndex = foundOrder ? steps.indexOf(getNormalizedStatus(foundOrder.status)) : -1;
 
+  const SIZES = ['2','4','6','8','10','12','14','16','S','M','L','XL','XXL'];
+  
   const handleReferenceUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!foundOrder) return;
@@ -4365,19 +4366,24 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                           </td>
                           <td className="py-6 px-4">
                             {isDesignPhase ? (
-                              <span className="text-[11px] font-bold text-foreground-main uppercase tracking-widest">{item.size || '-'}</span>
+                              <span className="text-[11px] font-bold text-foreground-main uppercase tracking-widest">
+                                {item.size || '-'}
+                              </span>
                             ) : (
-                              <input 
-                                type="text" 
+                              <select
                                 value={item.size || ''}
                                 onChange={e => {
                                   const newItems = [...editingItems];
-                                  newItems[idx].size = e.target.value;
+                                  newItems[idx] = { ...newItems[idx], size: e.target.value };
                                   setEditingItems(newItems);
                                 }}
-                                className="bg-surface border border-border-custom rounded-xl px-4 py-3 text-[11px] w-20 focus:border-accent/50 outline-none font-bold text-center transition-all"
-                                placeholder="M"
-                              />
+                                className="bg-surface border border-border-custom rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest appearance-none cursor-pointer transition-all"
+                              >
+                                <option value="">Talla</option>
+                                {SIZES.map(size => (
+                                  <option key={size} value={size}>{size}</option>
+                                ))}
+                              </select>
                             )}
                           </td>
                           <td className="py-6 px-4">
