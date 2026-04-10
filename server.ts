@@ -207,6 +207,25 @@ async function startServer() {
     SELECT 'Administrador', 'Admin', '1234'
     WHERE NOT EXISTS (SELECT 1 FROM employees);
   `);
+  
+  db.exec(`
+    PRAGMA foreign_keys = OFF;
+
+    DELETE FROM orders;
+    DELETE FROM teams;
+    DELETE FROM order_items;
+    DELETE FROM design_versions;
+    DELETE FROM design_references;
+    DELETE FROM order_history;
+    DELETE FROM employees;
+    DELETE FROM production_assignments;
+
+    DELETE FROM sqlite_sequence;
+
+    PRAGMA foreign_keys = ON;
+
+    VACUUM;
+  `);
 
   const app = express();
   const PORT = 3000;
@@ -386,14 +405,14 @@ async function startServer() {
     const {
       client_id, client_name, client_doc, client_doc_type, client_phone,
       client_address, client_city, contact_method, delivery_date,
-      team_id, user_name, soligem_code
+      team_id, user_name, soligem_code, status
     } = req.body;
     const order_number = 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase();
 
     const info = db.prepare(`
-      INSERT INTO orders (order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, team_id, soligem_code)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, team_id, soligem_code || null);
+      INSERT INTO orders (order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, team_id, soligem_code, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, team_id, soligem_code || null, status);
 
     const order_id = info.lastInsertRowid;
     db.prepare('INSERT INTO order_history (order_id, user_name, action, details) VALUES (?, ?, ?, ?)').run(order_id, user_name || 'Sistema', 'Creación', `Orden ${order_number} creada`);

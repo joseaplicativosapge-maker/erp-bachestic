@@ -3028,11 +3028,11 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               {order.status === 'Versión enviada' && (role === 'Admin' || role === 'Cliente') && (
                 <div className="grid grid-cols-2 gap-4">
                   <button 
-                    onClick={handleApproveDesign}
-                    className="bg-green-600 hover:bg-green-500 text-foreground-main py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-[0_0_20px_rgba(22,163,74,0.2)]"
-                  >
-                    Aprobar
-                  </button>
+                  onClick={handleApproveDesign}
+                  className="bg-green-600 hover:bg-green-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-[0_0_20px_rgba(22,163,74,0.2)]"
+                >
+                  Aprobar
+                </button>
                   <button 
                     onClick={() => setShowRejectModal(true)}
                     className="bg-accent hover:bg-accent/90 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-[0_0_20px_rgba(220,38,38,0.2)]"
@@ -3821,9 +3821,8 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     const checkAndTransition = async () => {
       if (foundOrder && foundOrder.status === 'Abono confirmado') {
         const hasReferences = foundOrder.references && foundOrder.references.length > 0;
-        const allItemsHaveSize = foundOrder.items && foundOrder.items.length > 0 && foundOrder.items.every(item => item.size && item.size.trim() !== '');
         
-        if (hasReferences && allItemsHaveSize) {
+        if (hasReferences) {
           try {
             await api.updateStatus(foundOrder.id, 'En diseño', user?.name || 'Cliente');
             handleSearch();
@@ -3892,7 +3891,12 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   };
 
   const isDesignPhase = foundOrder && ['En diseño', 'Versión enviada', 'En corte', 'En impresión', 'En sublimación', 'En confección',
-    'En empaque', 'En transporte', 'Entregado', 'Corrección solicitada', 'Diseño aprobado', 'Arte final cargado'].includes(foundOrder.status);
+    'En empaque', 'En transporte', 'Entregado', 'Corrección solicitada', 'Arte final cargado'].includes(foundOrder.status);
+
+  const canFillItems = foundOrder?.status === 'Diseño aprobado';
+
+  const isPostDesign = foundOrder && ['En impresión', 'En sublimación', 'En corte', 
+  'En confección', 'En empaque', 'En transporte', 'Entregado'].includes(foundOrder.status);
 
   const steps: OrderStatus[] = [
     'Cotización', 'Abono confirmado', 'En diseño', 'Diseño aprobado', 'En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En transporte', 'Entregado'
@@ -4023,7 +4027,13 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
             <div className="flex flex-col items-center md:items-end gap-4">
               <div className="text-center md:text-right">
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground-muted mb-3">Fecha Estimada de Entrega</p>
-                <h4 className="text-3xl font-black text-foreground-main tracking-tighter">{foundOrder.delivery_date ? format(new Date(foundOrder.delivery_date), 'dd MMM, yyyy') : 'PENDIENTE'}</h4>
+                <h4 className="text-3xl font-black tracking-tighter transition-all duration-500"
+                  style={{ color: canFillItems || isPostDesign ? 'var(--text-main)' : 'var(--text-muted)' }}
+                >
+                  {(canFillItems || isPostDesign)
+                    ? (foundOrder.delivery_date ? format(new Date(foundOrder.delivery_date), 'dd MMM, yyyy') : 'PENDIENTE')
+                    : 'Por confirmar'}
+                </h4>
               </div>
             </div>
           </div>
@@ -4263,7 +4273,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
               )}
             
             {/* Detalle de Prendas */}
-            {editingItems.length > 0 && (
+            {editingItems.length > 0 && canFillItems && (
               <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl col-span-full">
                 <div className="flex flex-col md:flex-row items-center justify-between mb-10 gap-6">
                   <div>
@@ -4286,7 +4296,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                   </div>
                   <button 
                     onClick={handleSaveItems}
-                    disabled={isSavingItems || isDesignPhase}
+                    disabled={isSavingItems || !canFillItems}
                     className="bg-accent text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 disabled:opacity-50"
                   >
                     {isSavingItems ? <RefreshCw className="animate-spin" size={18} /> : <Save size={18} />}
@@ -4303,7 +4313,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Número</th>
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Talla</th>
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Manga</th>
-                        <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Tipo Cuello</th>
+                        <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Jugador</th>
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Horma</th>
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Observaciones</th>
                       </tr>
@@ -4385,7 +4395,6 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                               >
                                 <option value="Corta">Corta</option>
                                 <option value="Larga">Larga</option>
-                                <option value="Sisa">Sisa</option>
                               </select>
                             )}
                           </td>
@@ -4404,7 +4413,6 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                               >
                                 <option value="Jugador">Jugador</option>
                                 <option value="Portero">Portero</option>
-                                <option value="Cuerpo Técnico">Cuerpo Técnico</option>
                               </select>
                             )}
                           </td>
@@ -4421,9 +4429,8 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                                 }}
                                 className="bg-surface border border-border-custom rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest appearance-none cursor-pointer transition-all"
                               >
-                                <option value="Slim">Slim</option>
-                                <option value="Regular">Regular</option>
-                                <option value="Oversize">Oversize</option>
+                                <option value="Hombre">Hombre</option>
+                                <option value="Dama">Dama</option>
                               </select>
                             )}
                           </td>
