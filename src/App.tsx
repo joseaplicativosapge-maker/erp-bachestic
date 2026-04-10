@@ -3,11 +3,10 @@ import {
   LayoutDashboard, 
   ShoppingCart, 
   Palette, 
-  Printer, 
-  Scissors, 
+  AlertTriangle,
+  Printer,  
   Shirt, 
   Package, 
-  Truck, 
   Users, 
   Plus, 
   Search, 
@@ -17,7 +16,6 @@ import {
   CheckCircle2,
   ChevronRight,
   ChevronDown,
-  MoreVertical,
   FileText,
   DollarSign,
   History,
@@ -3292,26 +3290,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
         )}
-
-        
-
-        {showImageModal && selectedImageUrl && (
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[300] flex items-center justify-center p-4 sm:p-8" onClick={() => setShowImageModal(false)}>
-            <button 
-              className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors bg-white/10 p-3 rounded-full backdrop-blur-md"
-              onClick={() => setShowImageModal(false)}
-            >
-              <X size={24} />
-            </button>
-            <img 
-              src={selectedImageUrl} 
-              className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-              referrerPolicy="no-referrer"
-            />
-          </div>
-        )}
-        
       </motion.div>
     );
 }
@@ -3827,7 +3805,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   const [foundOrder, setFoundOrder] = useState<Order | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [lastPayment, setLastPayment] = useState<Payment | null>(null);
+  const [lastPayment] = useState<Payment | null>(null);
   const [editingItems, setEditingItems] = useState<OrderItem[]>([]);
   const [isSavingItems, setIsSavingItems] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -4069,6 +4047,48 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     }
   };
 
+  const getDeliveryMessage = (order: any) => {
+    const { status, delivery_date } = order;
+
+    const hasItems = order.items && order.items.length > 0;
+
+    // ✅ Si ya está listo para mostrar fecha
+    if ((canFillItems && hasItems) || isPostDesign) {
+      return delivery_date
+        ? format(new Date(delivery_date), 'dd MMM, yyyy')
+        : 'PENDIENTE';
+    }
+
+    // ✅ Si ya aprobaron diseño pero falta lista
+    if (status === 'Diseño aprobado' && !hasItems) {
+      return 'Completa la lista de prendas para programar entrega';
+    }
+
+    // ✅ Mensajes por estado (ANTES de diseño aprobado)
+    switch (status) {
+      case 'Cotización':
+        return 'Preparando cotización técnica';
+
+      case 'Abono pendiente':
+        return 'Esperando confirmación de pago';
+
+      case 'Abono confirmado':
+        return 'Carga la información requerida. <br>Estas imagenes son de importancia ya que son la referencia de la orden al diseñador.';
+
+      case 'En diseño':
+        return 'Estamos en construcción de tu prediseño.<br> Una vez aprobada esta de tú parte podremos seguir con el siguiente paso.';
+
+      case 'Versión enviada':
+        return 'Pendiente de aprobación del cliente';
+
+      case 'Corrección solicitada':
+        return 'Aplicando correcciones al diseño';
+
+      default:
+        return 'Fecha por definir';
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mx-auto space-y-16">
       <div className="text-center space-y-6">
@@ -4111,6 +4131,28 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                     ? (foundOrder.delivery_date ? format(new Date(foundOrder.delivery_date), 'dd MMM, yyyy') : 'PENDIENTE')
                     : 'Por confirmar'}
                 </h4>
+
+                {!(canFillItems || isPostDesign) && (
+                  <div className="mt-4 flex items-start gap-3 bg-red-500/10 border border-red-500/20 text-red-500 px-5 py-4 rounded-2xl shadow-lg animate-fade-in">
+                    
+                    {/* ICONO */}
+                    <div className="mt-0.5">
+                      <AlertTriangle size={18} />
+                    </div>
+
+                    {/* TEXTO */}
+                    <div className="text-left">
+                      <p className="text-[10px] font-black uppercase tracking-widest">
+                        Información importante
+                      </p>
+                      <p
+                        className="text-xs font-semibold leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: getDeliveryMessage(foundOrder) }}
+                      />
+                    </div>
+
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -6055,3 +6097,5 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
 </div>
   );
 }
+
+
