@@ -4111,11 +4111,10 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-12 border-t border-border-custom">
-            
 
-            <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom h-fit">
+            <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl h-fit space-y-8">
               <h5 className="font-black mb-6 flex items-center gap-3 text-foreground-main text-[10px] uppercase tracking-[0.2em]"><Palette size={18} className="text-accent" /> Diseño Actual</h5>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-8">
                   {(Array.from(new Set(foundOrder.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[]).map((cat) => {
                     const ref = [...(foundOrder.references || [])].reverse().find(r => r.comments === cat);
                     return (
@@ -4154,15 +4153,16 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                                   </label>
                                 </form>
                               )}
-                              <a 
-                                href={ref.file_path} 
-                                download 
-                                className="p-4 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-accent transition-all"
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                <Download size={20} />
-                              </a>
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+  <a 
+    href={ref.file_path} 
+    download 
+    onClick={(e) => e.stopPropagation()}
+    className="p-4 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-accent transition-all"
+  >
+    <Download size={20} />
+  </a>
+</div>
                             </div>
                           </div>
                         ) : (
