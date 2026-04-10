@@ -1625,7 +1625,7 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
   }, [items]);
 
   const [referenceFiles, setReferenceFiles] = useState<File[]>([]);
-  const [referencePreviews, setReferencePreviews] = useState<string[]>([]);
+  const SIZES = ['2','4','6','8','10','12','14','16','S','M','L','XL','XXL'];
 
   const handleSubmit = async () => {
     try {
@@ -1779,7 +1779,24 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
                     </td>
                     <td className="py-3 px-4"><input type="text" value={item.player_name || ''} onChange={e => { const newItems = [...items]; newItems[idx].player_name = e.target.value; setItems(newItems); }} className="w-full bg-transparent outline-none font-bold text-foreground-main" placeholder="Nombre..." /></td>
                     <td className="py-3 px-4"><input type="text" value={item.number || ''} onChange={e => { const newItems = [...items]; newItems[idx].number = e.target.value; setItems(newItems); }} className="w-12 bg-transparent outline-none text-foreground-muted text-center" placeholder="00" /></td>
-                    <td className="py-3 px-4"><input type="text" value={item.size || ''} onChange={e => { const newItems = [...items]; newItems[idx].size = e.target.value; setItems(newItems); }} className="w-10 bg-transparent outline-none text-foreground-muted text-center" placeholder="M" /></td>
+                    <td className="py-3 px-4">
+                      <select 
+                        value={item.size || ''} 
+                        onChange={e => { 
+                          const newItems = [...items]; 
+                          newItems[idx] = { ...newItems[idx], size: e.target.value }; 
+                          setItems(newItems); 
+                        }} 
+                        className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase text-center"
+                      >
+                        <option value="">-</option>
+                        {SIZES.map(size => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
                     <td className="py-3 px-4">
                       <select 
                         value={item.sleeve || 'Corta'} 
@@ -1788,7 +1805,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
                       >
                         <option className="bg-background">Corta</option>
                         <option className="bg-background">Larga</option>
-                        <option className="bg-background">Sisa</option>
                       </select>
                     </td>
                     <td className="py-3 px-4">
