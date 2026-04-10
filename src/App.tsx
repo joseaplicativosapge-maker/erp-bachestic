@@ -2059,6 +2059,9 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     }
   };
   const SIZES = ['2','4','6','8','10','12','14','16','S','M','L','XL','XXL'];
+  const [selectedImageUrl, setSelectedImageUrl] = useState('');
+  const [showImageModal, setShowImageModal] = useState(false);
+
   const exportToExcel = () => {
     if (!order) return;
 
@@ -2892,44 +2895,40 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               <h4 className="font-black text-foreground-main text-[10px] uppercase tracking-[0.3em] flex items-center gap-3">
                 <Palette size={16} className="text-accent" /> Diseño ejemplo del Cliente
               </h4>
-              <p className="text-foreground-muted text-[9px] font-black uppercase tracking-widest leading-relaxed">Carga el diseño para cada categoría de prenda. Estos se visualizarán en el seguimiento del cliente.</p>
+
+              <p className="text-foreground-muted text-[9px] font-black uppercase tracking-widest leading-relaxed">
+                Carga el diseño para cada categoría de prenda. Estos se visualizarán en el seguimiento del cliente.
+              </p>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-8">
                 {(Array.from(new Set(order.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[]).map((cat) => {
                   const design = [...(order.references || [])].reverse().find(r => r.comments === cat);
+
                   return (
                     <div key={cat} className="space-y-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted ml-1">{cat}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted ml-1">
+                        {cat}
+                      </p>
+
                       {design ? (
-                        <div className="aspect-video rounded-3xl overflow-hidden border border-border-custom relative group shadow-lg">
+                        <div 
+                          className="aspect-video rounded-3xl overflow-hidden border border-border-custom relative group shadow-lg cursor-pointer"
+                          onClick={() => {
+                            setSelectedImageUrl(design.file_path);
+                            setShowImageModal(true);
+                          }}
+                        >
                           <img 
                             src={design.file_path} 
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                             referrerPolicy="no-referrer" 
                           />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                            <form onSubmit={(e) => {
-                              e.preventDefault();
-                              const formData = new FormData();
-                              const input = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
-                              if (input.files?.[0]) {
-                                formData.append('references', input.files[0]);
-                                formData.append('comments', cat as string);
-                                api.uploadReferences(orderId, formData, user.name).then(() => loadOrder());
-                              }
-                            }}>
-                              <label className="cursor-pointer p-4 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-accent transition-all">
-                                <Upload size={20} />
-                                <input 
-                                  type="file" 
-                                  className="hidden" 
-                                  onChange={e => e.currentTarget.form?.requestSubmit()} 
-                                />
-                              </label>
-                            </form>
+
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <a 
                               href={design.file_path} 
                               download 
+                              onClick={(e) => e.stopPropagation()}
                               className="p-4 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-accent transition-all"
                               target="_blank"
                               rel="noreferrer"
@@ -2953,10 +2952,16 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                             <div className="w-12 h-12 bg-foreground-main/[0.02] rounded-2xl flex items-center justify-center text-foreground-muted/20 group-hover:text-accent group-hover:scale-110 transition-all">
                               <Upload size={24} />
                             </div>
+
                             <div className="text-center">
-                              <p className="text-[9px] font-black text-foreground-muted/50 uppercase tracking-[0.2em] group-hover:text-foreground-main transition-colors">Subir Diseño Final</p>
-                              <p className="text-[8px] font-bold text-foreground-muted/30 uppercase tracking-widest mt-1">{cat}</p>
+                              <p className="text-[9px] font-black text-foreground-muted/50 uppercase tracking-[0.2em] group-hover:text-foreground-main transition-colors">
+                                Subir Diseño Final
+                              </p>
+                              <p className="text-[8px] font-bold text-foreground-muted/30 uppercase tracking-widest mt-1">
+                                {cat}
+                              </p>
                             </div>
+
                             <input 
                               type="file" 
                               className="hidden" 
@@ -3111,51 +3116,86 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
             <div className="space-y-4 relative z-10">
               {order.versions?.map((v) => (
-                <div key={v.id} className="flex gap-6 p-6 rounded-[32px] border border-border-custom hover:bg-background transition-all group cursor-pointer">
-                  <div className="w-24 h-24 bg-background rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-border-custom group-hover:border-accent/30 transition-colors">
+                <div key={v.id} className="flex gap-6 p-6 rounded-[32px] border border-border-custom hover:bg-background transition-all group">
+                  
+                  {/* 👇 IMAGEN CLICKEABLE */}
+                  <div 
+                    className="w-24 h-24 bg-background rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-border-custom group-hover:border-accent/30 transition-colors cursor-pointer relative"
+                    onClick={() => {
+                      if (v.file_path) {
+                        setSelectedImageUrl(v.file_path);
+                        setShowImageModal(true);
+                      }
+                    }}
+                  >
                     {v.file_path ? (
-                      <img src={v.file_path} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                      <>
+                        <img 
+                          src={v.file_path} 
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                          referrerPolicy="no-referrer" 
+                        />
+
+                        {/* Overlay tipo diseñador */}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white">
+                            <Maximize2 size={16} />
+                          </div>
+                        </div>
+                      </>
                     ) : (
                       <Palette size={28} className="text-foreground-muted" />
                     )}
                   </div>
+
+                  {/* 👇 CONTENIDO */}
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
                     <div className="flex justify-between items-start mb-2">
-                      <p className="font-black text-foreground-main text-base tracking-tight group-hover:text-accent transition-colors">Versión {v.version_number}</p>
-                      <span className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest bg-background px-2 py-1 rounded-lg">{format(new Date(v.created_at), 'dd/MM')}</span>
+                      <p className="font-black text-foreground-main text-base tracking-tight group-hover:text-accent transition-colors">
+                        Versión {v.version_number}
+                      </p>
+                      <span className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest bg-background px-2 py-1 rounded-lg">
+                        {format(new Date(v.created_at), 'dd/MM')}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-foreground-muted line-clamp-2 leading-relaxed italic mb-3">{v.comments}</p>
+
+                    <p className="text-[11px] text-foreground-muted line-clamp-2 leading-relaxed italic mb-3">
+                      {v.comments}
+                    </p>
+
                     {v.client_comments && (
                       <div className="mb-3 p-3 bg-accent/5 border border-accent/10 rounded-xl">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-accent mb-1 flex items-center gap-1.5"><MessageSquare size={10} /> Comentarios del Cliente:</p>
-                        <p className="text-[11px] text-foreground-main italic">{v.client_comments}</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-accent mb-1 flex items-center gap-1.5">
+                          <MessageSquare size={10} /> Comentarios del Cliente:
+                        </p>
+                        <p className="text-[11px] text-foreground-main italic">
+                          {v.client_comments}
+                        </p>
                       </div>
                     )}
+
                     <div className="flex items-center gap-3">
-                      <span className={cn(
-                        "text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border",
-                        v.status === 'Aprobado' ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-accent/10 text-accent border-accent/20"
-                      )}>
+                      <span
+                        className={cn(
+                          "text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border",
+                          v.status === 'Aprobado'
+                            ? "bg-green-500/10 text-green-500 border-green-500/20"
+                            : "bg-accent/10 text-accent border-accent/20"
+                        )}
+                      >
                         {v.status}
                       </span>
-                      {v.file_path && (
-                        <a 
-                          href={v.file_path} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="text-[9px] font-black uppercase tracking-widest text-foreground-muted hover:text-foreground-main transition-colors flex items-center gap-1.5 ml-auto"
-                        >
-                          <ExternalLink size={12} /> Ver Full
-                        </a>
-                      )}
                     </div>
                   </div>
                 </div>
               ))}
+
               {(!order.versions || order.versions.length === 0) && (
                 <div className="text-center py-16 bg-background rounded-[32px] border border-dashed border-border-custom">
                   <Palette className="mx-auto text-foreground-muted opacity-20 mb-4" size={48} />
-                  <p className="text-[10px] text-foreground-muted font-black uppercase tracking-widest italic">No hay versiones aún</p>
+                  <p className="text-[10px] text-foreground-muted font-black uppercase tracking-widest italic">
+                    No hay versiones aún
+                  </p>
                 </div>
               )}
             </div>
@@ -3252,6 +3292,26 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
         )}
+
+        
+
+        {showImageModal && selectedImageUrl && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[300] flex items-center justify-center p-4 sm:p-8" onClick={() => setShowImageModal(false)}>
+            <button 
+              className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors bg-white/10 p-3 rounded-full backdrop-blur-md"
+              onClick={() => setShowImageModal(false)}
+            >
+              <X size={24} />
+            </button>
+            <img 
+              src={selectedImageUrl} 
+              className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        )}
+        
       </motion.div>
     );
 }
