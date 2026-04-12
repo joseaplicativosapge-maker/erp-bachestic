@@ -352,18 +352,9 @@ export default function App() {
             initial={{ x: -280 }}
             animate={{ x: 0 }}
             exit={{ x: -280 }}
-            className="w-[280px] bg-surface border-r border-border-custom flex flex-col z-50"
-          >
-            <div className="p-3 border-b border-border-custom flex items-center justify-between">
-  
-              <div className="flex items-center gap-4">
-                <img
-                  src="/logo-bachestic.png"
-                  alt="Bachestic Logo"
-                  className="h-30 object-contain"
-                />
-              </div>
-
+            className="w-[280px] bg-surface border-r border-border-custom flex flex-col z-50">
+            <div className="flex items-center justify-between">
+              
               <button
                 onClick={() => setIsSidebarOpen(false)}
                 className="lg:hidden text-foreground-muted hover:text-foreground-main"
@@ -1220,7 +1211,7 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
               <div className="space-y-8">
                 <div className="flex justify-between items-center bg-accent/5 p-6 rounded-[24px] border border-accent/20">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-foreground-main shadow-lg shadow-accent/20">
+                    <div className="w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-foreground-main shadow-lg shadow-accent/20 text-white">
                       <Contact size={24} />
                     </div>
                     <div>
@@ -1941,6 +1932,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       ]);
       setOrder(orderData);
       setHistory(historyData);
+      setPayments([orderData]);
       setEditData(orderData);
       setEditItems(orderData.items || []);
     } catch (err: any) {
@@ -2757,31 +2749,23 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
         <div className="space-y-10">
           {/* Payment History */}
           <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
-            <h4 className="font-black text-foreground-main text-[10px] uppercase tracking-[0.3em] flex items-center gap-3">
-              <DollarSign size={16} className="text-accent" /> Historial de Ordenes
-            </h4>
+            
+            <div className="flex items-center gap-4">
+  
+              <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                <DollarSign className="text-accent" size={24} />
+              </div>
+
+              <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+                Historial de Ordenes
+              </h4>
+
+            </div>
             <div className="space-y-4">
               {payments.map((p) => (
-                <div key={p.id} className="p-6 rounded-3xl bg-background border border-border-custom hover:border-accent/30 transition-all group">
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest bg-surface-hover px-2 py-1 rounded-lg">
-                      {format(new Date(p.created_at), 'dd/MM HH:mm')}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-foreground-muted italic leading-relaxed">{p.notes}</p>
-                  <div className="mt-4 pt-4 border-t border-border-custom flex justify-between items-center">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted/40">Por: {p.created_by}</p>
-                    <button 
-                      onClick={() => {
-                        setLastPayment(p);
-                        setShowReceiptModal(true);
-                      }}
-                      className="text-[9px] font-black uppercase tracking-widest text-accent hover:underline"
-                    >
-                      Ver Recibo
-                    </button>
-                  </div>
-                </div>
+                <button key={p.id} onClick={() => { setLastPayment(p); setShowReceiptModal(true); }} className="w-full bg-accent text-white py-5 rounded-[24px] font-black uppercase tracking-[0.3em] text-[10px] flex items-center justify-center gap-3 disabled:opacity-50 hover:bg-accent/90 transition-all shadow-[0_10px_30px_rgba(220,38,38,0.3)] active:scale-[0.98]">
+                  Ver Recibo
+                </button>
               ))}
               {payments.length === 0 && (
                 <div className="text-center py-12 bg-background rounded-[32px] border border-dashed border-border-custom">
@@ -2792,107 +2776,21 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
 
-          {/* Design References */}
-          <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
-            <h4 className="font-black text-foreground-main text-[10px] uppercase tracking-[0.3em] flex items-center gap-3">
-              <Image size={16} className="text-accent" /> Referencias de Diseño (Cliente)
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              {order.references?.filter(r => {
-                const orderCategories = Array.from(new Set(order.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[];
-                return !orderCategories.includes(r.comments || '');
-              }).map((ref, i) => (
-                <div key={i} className="aspect-square rounded-3xl overflow-hidden border border-border-custom group relative bg-background">
-                  <img src={ref.file_path} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-all duration-300 backdrop-blur-sm">
-                    <a 
-                      href={ref.file_path} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-accent transition-all"
-                    >
-                      <ExternalLink size={20} />
-                    </a>
-                    <a 
-                      href={ref.file_path} 
-                      download 
-                      className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-accent transition-all"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <Download size={20} />
-                    </a>
-                  </div>
-                </div>
-              ))}
-              {(!order.references || order.references.filter(r => {
-                const orderCategories = Array.from(new Set(order.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[];
-                return !orderCategories.includes(r.comments || '');
-              }).length === 0) && (
-                <div className="col-span-2 py-12 text-center border-2 border-dashed border-border-custom rounded-[32px] bg-background">
-                  <p className="text-[10px] text-foreground-muted font-black uppercase tracking-widest italic">Sin referencias cargadas</p>
-                </div>
-              )}
-              {isEditing && (
-                <div className="col-span-2 space-y-4 pt-4 border-t border-border-custom">
-                  <div className="relative group">
-                    <div className="border-2 border-dashed border-border-custom rounded-[24px] p-6 text-center hover:border-accent/40 transition-all cursor-pointer relative bg-background">
-                      <input 
-                        type="file" 
-                        multiple 
-                        onChange={e => {
-                          const files = Array.from(e.target.files || []);
-                          setNewReferences(files);
-                          const previews = files.map(file => URL.createObjectURL(file as File));
-                          setNewReferencePreviews(previews);
-                        }}
-                        className="absolute inset-0 opacity-0 cursor-pointer z-20" 
-                      />
-                      <div className="relative z-10 flex flex-col items-center gap-2">
-                        <Plus size={20} className="text-accent" />
-                        <p className="text-[9px] font-black text-foreground-main uppercase tracking-widest">Añadir Referencias</p>
-                      </div>
-                    </div>
-                  </div>
-                  {newReferencePreviews.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {newReferencePreviews.map((preview, i) => (
-                        <div key={i} className="aspect-square rounded-xl overflow-hidden border border-border-custom relative group">
-                          <img src={preview} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          <button 
-                            onClick={() => {
-                              setNewReferences(newReferences.filter((_, idx) => idx !== i));
-                              setNewReferencePreviews(newReferencePreviews.filter((_, idx) => idx !== i));
-                            }}
-                            className="absolute top-1 right-1 p-1 bg-black/60 text-foreground-main rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X size={10} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {newReferences.length > 0 && (
-                    <button 
-                      onClick={handleAddReferences}
-                      disabled={isUploading}
-                      className="w-full bg-accent text-white py-3 rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 hover:bg-accent/90 transition-all shadow-lg shadow-accent/20"
-                    >
-                      {isUploading ? <Clock className="animate-spin" size={14} /> : <Upload size={14} />}
-                      Subir Referencias
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Final Designs per Category (Designer Only) */}
           {(role === 'Admin' || role === 'Diseño') && (
             <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
-              <h4 className="font-black text-foreground-main text-[10px] uppercase tracking-[0.3em] flex items-center gap-3">
-                <Palette size={16} className="text-accent" /> Diseño ejemplo del Cliente
-              </h4>
+              
+              <div className="flex items-center gap-4">
+  
+                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                  <Palette className="text-accent" size={24} />
+                </div>
+
+                <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+                  Diseño del Cliente
+                </h4>
+
+              </div>
 
               <p className="text-foreground-muted text-[9px] font-black uppercase tracking-widest leading-relaxed">
                 Carga el diseño para cada categoría de prenda. Estos se visualizarán en el seguimiento del cliente.
@@ -2978,20 +2876,46 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 
           {/* Workflow Actions */}
           <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
-            <h4 className="font-black text-foreground-main text-[10px] uppercase tracking-[0.3em] flex items-center gap-3">
-              <CheckCircle2 size={16} className="text-accent" /> Acciones de Flujo
-            </h4>
+            
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                <CheckCircle2 className="text-accent" size={24} />
+              </div>
+
+              <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+                Acciones de Flujo
+              </h4>
+            </div>
             
             <div className="space-y-4">
 
-              {order.status === 'Abono confirmado' && (role === 'Admin' || role === 'Ventas') && (
-                <button 
-                  onClick={() => handleStatusUpdate('En diseño')}
-                  className="w-full bg-foreground-main text-background py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main/90 transition-all"
-                >
-                  <Palette size={18} /> Iniciar Diseño
-                </button>
-              )}
+              {order.status === 'Abono confirmado' && (role === 'Admin' || role === 'Ventas') && (() => {
+                const orderCategories = Array.from(new Set(order.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[];
+                const uploadedCategories = (order.references || []).filter(r => orderCategories.includes(r.comments || ''));
+                const hasDesignReference = uploadedCategories.length > 0;
+                return (
+                  <div className="space-y-3">
+                    <button 
+                      onClick={() => hasDesignReference && handleStatusUpdate('En diseño')}
+                      disabled={!hasDesignReference}
+                      className={cn(
+                        "w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all",
+                        hasDesignReference
+                          ? "bg-foreground-main text-background hover:bg-foreground-main/90"
+                          : "bg-surface-hover text-foreground-muted/40 cursor-not-allowed border border-dashed border-border-custom"
+                      )}
+                    >
+                      <Palette size={18} /> Iniciar Diseño
+                    </button>
+                    {!hasDesignReference && (
+                      <p className="text-[9px] font-black uppercase tracking-widest text-accent/70 text-center flex items-center justify-center gap-1.5">
+                        <AlertCircle size={12} />
+                        Sube el diseño ejemplo antes de continuar
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {(order.status === 'En diseño' || order.status === 'Corrección solicitada') && (role === 'Admin' || role === 'Diseño') && (
                 <form onSubmit={handleDesignUpload} className="space-y-6">
@@ -3116,7 +3040,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               {order.versions?.map((v) => (
                 <div key={v.id} className="flex gap-6 p-6 rounded-[32px] border border-border-custom hover:bg-background transition-all group">
                   
-                  {/* 👇 IMAGEN CLICKEABLE */}
                   <div 
                     className="w-24 h-24 bg-background rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-border-custom group-hover:border-accent/30 transition-colors cursor-pointer relative"
                     onClick={() => {
@@ -3205,9 +3128,18 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
         {/* Order History */}
           <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
             <div className="flex items-center justify-between">
-              <h4 className="font-black text-foreground-main text-[10px] uppercase tracking-[0.3em] flex items-center gap-3">
-                <History size={16} className="text-accent" /> Historial de Cambios
-              </h4>
+              
+              <div className="flex items-center gap-4">
+  
+                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                  <History className="text-accent" size={24} />
+                </div>
+
+                <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+                  Historial de Cambios
+                </h4>
+
+              </div>
               <button 
                 onClick={() => setShowHistory(!showHistory)}
                 className="text-[9px] font-black uppercase tracking-widest text-accent hover:text-accent/90 transition-colors"

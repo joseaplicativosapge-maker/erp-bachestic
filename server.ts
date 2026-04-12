@@ -217,7 +217,6 @@ async function startServer() {
     DELETE FROM design_versions;
     DELETE FROM design_references;
     DELETE FROM order_history;
-    DELETE FROM employees;
     DELETE FROM production_assignments;
 
     DELETE FROM sqlite_sequence;
