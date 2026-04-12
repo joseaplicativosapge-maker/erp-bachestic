@@ -2988,7 +2988,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               )}
 
               {/* Botones de avance para estados de producción */}
-              {(['En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En despacho', 'En transporte'] as OrderStatus[]).includes(order.status) && (role === 'Admin' || role === 'Ventas' || role === 'Impresión' || role === 'Sublimación' || role === 'Corte' || role === 'Confección' || role === 'Empaque' || role === 'Transporte') && (() => {
+              {(['En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En despacho', 'En transporte'] as OrderStatus[]).includes(order.status) && (role === 'Admin' || role === 'Ventas' || role === 'Impresión' || role === 'En Sublimación' || role === 'Corte' || role === 'Confección' || role === 'Empaque' || role === 'Transporte') && (() => {
                 const nextMap: Partial<Record<OrderStatus, OrderStatus>> = {
                   'En impresión': 'En sublimación',
                   'En sublimación': 'En corte',
@@ -4203,7 +4203,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                                   subCompleted || currentStepIndex > i ? "text-accent"
                                     : subCurrent ? "text-foreground-main" : "text-foreground-muted/30"
                                 )}>
-                                  {sub === 'En sublimación' ? 'Sublimación' : 'Corte'}
+                                  {sub === 'En sublimación' ? 'En Sublimación' : 'En Corte'}
                                 </span>
                               </div>
                             );
@@ -4238,7 +4238,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                                   subCompleted || currentStepIndex > i ? "text-accent"
                                     : subCurrent ? "text-foreground-main" : "text-foreground-muted/30"
                                 )}>
-                                  {sub === 'En confección' ? 'Confección' : 'Empaque'}
+                                  {sub === 'En confección' ? 'En Confección' : 'En Empaque'}
                                 </span>
                               </div>
                             );
