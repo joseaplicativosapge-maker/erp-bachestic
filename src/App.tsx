@@ -371,7 +371,7 @@ export default function App() {
                   onClick={() => setView(item.id as any)}
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
-                    view === item.id 
+                    (view === item.id || (item.id === 'orders' && (view === 'order-details' || view === 'create-order')))
                       ? "bg-accent text-white shadow-xl shadow-accent/20" 
                       : "hover:bg-surface-hover text-foreground-muted hover:text-foreground-main"
                   )}
@@ -4164,7 +4164,16 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-12 border-t border-border-custom">
 
             <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl h-fit space-y-8">
-              <h5 className="font-black mb-6 flex items-center gap-3 text-foreground-main text-[10px] uppercase tracking-[0.2em]"><Palette size={18} className="text-accent" /> Diseño Actual</h5>
+              
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                  <Palette className="text-accent" size={24} />
+                </div>
+                <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+                  Diseño Actual
+                </h4>
+              </div>
+
                 <div className="space-y-8">
                   {(Array.from(new Set(foundOrder.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[]).map((cat) => {
                     const ref = [...(foundOrder.references || [])].reverse().find(r => r.comments === cat);
@@ -4258,13 +4267,27 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
               {/* Propuesta de Diseño del Diseñador */}
               {foundOrder.versions && foundOrder.versions.length > 0 && (
                 <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl h-fit space-y-8">
-                  <div className="flex items-center justify-between">
-                    <h5 className="font-black flex items-center gap-3 text-foreground-main text-[10px] uppercase tracking-[0.2em]">
-                      <Palette size={18} className="text-accent" /> Propuesta del Diseñador
-                    </h5>
-                    <span className="px-4 py-1.5 bg-accent/10 text-accent rounded-full text-[9px] font-black uppercase tracking-widest">
-                      Versión #{foundOrder.versions[0].version_number}
-                    </span>
+                  
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+
+                    {/* IZQUIERDA */}
+                    <div className="flex items-center gap-4 min-w-0">
+                      
+                      <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5 shrink-0">
+                        <Palette className="text-accent" size={24} />
+                      </div>
+
+                      <h4 className="font-black text-foreground-main uppercase tracking-[0.3em] text-[11px] truncate">
+                        Propuesta del Diseñador
+                      </h4>
+
+                    </div>
+
+                    {/* DERECHA */}
+                    <p className="px-4 py-1.5 bg-accent/10 text-accent rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                      Versión #{foundOrder?.versions?.[0]?.version_number}
+                    </p>
+
                   </div>
                   
                   <div 
@@ -4518,9 +4541,16 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
             {/* Historial de Diseños */}
             {foundOrder.versions && foundOrder.versions.length > 1 && (
               <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl col-span-full">
-                <h4 className="font-black flex items-center gap-3 text-foreground-main text-[10px] uppercase tracking-[0.2em] mb-8">
-                  <History size={18} className="text-accent" /> Historial de Diseños
-                </h4>
+                
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                    <History className="text-accent" size={24} />
+                  </div>
+                  <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+                    Historial de Diseños
+                  </h4>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {foundOrder.versions.map((v) => (
                     <div key={v.id} className="bg-surface p-6 rounded-[32px] border border-border-custom shadow-xl group">
