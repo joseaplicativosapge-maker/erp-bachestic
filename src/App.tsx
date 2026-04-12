@@ -4149,7 +4149,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                               (isInDesignSubPhase && si === designSubStepIndex && currentOrderStatus !== sub);
                             
                             const subCurrent = isInDesignSubPhase && currentOrderStatus === sub;
-                            const subLabel = sub === 'Diseño aprobado' ? 'Aprobado' : sub === 'En cuadro' ? 'Cuadro' : sub === 'En montaje' ? 'Montaje' : 'Impresión';
+                            const subLabel = sub === 'Diseño aprobado' ? 'Diseño Aprobado' : sub === 'En cuadro' ? 'En Cuadro' : sub === 'En montaje' ? 'En Montaje' : 'En Impresión';
 
                             return (
                               <div key={sub} className="flex items-center gap-1.5">
