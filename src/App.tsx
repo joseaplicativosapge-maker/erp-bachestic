@@ -2781,15 +2781,12 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
               
               <div className="flex items-center gap-4">
-  
                 <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
                   <Palette className="text-accent" size={24} />
                 </div>
-
                 <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
                   Diseño del Cliente
                 </h4>
-
               </div>
 
               <p className="text-foreground-muted text-[9px] font-black uppercase tracking-widest leading-relaxed">
@@ -4351,10 +4348,17 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
               <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl col-span-full">
                 <div className="flex flex-col md:flex-row items-center justify-between mb-10 gap-6">
                   <div>
-                    <h5 className="font-black flex items-center gap-3 text-foreground-main text-[10px] uppercase tracking-[0.2em] mb-2">
-                      <Shirt size={18} className="text-accent" /> Detalle de Prendas
-                    </h5>
-                    <p className="text-foreground-muted text-[10px] font-black uppercase tracking-widest">Completa la información técnica de cada prenda para producción</p>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                        <Shirt className="text-accent" size={24} />
+                      </div>
+                      <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+                        Detalle de Prendas
+                        <p className="text-foreground-muted text-[10px] font-black uppercase tracking-widest">Completa la información técnica de cada prenda para producción</p>
+                      </h4>
+                    </div>
+                    
                     <br/>
                     {foundOrder.team_name ? (
                       <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
@@ -4596,7 +4600,16 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
             )}
 
             <div className="space-y-8">
-              <h5 className="font-black flex items-center gap-3 text-foreground-main text-[10px] uppercase tracking-[0.2em]"><History size={18} className="text-accent" /> Registro de Actividad</h5>
+              
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                  <History className="text-accent" size={24} />
+                </div>
+                <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+                  Registro de Actividad
+                </h4>
+              </div>
+
               <div className="space-y-8 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-border-custom">
                 {foundOrder.history?.slice(0, 5).map((h, i) => (
                   <div key={i} className="relative pl-8 group">
