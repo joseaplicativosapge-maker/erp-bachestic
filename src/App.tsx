@@ -549,7 +549,6 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
           </div>
           <div className="max-h-80 overflow-y-auto pr-2">
             {[
-              { name: 'Cotización', color: 'var(--accent)' },
               { name: 'Abono pendiente', color: '#F59E0B' },
               { name: 'Diseño', color: '#6366F1' },
               { name: 'Impresión', color: '#8B5CF6' },
@@ -1709,7 +1708,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
               value={formData.status}
               onChange={e => setFormData({...formData, status: e.target.value as OrderStatus})}
               options={[
-                { value: 'Cotización', label: 'Cotización' },
                 { value: 'Abono pendiente', label: 'Abono pendiente' },
                 { value: 'Diseño', label: 'Diseño' },
                 { value: 'Impresión', label: 'Impresión' },
@@ -2285,7 +2283,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             "px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all duration-500",
             order.status === 'Entregado' ? "bg-green-500/10 text-green-500 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.1)]" : 
             order.status === 'Abono confirmado' ? "bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]" :
-            order.status === 'Cotización' ? "bg-foreground-muted/10 text-foreground-muted border-border-custom" :
             "bg-accent text-white border-accent shadow-xl shadow-accent/20"
           )}>
             {order.status}
@@ -3263,7 +3260,10 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     'En diseño': 'Versión enviada',
     'Versión enviada': 'Diseño aprobado',
     'Corrección solicitada': 'Versión enviada',
-    'Diseño aprobado': 'Arte final cargado',
+    'Diseño aprobado': 'En cuadro',
+    'En cuadro': 'En montaje',
+    'En montaje': 'En impresión interna',
+    'En impresión interna': 'En impresión',
     'Arte final cargado': 'En impresión',
     'En impresión': 'En sublimación',
     'En sublimación': 'En corte',
@@ -3277,15 +3277,17 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
   };
 
   const previousStatusMap: Record<OrderStatus, OrderStatus> = {
-    'Cotización': 'Cotización',
-    'Abono pendiente': 'Cotización',
+    'Abono pendiente': 'Abono pendiente',
     'Abono confirmado': 'Abono pendiente',
     'En diseño': 'Abono confirmado',
     'Versión enviada': 'En diseño',
     'Corrección solicitada': 'En diseño',
     'Diseño aprobado': 'Versión enviada',
+    'En cuadro': 'Diseño aprobado',
+    'En montaje': 'En cuadro',
+    'En impresión interna': 'En montaje',
     'Arte final cargado': 'Diseño aprobado',
-    'En impresión': 'Arte final cargado',
+    'En impresión': 'En impresión interna',
     'En sublimación': 'En impresión',
     'En corte': 'En sublimación',
     'En confección': 'En corte',
@@ -3361,7 +3363,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
   };
 
   const filteredOrders = orders.filter(o => {
-    if (o.status === 'Entregado' || o.status === 'Cotización') return false;
+    if (o.status === 'Entregado') return false;
 
     if (role !== 'Admin' && !departmentMap[role]?.includes(o.status)) return false;
     if (role === 'Admin' && statusFilter !== 'Todos' && o.status !== statusFilter) return false;
@@ -3881,7 +3883,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   'En confección', 'En empaque', 'En transporte', 'Entregado'].includes(foundOrder.status);
 
   const steps: OrderStatus[] = [
-    'Cotización', 'Abono confirmado', 'En diseño', 'Diseño aprobado', 'En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En transporte', 'Entregado'
+    'Abono confirmado', 'En diseño', 'Diseño aprobado', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En transporte', 'Entregado'
   ];
 
   const getDisplayStatus = (status: OrderStatus) => {
@@ -3896,7 +3898,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
 
   const getNormalizedStatus = (status: OrderStatus): OrderStatus => {
     if (['Versión enviada', 'Corrección solicitada'].includes(status)) return 'En diseño';
-    if (status === 'Arte final cargado') return 'Diseño aprobado';
+    if (['Arte final cargado', 'Diseño aprobado', 'En cuadro', 'En montaje', 'En impresión interna', 'En impresión'].includes(status)) return 'Diseño aprobado';
     return status;
   };
 
@@ -3995,8 +3997,6 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
 
     // ✅ Mensajes por estado (ANTES de diseño aprobado)
     switch (status) {
-      case 'Cotización':
-        return 'Preparando cotización técnica';
 
       case 'Abono pendiente':
         return 'Esperando confirmación de pago';
@@ -4094,29 +4094,6 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
             />
           )}
 
-          {foundOrder.status === 'Cotización' && (
-            <div className="p-10 bg-accent/5 border border-accent/10 rounded-[32px] space-y-8">
-              <div className="text-center">
-                <h5 className="text-2xl font-black text-foreground-main tracking-tighter uppercase mb-3">Confirmación de Pedido</h5>
-                <p className="text-foreground-muted text-[11px] font-black uppercase tracking-widest leading-relaxed">El pedido está en fase de cotización técnica. Por favor, confirma los detalles finales.</p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <a 
-                  href={`tel:${foundOrder.client_phone}`}
-                  className="flex-1 bg-surface-hover text-foreground-main py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-surface-hover/80 transition-all border border-border-custom"
-                >
-                  <Phone size={18} className="text-accent" /> Llamar para Consultar
-                </a>
-                <button 
-                  onClick={() => setShowConfirmModal(true)}
-                  className="flex-1 bg-accent text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:scale-[1.02] transition-all shadow-xl shadow-accent/20"
-                >
-                  <CheckCircle2 size={18} /> Confirmar Pedido Ahora
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Progress Bar */}
           <div className="relative pt-16 pb-8">
             <div className="absolute top-[85px] left-0 w-full h-1 bg-foreground-main/5"></div>
@@ -4129,9 +4106,26 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
               {steps.map((step, i) => {
                 const isCompleted = i <= currentStepIndex;
                 const isCurrent = i === currentStepIndex;
+
+                // Sub-pasos de diseño aprobado
+                const designSubSteps: OrderStatus[] = ['Diseño aprobado', 'En cuadro', 'En montaje', 'En impresión interna'];
+                const isDesignApprovedStep = step === 'En diseño';
+                const currentOrderStatus = foundOrder?.status;
+                
+                const isInDesignSubPhase = currentOrderStatus && (
+                  designSubSteps.includes(currentOrderStatus as OrderStatus) ||
+                  currentOrderStatus === 'Diseño aprobado' ||
+                  currentOrderStatus === 'En diseño' ||
+                  currentOrderStatus === 'Versión enviada' ||
+                  currentOrderStatus === 'Corrección solicitada'
+                );
+
+                const designSubStepIndex = isInDesignSubPhase 
+                  ? designSubSteps.indexOf(currentOrderStatus as OrderStatus)
+                  : -1;
                 
                 return (
-                  <div key={step} className="flex flex-col items-center gap-6">
+                  <div key={step} className="flex flex-col items-center gap-6 relative">
                     <div className={cn(
                       "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 z-10 border-4 border-surface shadow-2xl",
                       isCompleted ? "bg-accent text-white" : "bg-surface text-foreground-muted/20 border-border-custom",
@@ -4139,7 +4133,51 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                     )}>
                       {isCompleted ? <CheckCircle2 size={24} /> : <div className="w-2 h-2 rounded-full bg-current"></div>}
                     </div>
-                    <div className="flex flex-col items-center gap-1">
+
+                    {/* Sub-pasos dentro de Diseño Aprobado */}
+                    {isDesignApprovedStep && (isCompleted || isCurrent || isInDesignSubPhase) && (
+                      <div className="absolute top-14 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 mt-2 w-32">
+                        <div className="w-[1px] h-3 bg-border-custom mx-auto"></div>
+                        <div className="bg-surface border border-border-custom rounded-2xl p-2 space-y-1.5 w-full shadow-lg">
+                          {designSubSteps.map((sub, si) => {
+                            const subCompleted = 
+                              // Si ya pasó de diseño aprobado completamente
+                              (currentStepIndex > i) ||
+                              // Si estamos en sub-pasos, verificar cuáles están completados
+                              (isInDesignSubPhase && si < designSubStepIndex) ||
+                              // Si el sub-paso actual coincide
+                              (isInDesignSubPhase && si === designSubStepIndex && currentOrderStatus !== sub);
+                            
+                            const subCurrent = isInDesignSubPhase && currentOrderStatus === sub;
+                            const subLabel = sub === 'Diseño aprobado' ? 'Aprobado' : sub === 'En cuadro' ? 'Cuadro' : sub === 'En montaje' ? 'Montaje' : 'Impresión';
+
+                            return (
+                              <div key={sub} className="flex items-center gap-1.5">
+                                <div className={cn(
+                                  "w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-all",
+                                  subCompleted || (currentStepIndex > i)
+                                    ? "bg-accent text-white" 
+                                    : subCurrent 
+                                      ? "bg-accent/30 border-2 border-accent" 
+                                      : "bg-surface-hover border border-border-custom"
+                                )}>
+                                  {(subCompleted || currentStepIndex > i) && <CheckCircle2 size={10} />}
+                                  {subCurrent && <div className="w-1.5 h-1.5 rounded-full bg-accent"></div>}
+                                </div>
+                                <span className={cn(
+                                  "text-[8px] font-black uppercase tracking-wider",
+                                  subCompleted || currentStepIndex > i ? "text-accent" : subCurrent ? "text-foreground-main" : "text-foreground-muted/30"
+                                )}>
+                                  {subLabel}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col items-center gap-1 mt-0">
                       <span className={cn(
                         "text-[9px] font-black uppercase tracking-widest text-center max-w-[90px] leading-tight",
                         isCompleted ? "text-foreground-main" : "text-foreground-muted/50"
