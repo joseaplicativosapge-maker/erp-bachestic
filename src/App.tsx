@@ -3883,7 +3883,8 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   'En confección', 'En empaque', 'En transporte', 'Entregado'].includes(foundOrder.status);
 
   const steps: OrderStatus[] = [
-    'Abono confirmado', 'En diseño', 'Diseño aprobado', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En transporte', 'Entregado'
+    'Cotización', 'Abono confirmado', 'En diseño',
+    'En sublimación', 'En confección', 'En transporte', 'Entregado'
   ];
 
   const getDisplayStatus = (status: OrderStatus) => {
@@ -3897,8 +3898,9 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   };
 
   const getNormalizedStatus = (status: OrderStatus): OrderStatus => {
-    if (['Versión enviada', 'Corrección solicitada'].includes(status)) return 'En diseño';
-    if (['Arte final cargado', 'Diseño aprobado', 'En cuadro', 'En montaje', 'En impresión interna', 'En impresión'].includes(status)) return 'Diseño aprobado';
+    if (['Versión enviada', 'Corrección solicitada', 'Diseño aprobado', 'Arte final cargado'].includes(status)) return 'En diseño';
+    if (['En impresión', 'En corte'].includes(status)) return 'En sublimación';
+    if (status === 'En empaque') return 'En confección';
     return status;
   };
 
@@ -4135,17 +4137,15 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                     </div>
 
                     {/* Sub-pasos dentro de Diseño Aprobado */}
-                    {isDesignApprovedStep && (isCompleted || isCurrent || isInDesignSubPhase) && (
+                    {isDesignApprovedStep && (
                       <div className="absolute top-14 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 mt-2 w-32">
                         <div className="w-[1px] h-3 bg-border-custom mx-auto"></div>
                         <div className="bg-surface border border-border-custom rounded-2xl p-2 space-y-1.5 w-full shadow-lg">
                           {designSubSteps.map((sub, si) => {
+
                             const subCompleted = 
-                              // Si ya pasó de diseño aprobado completamente
                               (currentStepIndex > i) ||
-                              // Si estamos en sub-pasos, verificar cuáles están completados
                               (isInDesignSubPhase && si < designSubStepIndex) ||
-                              // Si el sub-paso actual coincide
                               (isInDesignSubPhase && si === designSubStepIndex && currentOrderStatus !== sub);
                             
                             const subCurrent = isInDesignSubPhase && currentOrderStatus === sub;
@@ -4169,6 +4169,76 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                                   subCompleted || currentStepIndex > i ? "text-accent" : subCurrent ? "text-foreground-main" : "text-foreground-muted/30"
                                 )}>
                                   {subLabel}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sub-pasos: Sublimación = En sublimación + En corte */}
+                    {step === 'En sublimación' && (
+                      <div className="absolute top-14 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 mt-2 w-32">
+                        <div className="w-[1px] h-3 bg-border-custom mx-auto"></div>
+                        <div className="bg-surface border border-border-custom rounded-2xl p-2 space-y-1.5 w-full shadow-lg">
+                          {(['En sublimación', 'En corte'] as OrderStatus[]).map((sub) => {
+                            const subCompleted =
+                              currentStepIndex > i ||
+                              (sub === 'En sublimación' && ['En corte','En confección','En empaque','En despacho','En transporte','Entregado'].includes(foundOrder?.status || ''));
+                            const subCurrent = foundOrder?.status === sub;
+                            return (
+                              <div key={sub} className="flex items-center gap-1.5">
+                                <div className={cn(
+                                  "w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-all",
+                                  subCompleted || currentStepIndex > i ? "bg-accent text-white"
+                                    : subCurrent ? "bg-accent/30 border-2 border-accent"
+                                    : "bg-surface-hover border border-border-custom"
+                                )}>
+                                  {(subCompleted || currentStepIndex > i) && <CheckCircle2 size={10} />}
+                                  {subCurrent && <div className="w-1.5 h-1.5 rounded-full bg-accent"></div>}
+                                </div>
+                                <span className={cn(
+                                  "text-[8px] font-black uppercase tracking-wider",
+                                  subCompleted || currentStepIndex > i ? "text-accent"
+                                    : subCurrent ? "text-foreground-main" : "text-foreground-muted/30"
+                                )}>
+                                  {sub === 'En sublimación' ? 'Sublimación' : 'Corte'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sub-pasos: Confección = En confección + En empaque */}
+                    {step === 'En confección' && (
+                      <div className="absolute top-14 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 mt-2 w-32">
+                        <div className="w-[1px] h-3 bg-border-custom mx-auto"></div>
+                        <div className="bg-surface border border-border-custom rounded-2xl p-2 space-y-1.5 w-full shadow-lg">
+                          {(['En confección', 'En empaque'] as OrderStatus[]).map((sub) => {
+                            const subCompleted =
+                              currentStepIndex > i ||
+                              (sub === 'En confección' && ['En empaque','En despacho','En transporte','Entregado'].includes(foundOrder?.status || ''));
+                            const subCurrent = foundOrder?.status === sub;
+                            return (
+                              <div key={sub} className="flex items-center gap-1.5">
+                                <div className={cn(
+                                  "w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-all",
+                                  subCompleted || currentStepIndex > i ? "bg-accent text-white"
+                                    : subCurrent ? "bg-accent/30 border-2 border-accent"
+                                    : "bg-surface-hover border border-border-custom"
+                                )}>
+                                  {(subCompleted || currentStepIndex > i) && <CheckCircle2 size={10} />}
+                                  {subCurrent && <div className="w-1.5 h-1.5 rounded-full bg-accent"></div>}
+                                </div>
+                                <span className={cn(
+                                  "text-[8px] font-black uppercase tracking-wider",
+                                  subCompleted || currentStepIndex > i ? "text-accent"
+                                    : subCurrent ? "text-foreground-main" : "text-foreground-muted/30"
+                                )}>
+                                  {sub === 'En confección' ? 'Confección' : 'Empaque'}
                                 </span>
                               </div>
                             );
