@@ -380,6 +380,7 @@ async function startServer() {
 
   app.get('/api/orders/:id/history', (req, res) => {
     const history = db.prepare('SELECT * FROM order_history WHERE order_id = ? ORDER BY created_at DESC').all(req.params.id);
+    console.log(history);
     res.json(history);
   });
 

@@ -2980,7 +2980,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 
               {order.status === 'Diseño aprobado' && (role === 'Admin' || role === 'Diseño') && (
                 <button 
-                  onClick={() => handleStatusUpdate('En impresión')}
+                  onClick={() => handleStatusUpdate('En cuadro')}
                   className="w-full bg-foreground-main text-background py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main/90 transition-all"
                 >
                   <Printer size={18} /> Liberar a Producción
@@ -3263,7 +3263,6 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     'Diseño aprobado': 'En cuadro',
     'En cuadro': 'En montaje',
     'En montaje': 'En impresión interna',
-    'En impresión interna': 'En impresión',
     'Arte final cargado': 'En impresión',
     'En impresión': 'En sublimación',
     'En sublimación': 'En corte',
@@ -3285,9 +3284,8 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     'Diseño aprobado': 'Versión enviada',
     'En cuadro': 'Diseño aprobado',
     'En montaje': 'En cuadro',
-    'En impresión interna': 'En montaje',
     'Arte final cargado': 'Diseño aprobado',
-    'En impresión': 'En impresión interna',
+    'En montaje': 'En impresión',
     'En sublimación': 'En impresión',
     'En corte': 'En sublimación',
     'En confección': 'En corte',
@@ -3877,14 +3875,26 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   const isDesignPhase = foundOrder && ['En diseño', 'Versión enviada', 'En corte', 'En impresión', 'En sublimación', 'En confección',
     'En empaque', 'En transporte', 'Entregado', 'Corrección solicitada', 'Arte final cargado'].includes(foundOrder.status);
 
+    
   const canFillItems = foundOrder?.status === 'Diseño aprobado';
+
+  const isReadOnlyItems = foundOrder && [
+    'En cuadro',
+    'En montaje',
+    'En impresión',
+    'En sublimación',
+    'En corte',
+    'En confección',
+    'En empaque',
+    'En transporte',
+    'Entregado'
+  ].includes(foundOrder.status);
 
   const isPostDesign = foundOrder && ['En impresión', 'En sublimación', 'En corte', 
   'En confección', 'En empaque', 'En transporte', 'Entregado'].includes(foundOrder.status);
 
   const steps: OrderStatus[] = [
-    'Cotización', 'Abono confirmado', 'En diseño',
-    'En sublimación', 'En confección', 'En transporte', 'Entregado'
+    'Abono confirmado', 'En diseño', 'En sublimación', 'En confección', 'En transporte', 'Entregado'
   ];
 
   const getDisplayStatus = (status: OrderStatus) => {
@@ -3897,10 +3907,11 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     return status;
   };
 
-  const getNormalizedStatus = (status: OrderStatus): OrderStatus => {
-    if (['Versión enviada', 'Corrección solicitada', 'Diseño aprobado', 'Arte final cargado'].includes(status)) return 'En diseño';
-    if (['En impresión', 'En corte'].includes(status)) return 'En sublimación';
-    if (status === 'En empaque') return 'En confección';
+  const getNormalizedStatus = (status: OrderStatus) => {
+    if (['Diseño aprobado','En cuadro','En montaje','En impresión'].includes(status)) {
+      return 'En diseño';
+    }
+    if (status === "Versión enviada") return "En diseño";
     return status;
   };
 
@@ -3914,8 +3925,12 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     } else {
       // Find the history entry where status changed to this step
       // History is sorted DESC (newest first), so we reverse to find the FIRST time it entered this state
+      const stepAliases: Partial<Record<OrderStatus, string[]>> = {
+        'En sublimación': ['En sublimación', 'En impresión'],
+      };
+      const aliases = stepAliases[step] || [step];
       const historyEntry = [...foundOrder.history].reverse().find(h => 
-        h.action === 'Cambio de Estado' && h.details.includes(step)
+        h.action === 'Cambio de Estado' && aliases.some(a => h.details.includes(a))
       );
       if (historyEntry) {
         startTime = new Date(historyEntry.created_at);
@@ -4110,7 +4125,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                 const isCurrent = i === currentStepIndex;
 
                 // Sub-pasos de diseño aprobado
-                const designSubSteps: OrderStatus[] = ['Diseño aprobado', 'En cuadro', 'En montaje', 'En impresión interna'];
+                const designSubSteps: OrderStatus[] = ['Diseño aprobado', 'En cuadro', 'En montaje', 'En impresión'];
                 const isDesignApprovedStep = step === 'En diseño';
                 const currentOrderStatus = foundOrder?.status;
                 
@@ -4119,7 +4134,10 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                   currentOrderStatus === 'Diseño aprobado' ||
                   currentOrderStatus === 'En diseño' ||
                   currentOrderStatus === 'Versión enviada' ||
-                  currentOrderStatus === 'Corrección solicitada'
+                  currentOrderStatus === 'Corrección solicitada' ||
+                  currentOrderStatus === 'En cuadro' ||
+                  currentOrderStatus === 'En montaje' ||
+                  currentOrderStatus === 'En impresión'
                 );
 
                 const designSubStepIndex = isInDesignSubPhase 
@@ -4143,13 +4161,18 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                         <div className="bg-surface border border-border-custom rounded-2xl p-2 space-y-1.5 w-full shadow-lg">
                           {designSubSteps.map((sub, si) => {
 
-                            const subCompleted = 
-                              (currentStepIndex > i) ||
-                              (isInDesignSubPhase && si < designSubStepIndex) ||
-                              (isInDesignSubPhase && si === designSubStepIndex && currentOrderStatus !== sub);
+                            const subStatusOrder: OrderStatus[] = [
+                              'Diseño aprobado', 'En cuadro', 'En montaje', 'En impresión'
+                            ];
+                            const currentSubIndex = subStatusOrder.indexOf(currentOrderStatus as OrderStatus);
+                            const subIndex = subStatusOrder.indexOf(sub);
+                            const subCompleted = subIndex >= 0 && currentSubIndex > subIndex;
                             
                             const subCurrent = isInDesignSubPhase && currentOrderStatus === sub;
-                            const subLabel = sub === 'Diseño aprobado' ? 'Diseño Aprobado' : sub === 'En cuadro' ? 'En Cuadro' : sub === 'En montaje' ? 'En Montaje' : 'En Impresión';
+                            const subLabel = sub === 'Diseño aprobado' ? 'Diseño Aprobado' 
+                                  : sub === 'En cuadro' ? 'En Cuadro' 
+                                  : sub === 'En montaje' ? 'En Montaje'
+                                  : 'En Impresión';
 
                             return (
                               <div key={sub} className="flex items-center gap-1.5">
@@ -4452,7 +4475,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
               )}
             
             {/* Detalle de Prendas */}
-            {editingItems.length > 0 && canFillItems && (
+            {editingItems.length > 0 && (canFillItems || isReadOnlyItems) && (
               <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl col-span-full">
                 <div className="flex flex-col md:flex-row items-center justify-between mb-10 gap-6">
                   <div>
