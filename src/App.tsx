@@ -242,6 +242,7 @@ export default function App() {
       }
   }, []);
   
+  
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
@@ -2978,14 +2979,24 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 </div>
               )}
 
-              {order.status === 'Diseño aprobado' && (role === 'Admin' || role === 'Diseño') && (
-                <button 
-                  onClick={() => handleStatusUpdate('En cuadro')}
-                  className="w-full bg-foreground-main text-background py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main/90 transition-all"
-                >
-                  <Printer size={18} /> Liberar a Producción
-                </button>
-              )}
+              {['Diseño aprobado', 'En cuadro', 'En montaje'].includes(order.status) && (role === 'Admin' || role === 'Diseño') && (() => {
+                const stepMap: Partial<Record<OrderStatus, { label: string; next: OrderStatus; icon: any }>> = {
+                  'Diseño aprobado': { label: 'Liberar a Producción', next: 'En cuadro', icon: Printer },
+                  'En cuadro':       { label: 'Pasar a Montaje',      next: 'En montaje', icon: CheckCircle2 },
+                  'En montaje':      { label: 'Liberar a Impresión',  next: 'En impresión', icon: Printer },
+                };
+                const step = stepMap[order.status as keyof typeof stepMap];
+                if (!step) return null;
+                const Icon = step.icon;
+                return (
+                  <button 
+                    onClick={() => handleStatusUpdate(step.next)}
+                    className="w-full bg-foreground-main text-background py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main/90 transition-all"
+                  >
+                    <Icon size={18} /> {step.label}
+                  </button>
+                );
+              })()}
 
               {/* Botones de avance para estados de producción */}
               {(['En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En despacho', 'En transporte'] as OrderStatus[]).includes(order.status) && (role === 'Admin' || role === 'Ventas' || role === 'Impresión' || role === 'En Sublimación' || role === 'Corte' || role === 'Confección' || role === 'Empaque' || role === 'Transporte') && (() => {
@@ -3876,7 +3887,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     'En empaque', 'En transporte', 'Entregado', 'Corrección solicitada', 'Arte final cargado'].includes(foundOrder.status);
 
     
-  const canFillItems = foundOrder?.status === 'Diseño aprobado';
+  const canFillItems = foundOrder?.status === 'En diseño';
 
   const isReadOnlyItems = foundOrder && [
     'En cuadro',
@@ -3890,9 +3901,8 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     'Entregado'
   ].includes(foundOrder.status);
 
-  const isPostDesign = foundOrder && ['En impresión', 'En sublimación', 'En corte', 
+  const isPostDesign = foundOrder && ['En cuadro', 'En montaje', 'En impresión', 'En sublimación', 'En corte', 
   'En confección', 'En empaque', 'En transporte', 'Entregado'].includes(foundOrder.status);
-
   const steps: OrderStatus[] = [
     'Abono confirmado', 'En diseño', 'En sublimación', 'En confección', 'En transporte', 'Entregado'
   ];
