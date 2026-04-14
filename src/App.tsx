@@ -3887,7 +3887,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     'En empaque', 'En transporte', 'Entregado', 'Corrección solicitada', 'Arte final cargado'].includes(foundOrder.status);
 
     
-  const canFillItems = foundOrder?.status === 'En diseño';
+  const canFillItems = foundOrder?.status === 'Diseño aprobado';
 
   const isReadOnlyItems = foundOrder && [
     'En cuadro',
@@ -4136,7 +4136,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
 
                 // Sub-pasos de diseño aprobado
                 const designSubSteps: OrderStatus[] = ['Diseño aprobado', 'En cuadro', 'En montaje', 'En impresión'];
-                const isDesignApprovedStep = step === 'En diseño';
+                const isDesignApprovedStep = step === 'Diseño aprobado';
                 const currentOrderStatus = foundOrder?.status;
                 
                 const isInDesignSubPhase = currentOrderStatus && (
