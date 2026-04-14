@@ -644,6 +644,7 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
   const [dateField, setDateField] = useState<'created_at' | 'delivery_date'>('delivery_date');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('Todos');
 
   const availableTeams = ['Todos', ...Array.from(new Set(
     orders.filter(o => o.team_name).map(o => o.team_name as string)
@@ -652,6 +653,8 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
   const filteredOrders = orders.filter(o => {
     const matchesActive = includeInactive ? !o.active : o.active;
     const matchesTeam = teamFilter === 'Todos' || o.team_name === teamFilter;
+    // ← NUEVA LÍNEA
+    const matchesStatus = statusFilter === 'Todos' || o.status === statusFilter;
 
     let matchesDate = true;
     if (dateFrom || dateTo) {
@@ -665,7 +668,7 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
       }
     }
 
-    return matchesActive && matchesTeam && matchesDate;
+    return matchesActive && matchesTeam && matchesDate && matchesStatus; // ← agrega matchesStatus
   });
 
   const copyPublicLink = (e: React.MouseEvent, orderNumber: string) => {
@@ -735,14 +738,30 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
             </button>
           </div>
 
-          {/* Filtro por Equipo */}
+          {/* Filtro por Estado */}
           <select
-            value={teamFilter}
-            onChange={e => setTeamFilter(e.target.value)}
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
             className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main transition-all appearance-none cursor-pointer"
           >
-            {availableTeams.map(team => (
-              <option key={team} value={team} className="bg-surface">{team}</option>
+            {[
+              'Todos',
+              'Abono pendiente',
+              'Abono confirmado',
+              'En diseño',
+              'Versión enviada',
+              'Corrección solicitada',
+              'Diseño aprobado',
+              'En impresión',
+              'En sublimación',
+              'En corte',
+              'En confección',
+              'En empaque',
+              'En despacho',
+              'En transporte',
+              'Entregado',
+            ].map(s => (
+              <option key={s} value={s} className="bg-surface">{s}</option>
             ))}
           </select>
 
@@ -3235,6 +3254,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: User, onOrderClick: (id: number) => void, onUpdate: () => void, key?: string }) {
   const role = user.role;
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [showDelivered, setShowDelivered] = useState(false);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'Todos'>('Todos');
   const [showAssign, setShowAssign] = useState<Order | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -3370,11 +3390,17 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     }
   };
 
+  // Reemplaza el filtro filteredOrders:
   const filteredOrders = orders.filter(o => {
-    if (o.status === 'Entregado') return false;
-
-    if (role !== 'Admin' && !departmentMap[role]?.includes(o.status)) return false;
-    if (role === 'Admin' && statusFilter !== 'Todos' && o.status !== statusFilter) return false;
+    if (showDelivered) {
+      // Tab Entregadas: solo mostrar entregadas
+      if (o.status !== 'Entregado') return false;
+    } else {
+      // Tab normal: excluir entregadas
+      if (o.status === 'Entregado') return false;
+      if (role !== 'Admin' && !departmentMap[role]?.includes(o.status)) return false;
+      if (role === 'Admin' && statusFilter !== 'Todos' && o.status !== statusFilter) return false;
+    }
 
     const matchesTeam = teamFilter === 'Todos' || o.team_name === teamFilter;
     if (!matchesTeam) return false;
@@ -3408,6 +3434,27 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
           </div>
 
           {/* LEYENDA */}
+          <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom w-fit">
+            <button
+              onClick={() => setShowDelivered(false)}
+              className={cn(
+                "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                !showDelivered ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-foreground-muted hover:text-foreground-main"
+              )}
+            >
+              En Producción
+            </button>
+            <button
+              onClick={() => setShowDelivered(true)}
+              className={cn(
+                "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                showDelivered ? "bg-green-600 text-white shadow-lg shadow-green-600/20" : "text-foreground-muted hover:text-foreground-main"
+              )}
+            >
+              <CheckCircle2 size={14} /> Entregadas
+            </button>
+          </div>
+
           <div className="flex items-center gap-6 bg-surface px-6 py-3 rounded-2xl border border-border-custom">
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
@@ -3426,7 +3473,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
 
         {/* FILTROS */}
         <div className="flex flex-wrap items-center gap-4">
-          {role === 'Admin' && (
+          {role === 'Admin' && !showDelivered && (
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
@@ -3438,16 +3485,6 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               ))}
             </select>
           )}
-
-          <select
-            value={teamFilter}
-            onChange={e => setTeamFilter(e.target.value)}
-            className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main appearance-none cursor-pointer"
-          >
-            {availableTeams.map(team => (
-              <option key={team} value={team}>{team}</option>
-            ))}
-          </select>
 
           {/* FECHAS */}
           <div className="flex items-center gap-3 bg-surface border border-border-custom rounded-2xl px-5 py-2.5">
@@ -3932,6 +3969,15 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
       return 'En diseño';
     }
     if (status === "Versión enviada") return "En diseño";
+    if (['En sublimación', 'En corte'].includes(status)) {
+      return 'En sublimación';
+    }
+    if (['En confección', 'En empaque'].includes(status)) {
+      return 'En confección';
+    }
+    if (['En despacho', 'En transporte'].includes(status)) {
+      return 'En transporte';
+    }
     return status;
   };
 
