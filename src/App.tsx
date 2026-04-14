@@ -4136,7 +4136,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
 
                 // Sub-pasos de diseño aprobado
                 const designSubSteps: OrderStatus[] = ['Diseño aprobado', 'En cuadro', 'En montaje', 'En impresión'];
-                const isDesignApprovedStep = step === 'Diseño aprobado';
+                const isDesignApprovedStep = step === 'En diseño';
                 const currentOrderStatus = foundOrder?.status;
                 
                 const isInDesignSubPhase = currentOrderStatus && (
@@ -4513,6 +4513,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                       </div>
                     )}
                   </div>
+                  
                   <button 
                     onClick={handleSaveItems}
                     disabled={isSavingItems || !canFillItems}
