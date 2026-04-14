@@ -3950,6 +3950,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
 
   const isPostDesign = foundOrder && ['En cuadro', 'En montaje', 'En impresión', 'En sublimación', 'En corte', 
   'En confección', 'En empaque', 'En transporte', 'Entregado'].includes(foundOrder.status);
+  
   const steps: OrderStatus[] = [
     'Abono confirmado', 'En diseño', 'En sublimación', 'En confección', 'En transporte', 'Entregado'
   ];
@@ -4126,7 +4127,11 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
       {foundOrder ? (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-surface p-12 border border-border-custom shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-accent/20"></div>
-          <div className="absolute top-0 left-0 w-1/3 h-1 bg-accent"></div>
+          
+          <div 
+            className="absolute top-0 left-0 h-1 bg-accent transition-all duration-1000 shadow-[0_0_8px_var(--accent-glow)]"
+            style={{ width: `${(Math.max(0, currentStepIndex) / (steps.length - 1)) * 100}%` }}
+          ></div>
 
           <div className="flex flex-col md:flex-row justify-between items-end gap-10">
             <div className="text-center md:text-left">
