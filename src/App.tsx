@@ -1085,9 +1085,8 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
           number: '',
           size: '',
           sleeve: 'Corta',
-          collar_type: 'Cuello V',
           design_type: 'Jugador',
-          fit: 'Horma Normal',
+          fit: 'Hombre',
           observations: '',
           sewing_price: product?.sewing_cost || 0,
           sale_price: product?.sale_price || 0
@@ -1761,7 +1760,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
                   <th className="py-4 px-4 text-center">N°</th>
                   <th className="py-4 px-4 text-center">Talla</th>
                   <th className="py-4 px-4 text-center">Manga</th>
-                  <th className="py-4 px-4 text-center">Cuello</th>
                   <th className="py-4 px-4 text-center">Tipo</th>
                   <th className="py-4 px-4 text-center">Horma</th>
                   <th className="py-4 px-4">Observaciones</th>
@@ -1816,36 +1814,22 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
                     </td>
                     <td className="py-3 px-4">
                       <select 
-                        value={item.collar_type || 'Cuello V'} 
-                        onChange={e => { const newItems = [...items]; newItems[idx].collar_type = e.target.value; setItems(newItems); }} 
-                        className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase text-center"
-                      >
-                        <option className="bg-background">Cuello V</option>
-                        <option className="bg-background">Cuello Redondo</option>
-                        <option className="bg-background">Cuello Polo</option>
-                        <option className="bg-background">Cuello Mao</option>
-                      </select>
-                    </td>
-                    <td className="py-3 px-4">
-                      <select 
                         value={item.design_type || 'Jugador'} 
                         onChange={e => { const newItems = [...items]; newItems[idx].design_type = e.target.value; setItems(newItems); }} 
                         className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase text-center"
                       >
                         <option className="bg-background">Jugador</option>
                         <option className="bg-background">Portero</option>
-                        <option className="bg-background">Cuerpo Técnico</option>
                       </select>
                     </td>
                     <td className="py-3 px-4">
                       <select 
-                        value={item.fit || 'Horma Normal'} 
+                        value={item.fit || 'Hombre'} 
                         onChange={e => { const newItems = [...items]; newItems[idx].fit = e.target.value; setItems(newItems); }} 
                         className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase text-center"
                       >
-                        <option className="bg-background">Horma Normal</option>
-                        <option className="bg-background">Horma Slim</option>
-                        <option className="bg-background">Horma Oversize</option>
+                        <option className="bg-background">Hombre</option>
+                        <option className="bg-background">Dama</option>
                       </select>
                     </td>
                     <td className="py-3 px-4"><input type="text" value={item.observations || ''} onChange={e => { const newItems = [...items]; newItems[idx].observations = e.target.value; setItems(newItems); }} className="w-full bg-transparent outline-none text-foreground-muted text-[10px]" placeholder="Obs..." /></td>
@@ -2101,7 +2085,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       "Número",
       "Talla",
       "Manga",
-      "Cuello",
       "Tipo",
       "Horma",
       "Observaciones"
@@ -2114,7 +2097,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       item.number || "-",
       item.size || "-",
       item.sleeve || "-",
-      item.collar_type || "-",
       item.design_type || "-",
       item.fit || "-",
       item.observations || "-"
@@ -2201,7 +2183,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     worksheet["!merges"] = [
       {
         s: { r: detalleRowIndex, c: 0 },
-        e: { r: detalleRowIndex, c: 8 }
+        e: { r: detalleRowIndex, c: 7 }
       }
     ];
 
@@ -2654,9 +2636,8 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                             }}
                             className="bg-surface-hover px-4 py-4 rounded-2xl border border-border-custom outline-none w-32 text-foreground-main font-black text-center focus:border-accent/50 transition-all shadow-inner appearance-none"
                           >
-                            <option value="Horma Normal">Horma Normal</option>
-                            <option value="Horma Slim">Horma Slim</option>
-                            <option value="Horma Oversize">Horma Oversize</option>
+                            <option value="Hombre">Hombre</option>
+                            <option value="Dama">Dama</option>
                           </select>
                         ) : <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.fit || '-'}</span>}
                       </td>
@@ -3874,24 +3855,45 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   }, [foundOrder, user]);
 
   const handleSaveItems = async () => {
-    if (!foundOrder) return;
-    setIsSavingItems(true);
-    try {
-      
-      await api.updateOrder(foundOrder.id, { 
-        ...foundOrder, 
-        active: foundOrder.active ? true : false,
-        status: 'En cuadro',
-        items: editingItems,
-        user_name: user?.name || 'Cliente'
-      });
-      handleSearch();
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSavingItems(false);
-    }
-  };
+      if (!foundOrder) return;
+
+      // Validar campos requeridos (excepto observaciones)
+      const requiredFields: { key: keyof OrderItem; label: string }[] = [
+        { key: 'player_name', label: 'Nombre en Camiseta' },
+        { key: 'number',      label: 'Número' },
+        { key: 'size',        label: 'Talla' },
+        { key: 'sleeve',      label: 'Manga' },
+        { key: 'design_type', label: 'Jugador' },
+        { key: 'fit',         label: 'Horma' },
+      ];
+
+      for (let i = 0; i < editingItems.length; i++) {
+        const item = editingItems[i];
+        for (const field of requiredFields) {
+          const value = item[field.key as keyof typeof item];
+          if (!value || (typeof value === 'string' && value.trim() === '')) {
+            toast.error(`Prenda #${i + 1}: el campo "${field.label}" es obligatorio`);
+            return;
+          }
+        }
+      }
+
+      setIsSavingItems(true);
+      try {
+        await api.updateOrder(foundOrder.id, { 
+          ...foundOrder, 
+          active: foundOrder.active ? true : false,
+          status: 'En cuadro',
+          items: editingItems,
+          user_name: user?.name || 'Cliente'
+        });
+        handleSearch();
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setIsSavingItems(false);
+      }
+    };
 
   const handleApproveDesign = async () => {
     if (!foundOrder || !foundOrder.versions || foundOrder.versions.length === 0) return;
@@ -4594,7 +4596,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Número</th>
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Talla</th>
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Manga</th>
-                        <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Jugador</th>
+                        <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Tipo</th>
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Horma</th>
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Observaciones</th>
                       </tr>
@@ -4622,7 +4624,12 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                                   newItems[idx].player_name = e.target.value;
                                   setEditingItems(newItems);
                                 }}
-                                className="bg-surface border border-border-custom rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest transition-all"
+                                className={cn(
+                                  "bg-surface border rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest transition-all",
+                                  (!item.player_name || item.player_name.trim() === '') 
+                                    ? "border-red-400/60 bg-red-500/5" 
+                                    : "border-border-custom"
+                                )}
                                 placeholder="EJ. RODRIGUEZ"
                               />
                             )}
@@ -4632,14 +4639,19 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                               <span className="text-[11px] font-bold text-foreground-main uppercase tracking-widest">{item.number || '-'}</span>
                             ) : (
                               <input 
-                                type="text" 
+                                type="number" 
                                 value={item.number || ''}
                                 onChange={e => {
                                   const newItems = [...editingItems];
                                   newItems[idx].number = e.target.value;
                                   setEditingItems(newItems);
                                 }}
-                                className="bg-surface border border-border-custom rounded-xl px-4 py-3 text-[11px] w-20 focus:border-accent/50 outline-none font-bold text-center transition-all"
+                                className={cn(
+                                    "bg-surface border rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest transition-all",
+                                    (!item.number || item.number.trim() === '') 
+                                      ? "border-red-400/60 bg-red-500/5" 
+                                      : "border-border-custom"
+                                  )}
                                 placeholder="00"
                               />
                             )}
@@ -4657,7 +4669,12 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                                   newItems[idx] = { ...newItems[idx], size: e.target.value };
                                   setEditingItems(newItems);
                                 }}
-                                className="bg-surface border border-border-custom rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest appearance-none cursor-pointer transition-all"
+                                className={cn(
+                                    "bg-surface border rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest transition-all",
+                                    (!item.size || item.size.trim() === '') 
+                                      ? "border-red-400/60 bg-red-500/5" 
+                                      : "border-border-custom"
+                                  )}
                               >
                                 <option value="">Talla</option>
                                 {SIZES.map(size => (
@@ -4671,14 +4688,20 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                               <span className="text-[11px] font-bold text-foreground-main uppercase tracking-widest">{item.sleeve || '-'}</span>
                             ) : (
                               <select 
-                                value={item.sleeve || 'Corta'}
+                                value={item.sleeve || 'MANGA'}
                                 onChange={e => {
                                   const newItems = [...editingItems];
                                   newItems[idx].sleeve = e.target.value;
                                   setEditingItems(newItems);
                                 }}
-                                className="bg-surface border border-border-custom rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest appearance-none cursor-pointer transition-all"
+                                className={cn(
+                                  "bg-surface border rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest transition-all",
+                                  (!item.sleeve || item.sleeve.trim() === '') 
+                                    ? "border-red-400/60 bg-red-500/5" 
+                                    : "border-border-custom"
+                                )}
                               >
+                                <option value="">MANGA</option>
                                 <option value="Corta">Corta</option>
                                 <option value="Larga">Larga</option>
                               </select>
@@ -4689,14 +4712,21 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                               <span className="text-[11px] font-bold text-foreground-main uppercase tracking-widest">{item.design_type || '-'}</span>
                             ) : (
                               <select 
-                                value={item.design_type || 'Jugador'}
+                                value={item.design_type || 'TIPO'}
                                 onChange={e => {
                                   const newItems = [...editingItems];
                                   newItems[idx].design_type = e.target.value;
                                   setEditingItems(newItems);
                                 }}
-                                className="bg-surface border border-border-custom rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest appearance-none cursor-pointer transition-all"
+                                
+                                className={cn(
+                                  "bg-surface border rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest transition-all",
+                                  (!item.design_type || item.design_type.trim() === '') 
+                                    ? "border-red-400/60 bg-red-500/5" 
+                                    : "border-border-custom"
+                                )}
                               >
+                                <option value="">TIPO</option>
                                 <option value="Jugador">Jugador</option>
                                 <option value="Portero">Portero</option>
                               </select>
@@ -4707,14 +4737,20 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                               <span className="text-[11px] font-bold text-foreground-main uppercase tracking-widest">{item.fit || '-'}</span>
                             ) : (
                               <select 
-                                value={item.fit || 'Regular'}
+                                value={item.fit || 'HORMA'}
                                 onChange={e => {
                                   const newItems = [...editingItems];
                                   newItems[idx].fit = e.target.value;
                                   setEditingItems(newItems);
                                 }}
-                                className="bg-surface border border-border-custom rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest appearance-none cursor-pointer transition-all"
+                                className={cn(
+                                  "bg-surface border rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest transition-all",
+                                  (!item.fit || item.fit.trim() === '') 
+                                    ? "border-red-400/60 bg-red-500/5" 
+                                    : "border-border-custom"
+                                )}
                               >
+                                <option value="">HORMA</option>
                                 <option value="Hombre">Hombre</option>
                                 <option value="Dama">Dama</option>
                               </select>
