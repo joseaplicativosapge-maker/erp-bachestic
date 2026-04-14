@@ -3406,6 +3406,8 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               KDS: {role}
             </h3>
           </div>
+
+          {/* LEYENDA */}
           <div className="flex items-center gap-6 bg-surface px-6 py-3 rounded-2xl border border-border-custom">
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
@@ -3422,85 +3424,86 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
           </div>
         </div>
 
-        {/* BARRA DE FILTROS */}
+        {/* FILTROS */}
         <div className="flex flex-wrap items-center gap-4">
-          {/* Filtro de estado (solo Admin) */}
           {role === 'Admin' && (
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main transition-all appearance-none cursor-pointer"
+              className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main appearance-none cursor-pointer"
             >
-              <option value="Todos" className="bg-surface">Todos los estados</option>
+              <option value="Todos">Todos los estados</option>
               {allStatuses.map(s => (
-                <option key={s} value={s} className="bg-surface">{s}</option>
+                <option key={s} value={s}>{s}</option>
               ))}
             </select>
           )}
 
-          {/* Filtro por Equipo */}
           <select
             value={teamFilter}
             onChange={e => setTeamFilter(e.target.value)}
-            className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main transition-all appearance-none cursor-pointer"
+            className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main appearance-none cursor-pointer"
           >
             {availableTeams.map(team => (
-              <option key={team} value={team} className="bg-surface">{team}</option>
+              <option key={team} value={team}>{team}</option>
             ))}
           </select>
 
-          {/* Filtro por Fechas */}
+          {/* FECHAS */}
           <div className="flex items-center gap-3 bg-surface border border-border-custom rounded-2xl px-5 py-2.5">
             <select
               value={dateField}
               onChange={e => setDateField(e.target.value as any)}
-              className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none text-foreground-muted cursor-pointer appearance-none"
+              className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none text-foreground-muted appearance-none cursor-pointer"
             >
               <option value="delivery_date">Entrega</option>
               <option value="created_at">Creación</option>
             </select>
+
             <div className="w-[1px] h-4 bg-border-custom" />
+
             <input
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
-              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:dark] w-32"
+              className="bg-transparent text-[10px] font-black text-foreground-main outline-none [color-scheme:dark]"
             />
+
             <span className="text-[10px] font-black text-foreground-muted">—</span>
+
             <input
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
-              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:dark] w-32"
+              className="bg-transparent text-[10px] font-black text-foreground-main outline-none [color-scheme:dark]"
             />
+
             {(dateFrom || dateTo) && (
-              <button
-                onClick={() => { setDateFrom(''); setDateTo(''); }}
-                className="text-foreground-muted hover:text-accent transition-colors"
-              >
+              <button onClick={() => { setDateFrom(''); setDateTo(''); }}>
                 <X size={14} />
               </button>
             )}
           </div>
 
-          {/* Contador */}
+          {/* CONTADOR */}
           <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
             {filteredOrders.length} {filteredOrders.length === 1 ? 'orden' : 'órdenes'}
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      {/* LISTA */}
+      <div className="flex flex-col gap-4">
         {filteredOrders.map(order => {
           const daysLeft = order.delivery_date
             ? differenceInBusinessDays(new Date(order.delivery_date), new Date())
             : 0;
 
           const colorClass = daysLeft < 0
-            ? "border-accent shadow-accent/20"
+            ? "border-accent"
             : daysLeft < 3
-            ? "border-yellow-500 shadow-yellow-500/20"
-            : "border-green-500 shadow-green-500/20";
+            ? "border-yellow-500"
+            : "border-green-500";
 
           const statusColorClass = daysLeft < 0
             ? "text-accent"
@@ -3511,52 +3514,44 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
           return (
             <motion.div
               key={order.id}
-              whileHover={{ y: -5 }}
+              whileHover={{ x: 4 }}
               onClick={() => onOrderClick(order.id)}
               className={cn(
-                "bg-surface p-8 rounded-[40px] border-l-[12px] shadow-2xl cursor-pointer flex flex-col h-full border-border-custom transition-all hover:bg-background relative overflow-hidden group",
+                "flex items-center justify-between bg-surface px-6 py-4 rounded-2xl border-l-4 border border-border-custom cursor-pointer transition-all hover:bg-background",
                 colorClass
               )}
             >
-              <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <ExternalLink size={14} className="text-foreground-muted" />
-              </div>
-
-              <div className="flex justify-between items-start mb-6">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">
-                  {order.order_number}
-                </p>
-                <div className={cn(
-                  "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-background border border-border-custom",
-                  statusColorClass
-                )}>
-                  {daysLeft < 0
-                    ? `Vencido ${Math.abs(daysLeft)}d`
-                    : `${daysLeft} días`}
+              {/* IZQUIERDA */}
+              <div className="flex items-center gap-6">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+                    {order.order_number}
+                  </p>
+                  <h4 className="font-black text-sm text-foreground-main">
+                    {order.client_name}
+                  </h4>
                 </div>
+
+                {order.team_name && (
+                  <p className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-1">
+                    <Users size={12} /> {order.team_name}
+                  </p>
+                )}
               </div>
 
-              <h4 className="font-black text-lg mb-1 text-foreground-main tracking-tight leading-tight">
-                {order.client_name}
-              </h4>
-
-              {order.team_name && (
-                <p className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-1.5 mb-4">
-                  <Users size={12} /> {order.team_name}
-                </p>
-              )}
-
-              <div className="flex-1 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">Prendas</span>
-                  <span className="text-sm font-black text-foreground-main tracking-tighter">
+              {/* CENTRO */}
+              <div className="hidden md:flex items-center gap-10">
+                <div className="text-center">
+                  <p className="text-[9px] font-black uppercase text-foreground-muted">Prendas</p>
+                  <p className="font-black text-sm">
                     {order.items?.length || 0}
-                  </span>
+                  </p>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">Estado</span>
+
+                <div className="text-center">
+                  <p className="text-[9px] font-black uppercase text-foreground-muted">Estado</p>
                   <span className={cn(
-                    "text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border",
+                    "text-[9px] font-black uppercase px-2 py-0.5 rounded-md border",
                     order.status === 'Abono confirmado'
                       ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
                       : order.status === 'Entregado'
@@ -3566,6 +3561,20 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
                     {order.status}
                   </span>
                 </div>
+              </div>
+
+              {/* DERECHA */}
+              <div className="flex items-center gap-6">
+                <div className={cn(
+                  "text-[10px] font-black uppercase",
+                  statusColorClass
+                )}>
+                  {daysLeft < 0
+                    ? `Vencido ${Math.abs(daysLeft)}d`
+                    : `${daysLeft} días`}
+                </div>
+
+                <ExternalLink size={14} className="text-foreground-muted" />
               </div>
             </motion.div>
           );
@@ -3888,7 +3897,6 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   const isDesignPhase = foundOrder && ['En diseño', 'En cuadro', 'En montaje', 'Versión enviada', 'En corte', 'En impresión', 'En sublimación', 'En confección',
     'En empaque', 'En transporte', 'Entregado', 'Corrección solicitada', 'Arte final cargado'].includes(foundOrder.status);
 
-    
   const canFillItems = foundOrder?.status === 'Diseño aprobado';
 
   const isReadOnlyItems = foundOrder && [
