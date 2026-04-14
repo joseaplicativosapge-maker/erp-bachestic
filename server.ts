@@ -424,7 +424,7 @@ async function startServer() {
     const {
       client_id, client_name, client_doc, client_doc_type, client_phone,
       client_address, client_city, contact_method, delivery_date,
-      items, active, team_id, user_name, soligem_code
+      items, active, team_id, user_name, soligem_code, status
     } = req.body;
     const order_id = req.params.id;
 
@@ -443,18 +443,29 @@ async function startServer() {
     const updatedActive        = active            !== undefined ? (active === 'true' || active === true ? 1 : 0) : current.active;
     const updatedTeamId        = team_id           !== undefined ? team_id          : current.team_id;
     const updatedSoligemCode = soligem_code !== undefined ? soligem_code : current.soligem_code;
+    const updatedStatus = status !== undefined ? status : current.status;
 
     const transaction = db.transaction(() => {
       db.prepare(`
         UPDATE orders
         SET client_id = ?, client_name = ?, client_doc = ?, client_doc_type = ?, client_phone = ?,
             client_address = ?, client_city = ?, contact_method = ?, delivery_date = ?,
-            active = ?, team_id = ?, soligem_code = ?
+            active = ?, team_id = ?, soligem_code = ?, status = ?
         WHERE id = ?
       `).run(
-        updatedClientId, updatedClientName, updatedClientDoc, updatedClientDocType,
-        updatedClientPhone, updatedClientAddress, updatedClientCity, updatedContactMethod,
-        updatedDeliveryDate, updatedActive, updatedTeamId, updatedTeamId, updatedSoligemCode, 
+        updatedClientId, 
+        updatedClientName, 
+        updatedClientDoc, 
+        updatedClientDocType,
+        updatedClientPhone, 
+        updatedClientAddress, 
+        updatedClientCity, 
+        updatedContactMethod,
+        updatedDeliveryDate, 
+        updatedActive, 
+        updatedTeamId, 
+        updatedSoligemCode, 
+        updatedStatus,
         order_id
       );
 

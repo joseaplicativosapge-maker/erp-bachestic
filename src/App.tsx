@@ -3296,7 +3296,6 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     'En cuadro': 'Diseño aprobado',
     'En montaje': 'En cuadro',
     'Arte final cargado': 'Diseño aprobado',
-    'En montaje': 'En impresión',
     'En sublimación': 'En impresión',
     'En corte': 'En sublimación',
     'En confección': 'En corte',
@@ -3832,8 +3831,11 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     if (!foundOrder) return;
     setIsSavingItems(true);
     try {
+      
       await api.updateOrder(foundOrder.id, { 
         ...foundOrder, 
+        active: foundOrder.active ? true : false,
+        status: 'En cuadro',
         items: editingItems,
         user_name: user?.name || 'Cliente'
       });
@@ -3883,7 +3885,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     }
   };
 
-  const isDesignPhase = foundOrder && ['En diseño', 'Versión enviada', 'En corte', 'En impresión', 'En sublimación', 'En confección',
+  const isDesignPhase = foundOrder && ['En diseño', 'En cuadro', 'En montaje', 'Versión enviada', 'En corte', 'En impresión', 'En sublimación', 'En confección',
     'En empaque', 'En transporte', 'Entregado', 'Corrección solicitada', 'Arte final cargado'].includes(foundOrder.status);
 
     
