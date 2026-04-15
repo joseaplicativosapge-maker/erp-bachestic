@@ -682,7 +682,7 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
     }
 
     return matchesActive && matchesTeam && matchesDate && matchesStatus && matchesSearch;
-  });
+  }).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const copyPublicLink = (e: React.MouseEvent, orderNumber: string) => {
     e.stopPropagation();
@@ -3099,7 +3099,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     }
 
     return true;
-  });
+  }).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const allStatuses: OrderStatus[] = [
     'Abono pendiente', 'Abono confirmado', 'En diseño', 'Versión enviada',
