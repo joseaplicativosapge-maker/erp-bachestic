@@ -47,7 +47,10 @@ import {
   Calculator,
   Download,
   RotateCcw,
-  Maximize2
+  Maximize2,
+  Mail,
+  LocationEditIcon,
+  Locate
 } from 'lucide-react';
 import * as XLSX from "xlsx-js-style";
 import { motion, AnimatePresence } from 'motion/react';
@@ -645,7 +648,7 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('Todos');
-
+  const [searchTerm, setSearchTerm] = useState('');
   const availableTeams = ['Todos', ...Array.from(new Set(
     orders.filter(o => o.team_name).map(o => o.team_name as string)
   ))];
@@ -653,8 +656,10 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
   const filteredOrders = orders.filter(o => {
     const matchesActive = includeInactive ? !o.active : o.active;
     const matchesTeam = teamFilter === 'Todos' || o.team_name === teamFilter;
-    // ← NUEVA LÍNEA
     const matchesStatus = statusFilter === 'Todos' || o.status === statusFilter;
+    const matchesSearch = !searchTerm.trim() || 
+      o.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      o.order_number.toLowerCase().includes(searchTerm.toLowerCase()); // opcional
 
     let matchesDate = true;
     if (dateFrom || dateTo) {
@@ -668,7 +673,7 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
       }
     }
 
-    return matchesActive && matchesTeam && matchesDate && matchesStatus; // ← agrega matchesStatus
+    return matchesActive && matchesTeam && matchesDate && matchesStatus && matchesSearch;
   });
 
   const copyPublicLink = (e: React.MouseEvent, orderNumber: string) => {
@@ -736,6 +741,23 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
             >
               Desactivados
             </button>
+          </div>
+          
+          {/* Búsqueda por cliente */}
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors" size={16} />
+            <input
+              type="text"
+              placeholder="Buscar cliente..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2.5 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main text-[10px] font-black uppercase tracking-widest placeholder:text-foreground-muted/30 transition-all w-56"
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors">
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           {/* Filtro por Estado */}
@@ -2914,6 +2936,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
   const [dateField, setDateField] = useState<'created_at' | 'delivery_date'>('delivery_date');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const availableTeams = ['Todos', ...Array.from(new Set(
     orders.filter(o => o.team_name).map(o => o.team_name as string)
@@ -3043,18 +3066,21 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
 
   // Reemplaza el filtro filteredOrders:
   const filteredOrders = orders.filter(o => {
-    if (showDelivered) {
-      // Tab Entregadas: solo mostrar entregadas
-      if (o.status !== 'Entregado') return false;
-    } else {
-      // Tab normal: excluir entregadas
-      if (o.status === 'Entregado') return false;
-      if (role !== 'Admin' && !departmentMap[role]?.includes(o.status)) return false;
-      if (role === 'Admin' && statusFilter !== 'Todos' && o.status !== statusFilter) return false;
-    }
+  if (showDelivered) {
+    if (o.status !== 'Entregado') return false;
+  } else {
+    if (o.status === 'Entregado') return false;
+    if (role !== 'Admin' && !departmentMap[role]?.includes(o.status)) return false;
+    if (role === 'Admin' && statusFilter !== 'Todos' && o.status !== statusFilter) return false;
+  }
 
-    const matchesTeam = teamFilter === 'Todos' || o.team_name === teamFilter;
+  const matchesTeam = teamFilter === 'Todos' || o.team_name === teamFilter;
     if (!matchesTeam) return false;
+
+    const matchesSearch = !searchTerm.trim() ||
+      o.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      o.order_number.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!matchesSearch) return false;
 
     if (dateFrom || dateTo) {
       const raw = o[dateField];
@@ -3136,6 +3162,23 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               ))}
             </select>
           )}
+
+          {/* Búsqueda por cliente */}
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors" size={16} />
+            <input
+              type="text"
+              placeholder="Buscar cliente..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2.5 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main text-[10px] font-black uppercase tracking-widest placeholder:text-foreground-muted/30 transition-all w-56"
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors">
+                <X size={14} />
+              </button>
+            )}
+          </div>
 
           {/* FECHAS */}
           <div className="flex items-center gap-3 bg-surface border border-border-custom rounded-2xl px-5 py-2.5">
@@ -5468,9 +5511,21 @@ function ClientManagement({}: { key?: string }) {
               </div>
               <div className="flex items-center gap-3 text-sm text-foreground-muted">
                 <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
+                  <Mail size={14} />
+                </div>
+                <span className="font-bold tracking-tight">{client.email || 'Sin email'}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
                   <LayoutDashboard size={14} />
                 </div>
                 <span className="font-bold tracking-tight">{client.city || 'Sin ciudad'}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
+                  <Locate size={14} />
+                </div>
+                <span className="font-bold tracking-tight">{client.address || 'Sin email'}</span>
               </div>
             </div>
           </Card>
