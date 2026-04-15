@@ -1753,7 +1753,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="bg-surface-hover text-[9px] uppercase font-black tracking-[0.2em] text-foreground-muted">
-                  <th className="py-4 px-4">Prenda</th>
                   <th className="py-4 px-4">Nombre</th>
                   <th className="py-4 px-4 text-center">N°</th>
                   <th className="py-4 px-4 text-center">Talla</th>
@@ -1767,19 +1766,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
               <tbody className="divide-y divide-border-custom">
                 {items.map((item, idx) => (
                   <tr key={idx} className="hover:bg-surface-hover transition-colors">
-                    <td className="py-3 px-4">
-                      <select 
-                        value={item.garment_type || 'Camiseta'} 
-                        onChange={e => { const newItems = [...items]; newItems[idx].garment_type = e.target.value; setItems(newItems); }} 
-                        className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase"
-                      >
-                        <option className="bg-background">Camiseta</option>
-                        <option className="bg-background">Camisa</option>
-                        <option className="bg-background">Pantaloneta</option>
-                        <option className="bg-background">Medias</option>
-                        <option className="bg-background">Chaqueta</option>
-                      </select>
-                    </td>
                     <td className="py-3 px-4"><input type="text" value={item.player_name || ''} onChange={e => { const newItems = [...items]; newItems[idx].player_name = e.target.value; setItems(newItems); }} className="w-full bg-transparent outline-none font-bold text-foreground-main" placeholder="Nombre..." /></td>
                     <td className="py-3 px-4"><input type="text" value={item.number || ''} onChange={e => { const newItems = [...items]; newItems[idx].number = e.target.value; setItems(newItems); }} className="w-12 bg-transparent outline-none text-foreground-muted text-center" placeholder="00" /></td>
                     <td className="py-3 px-4">
@@ -2510,10 +2496,8 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                     <th className="py-10 px-6 border-b border-border-custom text-center">N°</th>
                     <th className="py-10 px-6 border-b border-border-custom text-center">Talla</th>
                     <th className="py-10 px-6 border-b border-border-custom text-center">Manga</th>
-                    <th className="py-10 px-6 border-b border-border-custom text-center">Cuello</th>
                     <th className="py-10 px-6 border-b border-border-custom text-center">Tipo</th>
                     <th className="py-10 px-6 border-b border-border-custom text-center">Horma</th>
-                    <th className="py-10 px-8 border-b border-border-custom">Prenda</th>
                     <th className="py-10 px-10 border-b border-border-custom">Observaciones</th>
                     {isEditing && <th className="py-10 px-10 border-b border-border-custom text-right">Acción</th>}
                   </tr>
@@ -2591,24 +2575,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                       <td className="py-12 px-6 text-center">
                         {isEditing ? (
                           <select 
-                            value={item.collar_type || 'Cuello V'} 
-                            onChange={e => {
-                              const newItems = [...editItems];
-                              newItems[idx] = { ...newItems[idx], collar_type: e.target.value };
-                              setEditItems(newItems);
-                            }}
-                            className="bg-surface-hover px-4 py-4 rounded-2xl border border-border-custom outline-none w-28 text-foreground-main font-black text-center focus:border-accent/50 transition-all shadow-inner appearance-none"
-                          >
-                            <option value="Cuello V">Cuello V</option>
-                            <option value="Cuello Redondo">Cuello Redondo</option>
-                            <option value="Cuello Polo">Cuello Polo</option>
-                            <option value="Cuello Mao">Cuello Mao</option>
-                          </select>
-                        ) : <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.collar_type || '-'}</span>}
-                      </td>
-                      <td className="py-12 px-6 text-center">
-                        {isEditing ? (
-                          <select 
                             value={item.design_type} 
                             onChange={e => {
                               const newItems = [...editItems];
@@ -2619,7 +2585,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                           >
                             <option value="Jugador">Jugador</option>
                             <option value="Portero">Portero</option>
-                            <option value="Cuerpo Técnico">Cuerpo Técnico</option>
                           </select>
                         ) : <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.design_type || '-'}</span>}
                       </td>
@@ -2638,25 +2603,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                             <option value="Dama">Dama</option>
                           </select>
                         ) : <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.fit || '-'}</span>}
-                      </td>
-                      <td className="py-10 px-8">
-                        {isEditing ? (
-                          <select 
-                            value={item.garment_type} 
-                            onChange={e => {
-                              const newItems = [...editItems];
-                              newItems[idx] = { ...newItems[idx], garment_type: e.target.value };
-                              setEditItems(newItems);
-                            }}
-                            className="bg-surface-hover px-6 py-4 rounded-2xl border border-border-custom outline-none text-foreground-main font-black text-sm focus:border-accent/50 transition-all w-full appearance-none cursor-pointer uppercase"
-                          >
-                            <option className="bg-surface">Camiseta</option>
-                            <option className="bg-surface">Camisa</option>
-                            <option className="bg-surface">Pantaloneta</option>
-                            <option className="bg-surface">Medias</option>
-                            <option className="bg-surface">Chaqueta</option>
-                          </select>
-                        ) : <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.garment_type}</span>}
                       </td>
                       <td className="py-10 px-10">
                         {isEditing ? (
@@ -4628,7 +4574,6 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
                   <table className="w-full text-left border-collapse min-w-[800px]">
                     <thead>
                       <tr className="border-b border-border-custom">
-                        <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Prenda</th>
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Nombre en Camiseta</th>
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Número</th>
                         <th className="pb-6 text-[9px] font-black uppercase tracking-widest text-foreground-muted px-4">Talla</th>
@@ -4641,14 +4586,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
                     <tbody className="divide-y divide-border-custom">
                       {editingItems.map((item, idx) => (
                         <tr key={idx} className="group hover:bg-foreground-main/[0.01] transition-colors">
-                          <td className="py-6 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 bg-accent/10 rounded-lg flex items-center justify-center text-accent">
-                                <Shirt size={14} />
-                              </div>
-                              <span className="text-[11px] font-black text-foreground-main uppercase">{item.item_name || '-'}</span>
-                            </div>
-                          </td>
+                          
                           <td className="py-6 px-4">
                             {isDesignPhase ? (
                               <span className="text-[11px] font-bold text-foreground-main uppercase tracking-widest">{item.player_name || '-'}</span>
