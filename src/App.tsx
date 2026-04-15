@@ -3185,13 +3185,13 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
         {filteredOrders.length === 0 ? (
           <div className="bg-surface border border-border-custom rounded-2xl p-8 text-center">
             
-            <p className="text-lg font-black text-foreground-main uppercase">
+            <p className="text-lg font-black text-foreground-main">
               {showDelivered 
                 ? "No hay órdenes entregadas" 
                 : "No hay órdenes en producción"}
             </p>
 
-            <p className="text-[10px] text-foreground-muted mt-3 uppercase tracking-widest">
+            <p className="text-[10px] text-foreground-muted mt-3 tracking-widest">
               {showDelivered 
                 ? "Las entregas están completas"
                 : "Todo está al día"}
