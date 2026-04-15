@@ -1084,9 +1084,9 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
           player_name: '',
           number: '',
           size: '',
-          sleeve: 'Corta',
-          design_type: 'Jugador',
-          fit: 'Hombre',
+          sleeve: '',
+          design_type: '',
+          fit: '',
           observations: '',
           sewing_price: product?.sewing_cost || 0,
           sale_price: product?.sale_price || 0
