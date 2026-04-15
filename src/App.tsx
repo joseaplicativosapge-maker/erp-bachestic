@@ -1681,8 +1681,7 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
               />
             </div>
             <div className="col-span-2">
-              <Input 
-                label="Documento"
+              <Input label="Documento"
                 value={formData.client_doc}
                 onChange={e => setFormData({...formData, client_doc: e.target.value})}
               />
@@ -1743,7 +1742,7 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
           <div className="flex items-center justify-between">
             <h4 className="font-black text-lg tracking-tight text-foreground-main uppercase">Uniformes</h4>
             <button 
-              onClick={() => setItems([...items, { item_name: '', player_name: '', number: '', size: '', sleeve: 'Corta', collar_type: 'Cuello V', design_type: 'Jugador', fit: 'Horma Normal', garment_type: 'Camiseta', observations: '', sewing_price: 0, sale_price: 0 }])}
+              onClick={() => setItems([...items, { item_name: '', player_name: '', number: '', size: '', sleeve: '', design_type: '', fit: '', garment_type: 'Camiseta', observations: '', sewing_price: 0, sale_price: 0 }])}
               className="bg-foreground-main text-background px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all"
             >
               + Agregar
@@ -1788,30 +1787,33 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
                     </td>
                     <td className="py-3 px-4">
                       <select 
-                        value={item.sleeve || 'Corta'} 
+                        value={item.sleeve || 'MANGA'} 
                         onChange={e => { const newItems = [...items]; newItems[idx].sleeve = e.target.value; setItems(newItems); }} 
                         className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase text-center"
                       >
+                        <option className="bg-background">MANGA</option>
                         <option className="bg-background">Corta</option>
                         <option className="bg-background">Larga</option>
                       </select>
                     </td>
                     <td className="py-3 px-4">
                       <select 
-                        value={item.design_type || 'Jugador'} 
+                        value={item.design_type || 'TIPO'} 
                         onChange={e => { const newItems = [...items]; newItems[idx].design_type = e.target.value; setItems(newItems); }} 
                         className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase text-center"
                       >
+                        <option className="bg-background">TIPO</option>
                         <option className="bg-background">Jugador</option>
                         <option className="bg-background">Portero</option>
                       </select>
                     </td>
                     <td className="py-3 px-4">
                       <select 
-                        value={item.fit || 'Hombre'} 
+                        value={item.fit || 'HORMA'} 
                         onChange={e => { const newItems = [...items]; newItems[idx].fit = e.target.value; setItems(newItems); }} 
                         className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase text-center"
                       >
+                        <option className="bg-background">HORMA</option>
                         <option className="bg-background">Hombre</option>
                         <option className="bg-background">Dama</option>
                       </select>
@@ -2456,7 +2458,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               </div>
 
               <p className="text-foreground-muted text-[9px] font-black uppercase tracking-widest leading-relaxed">
-                Carga el diseño para cada categoría de prenda. Estos se visualizarán en el seguimiento del cliente.
+                Carga el diseño para cada producto o uniforme. Estos se visualizarán en el seguimiento del cliente.
               </p>
               
               <div className="grid grid-cols-1 gap-8">
@@ -3077,8 +3079,8 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
       <div className="flex flex-col gap-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <h3 className="text-4xl font-black text-foreground-main tracking-tighter uppercase">
-              KDS: {role}
+            <h3 className="text-4xl font-black text-foreground-main tracking-tighter">
+              Producción
             </h3>
           </div>
 
@@ -3180,91 +3182,109 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
 
       {/* LISTA */}
       <div className="flex flex-col gap-4">
-        {filteredOrders.map(order => {
-          const daysLeft = order.delivery_date
-            ? differenceInBusinessDays(new Date(order.delivery_date), new Date())
-            : 0;
+        {filteredOrders.length === 0 ? (
+          <div className="bg-surface border border-border-custom rounded-2xl p-8 text-center">
+            
+            <p className="text-lg font-black text-foreground-main uppercase">
+              {showDelivered 
+                ? "No hay órdenes entregadas" 
+                : "No hay órdenes en producción"}
+            </p>
 
-          const colorClass = daysLeft < 0
-            ? "border-accent"
-            : daysLeft < 3
-            ? "border-yellow-500"
-            : "border-green-500";
+            <p className="text-[10px] text-foreground-muted mt-3 uppercase tracking-widest">
+              {showDelivered 
+                ? "Las entregas están completas"
+                : "Todo está al día"}
+            </p>
 
-          const statusColorClass = daysLeft < 0
-            ? "text-accent"
-            : daysLeft < 3
-            ? "text-yellow-500"
-            : "text-green-500";
+          </div>
+        ) : (
+          filteredOrders.map(order => {
+            const daysLeft = order.delivery_date
+              ? differenceInBusinessDays(new Date(order.delivery_date), new Date())
+              : 0;
 
-          return (
-            <motion.div
-              key={order.id}
-              whileHover={{ x: 4 }}
-              onClick={() => onOrderClick(order.id)}
-              className={cn(
-                "flex items-center justify-between bg-surface px-6 py-4 rounded-2xl border-l-4 border border-border-custom cursor-pointer transition-all hover:bg-background",
-                colorClass
-              )}
-            >
-              {/* IZQUIERDA */}
-              <div className="flex items-center gap-6">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
-                    {order.order_number}
-                  </p>
-                  <h4 className="font-black text-sm text-foreground-main">
-                    {order.client_name}
-                  </h4>
-                </div>
+            const colorClass = daysLeft < 0
+              ? "border-accent"
+              : daysLeft < 3
+              ? "border-yellow-500"
+              : "border-green-500";
 
-                {order.team_name && (
-                  <p className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-1">
-                    <Users size={12} /> {order.team_name}
-                  </p>
+            const statusColorClass = daysLeft < 0
+              ? "text-accent"
+              : daysLeft < 3
+              ? "text-yellow-500"
+              : "text-green-500";
+
+            return (
+              <motion.div
+                key={order.id}
+                whileHover={{ x: 4 }}
+                onClick={() => onOrderClick(order.id)}
+                className={cn(
+                  "flex items-center justify-between bg-surface px-6 py-4 rounded-2xl border-l-4 border border-border-custom cursor-pointer transition-all hover:bg-background",
+                  colorClass
                 )}
-              </div>
+              >
+                {/* IZQUIERDA */}
+                <div className="flex items-center gap-6">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+                      {order.order_number}
+                    </p>
+                    <h4 className="font-black text-sm text-foreground-main">
+                      {order.client_name}
+                    </h4>
+                  </div>
 
-              {/* CENTRO */}
-              <div className="hidden md:flex items-center gap-10">
-                <div className="text-center">
-                  <p className="text-[9px] font-black uppercase text-foreground-muted">Uniformes</p>
-                  <p className="font-black text-sm">
-                    {order.items?.length || 0}
-                  </p>
+                  {order.team_name && (
+                    <p className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-1">
+                      <Users size={12} /> {order.team_name}
+                    </p>
+                  )}
                 </div>
 
-                <div className="text-center">
-                  <p className="text-[9px] font-black uppercase text-foreground-muted">Estado</p>
-                  <span className={cn(
-                    "text-[9px] font-black uppercase px-2 py-0.5 rounded-md border",
-                    order.status === 'Abono confirmado'
-                      ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                      : order.status === 'Entregado'
-                      ? "bg-green-500/10 text-green-500 border-green-500/20"
-                      : "bg-accent/10 text-accent border-accent/20"
+                {/* CENTRO */}
+                <div className="hidden md:flex items-center gap-10">
+                  <div className="text-center">
+                    <p className="text-[9px] font-black uppercase text-foreground-muted">Uniformes</p>
+                    <p className="font-black text-sm">
+                      {order.items?.length || 0}
+                    </p>
+                  </div>
+
+                  <div className="text-center">
+                    <p className="text-[9px] font-black uppercase text-foreground-muted">Estado</p>
+                    <span className={cn(
+                      "text-[9px] font-black uppercase px-2 py-0.5 rounded-md border",
+                      order.status === 'Abono confirmado'
+                        ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                        : order.status === 'Entregado'
+                        ? "bg-green-500/10 text-green-500 border-green-500/20"
+                        : "bg-accent/10 text-accent border-accent/20"
+                    )}>
+                      {order.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* DERECHA */}
+                <div className="flex items-center gap-6">
+                  <div className={cn(
+                    "text-[10px] font-black uppercase",
+                    statusColorClass
                   )}>
-                    {order.status}
-                  </span>
-                </div>
-              </div>
+                    {daysLeft < 0
+                      ? `Vencido ${Math.abs(daysLeft)}d`
+                      : `${daysLeft} días`}
+                  </div>
 
-              {/* DERECHA */}
-              <div className="flex items-center gap-6">
-                <div className={cn(
-                  "text-[10px] font-black uppercase",
-                  statusColorClass
-                )}>
-                  {daysLeft < 0
-                    ? `Vencido ${Math.abs(daysLeft)}d`
-                    : `${daysLeft} días`}
+                  <ExternalLink size={14} className="text-foreground-muted" />
                 </div>
-
-                <ExternalLink size={14} className="text-foreground-muted" />
-              </div>
-            </motion.div>
-          );
-        })}
+              </motion.div>
+            );
+          })
+        )} 
       </div>
     </motion.div>
   );
@@ -4570,6 +4590,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
           </div>
         </motion.div>
       ) : search ? (
+        // ❌ BUSCÓ PERO NO EXISTE
         <div className="py-32 text-center bg-surface border border-border-custom shadow-2xl">
           <Search className="mx-auto text-foreground-muted/10 mb-6" size={64} />
           <h4 className="font-black text-2xl text-foreground-main tracking-tighter mb-2">
@@ -4862,7 +4883,7 @@ function ProductManagement({}: { key?: string }) {
                   >
                     <Edit2 size={18} />
                   </button>
-                  <button 
+                  {/*<button 
                     onClick={() => toggleProductActive(product)}
                     className={cn(
                       "p-3 rounded-xl transition-all",
@@ -4871,13 +4892,13 @@ function ProductManagement({}: { key?: string }) {
                     title={product.active ? "Desactivar producto" : "Activar producto"}
                   >
                     {product.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
-                  </button>
+                  </button> */}
                 </div>
               </div>
               <div className="space-y-4">
                 <div>
+                  <p className="text-[10px] font-bold text-accent uppercase tracking-widest">{product.code}</p>
                   <h4 className="text-xl font-black text-foreground-main tracking-tight uppercase">{product.name}</h4>
-                  <p className="text-[10px] font-bold text-accent uppercase tracking-widest">{product.category}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-custom">
                   <div>
@@ -4900,22 +4921,20 @@ function ProductManagement({}: { key?: string }) {
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           <Input 
+            label="Código del Producto"
+            value={newProduct.code}
+            onChange={e => setNewProduct({...newProduct, name: e.target.value})}
+            placeholder="Ej. Camiseta Deportiva Pro"
+            className="bg-background"
+            required readonly="true"
+          />
+          <Input 
             label="Nombre del Producto"
             value={newProduct.name}
             onChange={e => setNewProduct({...newProduct, name: e.target.value})}
             placeholder="Ej. Camiseta Deportiva Pro"
-            required
-          />
-          <Select 
-            label="Categoría"
-            value={newProduct.category}
-            onChange={e => setNewProduct({...newProduct, category: e.target.value})}
-            options={[
-              { value: 'Camiseta', label: 'Camiseta' },
-              { value: 'Pantaloneta', label: 'Pantaloneta' },
-              { value: 'Medias', label: 'Medias' },
-              { value: 'Chaqueta', label: 'Chaqueta' }
-            ]}
+            className="bg-background"
+            required readonly="true"
           />
           <div className="grid grid-cols-2 gap-4">
             <Input 
@@ -5240,6 +5259,8 @@ function ClientManagement({}: { key?: string }) {
               className="w-full bg-surface-hover border border-border-custom rounded-2xl pl-12 pr-4 py-3 outline-none focus:ring-2 focus:ring-accent/20 transition-all text-foreground-main font-bold text-sm"
             />
           </div>
+
+          {/* Revisar esto se va a integrar con el software contable
           <button 
             onClick={() => {
               setIsAdding(true);
@@ -5249,10 +5270,13 @@ function ClientManagement({}: { key?: string }) {
             className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
           >
             <Plus size={20} /> Nuevo Cliente
-          </button>
+          </button> */}
+
         </div>
       </div>
-
+      
+      {/*
+       Esto se va a integrar con el software contable
       <Modal 
         isOpen={showConfirmToggle} 
         onClose={() => setShowConfirmToggle(false)} 
@@ -5369,7 +5393,7 @@ function ClientManagement({}: { key?: string }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Modal>*/}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredClients.length === 0 ? (
@@ -5412,6 +5436,7 @@ function ClientManagement({}: { key?: string }) {
                 >
                   <Users size={18} />
                 </button>
+                {/* Esto se va a integrar con el software contable                
                 <button 
                   onClick={() => handleEdit(client)}
                   className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
@@ -5429,6 +5454,7 @@ function ClientManagement({}: { key?: string }) {
                 >
                   {client.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
                 </button>
+                */}
               </div>
             </div>
             <h4 className="font-bold text-lg mb-1 text-foreground-main tracking-tight">{client.name}</h4>

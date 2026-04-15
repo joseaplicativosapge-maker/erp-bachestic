@@ -71,6 +71,14 @@ async function startServer() {
       FOREIGN KEY(client_id) REFERENCES clients(id)
     );
   `);
+  
+  try {
+    db.prepare('ALTER TABLE products DROP COLUMN sale_price').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE products ADD COLUMN code TEXT').run();
+  } catch (e) {}
 
   try {
     db.prepare('ALTER TABLE clients ADD COLUMN doc_type TEXT').run();
@@ -179,9 +187,8 @@ async function startServer() {
 
     CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL,
       name TEXT NOT NULL,
-      category TEXT NOT NULL,
-      sale_price REAL DEFAULT 0,
       sewing_cost REAL DEFAULT 0,
       active BOOLEAN DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -303,21 +310,21 @@ async function startServer() {
   });
 
   app.post('/api/products', (req, res) => {
-    const { name, category, sale_price, sewing_cost } = req.body;
+    const { code, name, category, sewing_cost } = req.body;
     const info = db.prepare(`
-      INSERT INTO products (name, category, sale_price, sewing_cost)
+      INSERT INTO products (code, name, category, sewing_cost)
       VALUES (?, ?, ?, ?)
-    `).run(name, category, sale_price, sewing_cost);
+    `).run(code, name, category, sewing_cost);
     res.json({ id: info.lastInsertRowid });
   });
 
   app.put('/api/products/:id', (req, res) => {
-    const { name, category, sale_price, sewing_cost, active } = req.body;
+    const { code, name, category, sewing_cost, active } = req.body;
     db.prepare(`
       UPDATE products
-      SET name = ?, category = ?, sale_price = ?, sewing_cost = ?, active = ?
+      SET code = ?, name = ?, category = ?, sewing_cost = ?, active = ?
       WHERE id = ?
-    `).run(name, category, sale_price, sewing_cost, active !== undefined ? (active ? 1 : 0) : 1, req.params.id);
+    `).run(code, name, category, sewing_cost, active !== undefined ? (active ? 1 : 0) : 1, req.params.id);
     res.json({ success: true });
   });
 
