@@ -2409,32 +2409,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
 
-          <div className="bg-surface p-12 rounded-[48px] border border-border-custom shadow-2xl relative overflow-hidden">
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent/5 blur-[100px] -ml-32 -mb-32"></div>
-            <div className="relative z-10 space-y-8">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                  <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
-                    <FileText className="text-accent" size={24} />
-                  </div>
-                  <div>
-                    <h4 className="text-[11px] font-black uppercase tracking-[0.4em] text-foreground-main">Notas del Pedido</h4>
-                    <p className="text-[9px] font-bold text-foreground-main uppercase tracking-widest mt-1">Instrucciones especiales</p>
-                  </div>
-                </div>
-              </div>
-                <div className="relative group">
-                  <textarea 
-                    value={editData.notes} 
-                    onChange={e => setEditData({...editData, notes: e.target.value})}
-                    className="w-full h-64 bg-surface-hover p-10 rounded-[40px] border border-border-custom outline-none text-foreground-main font-bold text-sm focus:border-accent/30 transition-all resize-none leading-relaxed shadow-inner"
-                    placeholder="Añadir notas internas o instrucciones especiales..."
-                  />
-                  <div className="absolute bottom-6 right-8 text-[9px] font-black text-foreground-muted/20 uppercase tracking-widest">Editor de Notas</div>
-                </div>
-            </div>
-          </div>
-
         </div>
 
         {/* Right Column: Actions & Design */}
@@ -4595,11 +4569,35 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
             </div>
           </div>
         </motion.div>
-      ) : search && (
+      ) : search ? (
         <div className="py-32 text-center bg-surface border border-border-custom shadow-2xl">
           <Search className="mx-auto text-foreground-muted/10 mb-6" size={64} />
-          <h4 className="font-black text-2xl text-foreground-main tracking-tighter mb-2">Orden no encontrada</h4>
-          <p className="text-foreground-muted/50 text-[10px] font-black tracking-widest italic">Verifica el número e intenta nuevamente</p>
+          <h4 className="font-black text-2xl text-foreground-main tracking-tighter mb-2">
+            Orden no encontrada
+          </h4>
+          <p className="text-foreground-muted/50 text-[10px] font-black tracking-widest italic">
+            Verifica el número e intenta nuevamente
+          </p>
+        </div>
+
+      ) : (
+        // 🟡 ESTADO INICIAL (INSTRUCCIONES)
+        <div className="py-32 text-center bg-surface border border-border-custom shadow-2xl">
+          <Search className="mx-auto text-accent/30 mb-6" size={64} />
+          
+          <h4 className="font-black text-2xl text-foreground-main tracking-tighter mb-4">
+            Busca tu pedido
+          </h4>
+
+          <p className="text-foreground-muted text-[11px] font-black tracking-widest uppercase mb-6">
+            Ingresa tu número de orden para ver el estado en tiempo real
+          </p>
+
+          <div className="bg-accent/5 border border-accent/10 rounded-2xl px-6 py-4 inline-block">
+            <p className="text-accent text-[10px] font-black tracking-widest">
+              Ejemplo: ORD-ABC123
+            </p>
+          </div>
         </div>
       )}
 
