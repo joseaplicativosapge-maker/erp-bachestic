@@ -1446,7 +1446,7 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-black text-xl tracking-tight text-foreground-main uppercase">Listado de Prendas</h4>
+                  <h4 className="font-black text-xl tracking-tight text-foreground-main uppercase">Listado de Uniformes</h4>
                 </div>
                 <div className="overflow-x-auto border border-border-custom rounded-[32px] bg-surface-hover">
                   <table className="w-full text-left text-sm">
@@ -1741,7 +1741,7 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="font-black text-lg tracking-tight text-foreground-main uppercase">Prendas</h4>
+            <h4 className="font-black text-lg tracking-tight text-foreground-main uppercase">Uniformes</h4>
             <button 
               onClick={() => setItems([...items, { item_name: '', player_name: '', number: '', size: '', sleeve: 'Corta', collar_type: 'Cuello V', design_type: 'Jugador', fit: 'Horma Normal', garment_type: 'Camiseta', observations: '', sewing_price: 0, sale_price: 0 }])}
               className="bg-foreground-main text-background px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all"
@@ -1858,17 +1858,8 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<Order>>({});
   const [editItems, setEditItems] = useState<Partial<OrderItem>[]>([]);
-
-  useEffect(() => {
-    if (isEditing) {
-      const total = editItems.reduce((sum, item) => sum + (item.sale_price || 0), 0);
-      setEditData(prev => ({ ...prev, total_amount: total }));
-    }
-  }, [editItems, isEditing]);
-
   const [clientSearch, setClientSearch] = useState('');
   const [searchResults, setSearchResults] = useState<Client[]>([]);
   const [isChangingClient, setIsChangingClient] = useState(false);
@@ -1933,7 +1924,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     try {
       setLoading(true);
       await api.updateOrder(orderId, { ...editData, items: editItems, user_name: user.name });
-      setIsEditing(false);
       await loadOrder();
       onUpdate();
     } catch (err: any) {
@@ -2059,12 +2049,11 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           : "-"
       ],
       [],
-      ["DETALLE DE PRENDAS"],
+      ["DETALLE DE UNIFORMES"],
     ];
 
     // 🔹 2. Headers
     const headers = [[
-      "Prenda",
       "Nombre / Jugador",
       "Número",
       "Talla",
@@ -2076,7 +2065,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 
     // 🔹 3. Items
     const itemsData = order.items?.map(item => ([
-      item.garment_type,
       item.player_name || "-",
       item.number || "-",
       item.size || "-",
@@ -2167,7 +2155,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     worksheet["!merges"] = [
       {
         s: { r: detalleRowIndex, c: 0 },
-        e: { r: detalleRowIndex, c: 7 }
+        e: { r: detalleRowIndex, c: 6 }
       }
     ];
 
@@ -2297,92 +2285,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 blur-[100px] -mr-32 -mt-32"></div>
             <div className="flex justify-between items-start mb-12 relative z-10">
               <div className="flex-1">
-                {isEditing ? (
-                  <div className="space-y-8">
-                    {isChangingClient ? (
-                      <div className="relative">
-                        <div className="flex items-center gap-4 bg-background px-6 py-4 rounded-2xl border border-border-custom focus-within:border-accent/50 transition-all">
-                          <Search size={20} className="text-foreground-muted/20" />
-                          <input 
-                            type="text" 
-                            placeholder="Buscar cliente por nombre o documento..." 
-                            value={clientSearch}
-                            onChange={e => setClientSearch(e.target.value)}
-                            className="bg-transparent outline-none w-full text-sm text-foreground-main placeholder:text-foreground-muted/10 font-bold"
-                            autoFocus
-                          />
-                          <button onClick={() => setIsChangingClient(false)} className="text-[10px] font-black uppercase tracking-widest text-accent hover:text-accent">Cerrar</button>
-                        </div>
-                        {searchResults.length > 0 && (
-                          <div className="absolute top-full left-0 right-0 mt-4 bg-background rounded-[32px] border border-border-custom shadow-2xl z-50 overflow-hidden backdrop-blur-xl">
-                            {searchResults.map(client => (
-                              <button 
-                                key={client.id}
-                                onClick={() => {
-                                  setEditData({
-                                    ...editData,
-                                    client_id: client.id,
-                                    client_name: client.name,
-                                    client_doc: client.doc,
-                                    client_phone: client.phone,
-                                    client_address: client.address,
-                                    client_city: client.city
-                                  });
-                                  setIsChangingClient(false);
-                                  setClientSearch('');
-                                }}
-                                className="w-full px-8 py-5 text-left hover:bg-accent/10 flex items-center justify-between group transition-colors border-b border-border-custom last:border-0"
-                              >
-                                <div>
-                                  <p className="font-black text-base text-foreground-main tracking-tight group-hover:text-accent transition-colors">{client.name}</p>
-                                  <p className="text-[10px] text-foreground-muted font-bold uppercase tracking-[0.2em] mt-1">{client.doc} • {client.city}</p>
-                                </div>
-                                <ChevronRight size={18} className="text-foreground-muted/10 group-hover:text-accent transition-colors" />
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-6">
-                        <div className="flex items-center justify-between gap-6">
-                          <input 
-                            type="text" 
-                            value={editData.client_name} 
-                            onChange={e => setEditData({...editData, client_name: e.target.value})}
-                            className="text-4xl font-black tracking-tighter w-full bg-surface-hover px-6 py-4 rounded-2xl border border-border-custom outline-none text-foreground-main focus:border-accent/50 transition-all"
-                          />
-                          <button 
-                            onClick={() => setIsChangingClient(true)}
-                            className="text-[10px] font-black uppercase tracking-widest text-accent hover:text-accent whitespace-nowrap bg-accent/10 px-4 py-2 rounded-xl border border-accent/20"
-                          >
-                            Cambiar Cliente
-                          </button>
-                        </div>
-                        <div className="flex gap-6">
-                          <div className="flex-1 space-y-2">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-foreground-muted/20 ml-2">N° Orden</label>
-                            <input 
-                              type="text" 
-                              value={editData.order_number} 
-                              onChange={e => setEditData({...editData, order_number: e.target.value})}
-                              className="w-full text-foreground-main font-black text-sm bg-surface-hover px-6 py-3 rounded-2xl border border-border-custom outline-none focus:border-accent/50 transition-all uppercase tracking-widest"
-                            />
-                          </div>
-                          <div className="flex-1 space-y-2">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-foreground-muted/20 ml-2">Ciudad</label>
-                            <input 
-                              type="text" 
-                              value={editData.client_city} 
-                              onChange={e => setEditData({...editData, client_city: e.target.value})}
-                              className="w-full text-foreground-main font-black text-sm bg-surface-hover px-6 py-3 rounded-2xl border border-border-custom outline-none focus:border-accent/50 transition-all uppercase tracking-widest"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
                   <div className="group">
                     <div className="flex items-center gap-4 mb-4">
                       <span className="text-accent text-[11px] font-black uppercase tracking-[0.5em] bg-accent/10 px-4 py-1.5 rounded-xl border border-accent/20 shadow-[0_0_20px_rgba(225,29,72,0.1)]">
@@ -2395,7 +2297,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                       {order.client_name}
                     </h3>
                   </div>
-                )}
               </div>
             </div>
           </div>
@@ -2405,52 +2306,25 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             {/* DOCUMENTO */}
             <div className="min-w-[150px] flex-1 space-y-3">
               <p className="font-black text-foreground-main">Documento</p>
-              {isEditing ? (
-                <input 
-                  type="text" 
-                  value={editData.client_doc} 
-                  onChange={e => setEditData({...editData, client_doc: e.target.value})}
-                  className="font-black text-sm bg-surface-hover px-5 py-3 rounded-xl border border-border-custom outline-none w-full text-foreground-main focus:border-accent/50 transition-all"
-                />
-              ) : (
                 <p className="font-black text-foreground-main tracking-tight">
                   {order.client_doc_type} - {order.client_doc}
                 </p>
-              )}
             </div>
 
             {/* TELÉFONO */}
             <div className="min-w-[150px] flex-1 space-y-3">
               <p className="font-black text-foreground-main">Teléfono</p>
-              {isEditing ? (
-                <input 
-                  type="text" 
-                  value={editData.client_phone} 
-                  onChange={e => setEditData({...editData, client_phone: e.target.value})}
-                  className="font-black text-sm bg-surface-hover px-5 py-3 rounded-xl border border-border-custom outline-none w-full text-foreground-main focus:border-accent/50 transition-all"
-                />
-              ) : (
                 <p className="font-black text-foreground-main tracking-tight">
                   {order.client_phone}
                 </p>
-              )}
             </div>
 
             {/* ENTREGA */}
             <div className="min-w-[150px] flex-1 space-y-3">
               <p className="font-black text-foreground-main">Entrega</p>
-              {isEditing ? (
-                <input 
-                  type="date" 
-                  value={editData.delivery_date ? editData.delivery_date.split('T')[0] : ''} 
-                  onChange={e => setEditData({...editData, delivery_date: e.target.value})}
-                  className="font-black text-sm bg-surface-hover px-5 py-3 rounded-xl border border-border-custom outline-none w-full text-foreground-main focus:border-accent/50 transition-all [color-scheme:dark]"
-                />
-              ) : (
                 <p className="font-black text-foreground-main tracking-tight">
                   {order.delivery_date ? format(new Date(order.delivery_date), 'dd/MM/yyyy') : 'N/A'}
                 </p>
-              )}
             </div>
 
             <div className="min-w-[150px] flex-1 space-y-3">
@@ -2478,7 +2352,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                   <Shirt className="text-accent" size={24} />
                 </div>
                 <div>
-                  <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px]">Listado de Prendas</h4>
+                  <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px]">Listado de Uniformes</h4>
                   <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-1">Especificaciones por jugador</p>
                 </div>
               </div>
@@ -2499,155 +2373,40 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                     <th className="py-10 px-6 border-b border-border-custom text-center">Tipo</th>
                     <th className="py-10 px-6 border-b border-border-custom text-center">Horma</th>
                     <th className="py-10 px-10 border-b border-border-custom">Observaciones</th>
-                    {isEditing && <th className="py-10 px-10 border-b border-border-custom text-right">Acción</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-custom">
-                  {(isEditing ? editItems : order.items)?.map((item, idx) => (
+                  {order.items?.map((item, idx) => (
                     <tr key={item.id || idx} className="hover:bg-gradient-to-r hover:from-accent/[0.03] hover:to-transparent transition-all duration-700 group border-b border-border-custom/50 last:border-0">
                       <td className="py-12 px-10">
-                        {isEditing ? (
-                          <input 
-                            type="text" 
-                            value={item.player_name || ''} 
-                            onChange={e => {
-                              const newItems = [...editItems];
-                              newItems[idx] = { ...newItems[idx], player_name: e.target.value };
-                              setEditItems(newItems);
-                            }}
-                            className="bg-surface-hover px-6 py-4 rounded-2xl border border-border-custom outline-none w-full text-foreground-main font-black text-sm focus:border-accent/50 transition-all placeholder:text-foreground-muted/20 shadow-inner"
-                            placeholder="Nombre..."
-                          />
-                        ) : (
                           <div className="flex flex-col group/name">
                             <span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500 uppercase drop-shadow-lg">{item.player_name || '-'}</span>
                             <div className="h-[1px] w-0 group-hover:w-12 bg-accent/50 transition-all duration-700 mt-1"></div>
                           </div>
-                        )}
                       </td>
                       <td className="py-12 px-6 text-center">
-                        {isEditing ? (
-                          <input 
-                            type="text" 
-                            value={item.number || ''} 
-                            onChange={e => {
-                              const newItems = [...editItems];
-                              newItems[idx] = { ...newItems[idx], number: e.target.value };
-                              setEditItems(newItems);
-                            }}
-                            className="bg-surface-hover px-4 py-4 rounded-2xl border border-border-custom outline-none w-20 text-foreground-main font-black text-center focus:border-accent/50 transition-all shadow-inner"
-                            placeholder="00"
-                          />
-                        ) : <span className="font-black text-foreground-main tracking-tighter group-hover:text-foreground-main transition-all duration-700">{item.number || '-'}</span>}
+                        <span className="font-black text-foreground-main tracking-tighter group-hover:text-foreground-main transition-all duration-700">{item.number || '-'}</span>
                       </td>
                       <td className="py-12 px-6 text-center">
-                        {isEditing ? (
-                          <select value={item.size || ''} onChange={e => {
-                              const newItems = [...editItems];
-                              newItems[idx] = { ...newItems[idx], size: e.target.value };
-                              setEditItems(newItems);
-                            }}
-                            className="bg-surface border border-border-custom rounded-xl px-4 py-3 text-[11px] w-full focus:border-accent/50 outline-none font-bold uppercase tracking-widest appearance-none cursor-pointer transition-all"
-                          >
-                            <option value="">Talla</option>
-                            {SIZES.map(size => (
-                              <option key={size} value={size}>{size}</option>
-                            ))}
-                          </select>
-                        ) : <span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500">{item.size || '-'}</span>}
+                        <span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500">{item.size || '-'}</span>
                       </td>
                       <td className="py-12 px-6 text-center">
-                        {isEditing ? (
-                          <select 
-                            value={item.sleeve || 'Corta'} 
-                            onChange={e => {
-                              const newItems = [...editItems];
-                              newItems[idx] = { ...newItems[idx], sleeve: e.target.value };
-                              setEditItems(newItems);
-                            }}
-                            className="bg-surface-hover px-4 py-4 rounded-2xl border border-border-custom outline-none w-28 text-foreground-main font-black text-center focus:border-accent/50 transition-all shadow-inner appearance-none"
-                          >
-                            <option value="Corta">Corta</option>
-                            <option value="Larga">Larga</option>
-                          </select>
-                        ) : <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.sleeve || '-'}</span>}
+                        <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.sleeve || '-'}</span>
                       </td>
                       <td className="py-12 px-6 text-center">
-                        {isEditing ? (
-                          <select 
-                            value={item.design_type} 
-                            onChange={e => {
-                              const newItems = [...editItems];
-                              newItems[idx] = { ...newItems[idx], design_type: e.target.value };
-                              setEditItems(newItems);
-                            }}
-                            className="bg-surface-hover px-4 py-4 rounded-2xl border border-border-custom outline-none w-28 text-foreground-main font-black text-center focus:border-accent/50 transition-all shadow-inner appearance-none"
-                          >
-                            <option value="Jugador">Jugador</option>
-                            <option value="Portero">Portero</option>
-                          </select>
-                        ) : <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.design_type || '-'}</span>}
+                        <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.design_type || '-'}</span>
                       </td>
                       <td className="py-12 px-6 text-center">
-                        {isEditing ? (
-                          <select 
-                            value={item.fit} 
-                            onChange={e => {
-                              const newItems = [...editItems];
-                              newItems[idx] = { ...newItems[idx], fit: e.target.value };
-                              setEditItems(newItems);
-                            }}
-                            className="bg-surface-hover px-4 py-4 rounded-2xl border border-border-custom outline-none w-32 text-foreground-main font-black text-center focus:border-accent/50 transition-all shadow-inner appearance-none"
-                          >
-                            <option value="Hombre">Hombre</option>
-                            <option value="Dama">Dama</option>
-                          </select>
-                        ) : <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.fit || '-'}</span>}
+                        <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.fit || '-'}</span>
                       </td>
                       <td className="py-10 px-10">
-                        {isEditing ? (
-                          <input 
-                            type="text" 
-                            value={item.observations} 
-                            onChange={e => {
-                              const newItems = [...editItems];
-                              newItems[idx] = { ...newItems[idx], observations: e.target.value };
-                              setEditItems(newItems);
-                            }}
-                            className="bg-surface-hover px-6 py-4 rounded-2xl border border-border-custom outline-none w-full text-foreground-main font-black text-sm focus:border-accent/50 transition-all"
-                            placeholder="Observaciones..."
-                          />
-                        ) : <span className="text-foreground-main italic text-[11px] font-bold leading-relaxed">{item.observations || '-'}</span>}
+                        <span className="text-foreground-main italic text-[11px] font-bold leading-relaxed">{item.observations || '-'}</span>
                       </td>
-                      {isEditing && (
-                        <td className="py-8 px-10 text-right">
-                          <button 
-                            onClick={() => {
-                              const newItems = editItems.filter((_, i) => i !== idx);
-                              setEditItems(newItems);
-                            }}
-                            className="w-10 h-10 rounded-xl bg-accent/10 text-accent hover:bg-accent hover:text-foreground-main transition-all flex items-center justify-center group/del"
-                          >
-                            <Trash2 size={18} className="group-hover/del:scale-110 transition-transform" />
-                          </button>
-                        </td>
-                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            {isEditing && (
-              <div className="p-12 bg-foreground-main/[0.01] border-t border-border-custom relative z-10">
-                <button 
-                  onClick={() => setEditItems([...editItems, { player_name: '', number: '', size: '', sleeve: 'Corta', collar_type: 'Cuello V', design_type: 'Jugador', fit: 'Horma Normal', garment_type: 'Camiseta', observations: '', sewing_price: 0, sale_price: 0 }])}
-                  className="w-full py-6 rounded-3xl border-2 border-dashed border-border-custom text-foreground-muted/20 font-black uppercase tracking-[0.3em] text-[10px] hover:border-accent/40 hover:text-accent hover:bg-accent/5 transition-all flex items-center justify-center gap-4"
-                >
-                  <Plus size={20} />
-                  Añadir Prenda al Listado
-                </button>
-              </div>
-            )}
           </div>
 
           <div className="bg-surface p-12 rounded-[48px] border border-border-custom shadow-2xl relative overflow-hidden">
@@ -2664,7 +2423,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                   </div>
                 </div>
               </div>
-              {isEditing ? (
                 <div className="relative group">
                   <textarea 
                     value={editData.notes} 
@@ -2674,14 +2432,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                   />
                   <div className="absolute bottom-6 right-8 text-[9px] font-black text-foreground-muted/20 uppercase tracking-widest">Editor de Notas</div>
                 </div>
-              ) : (
-                <div className="bg-foreground-main/[0.02] p-10 rounded-[40px] border border-border-custom relative group">
-                  <Quote className="absolute top-8 right-10 text-foreground-main/[0.02] group-hover:text-accent/5 transition-colors" size={80} />
-                  <p className="text-foreground-muted/50 font-bold leading-relaxed italic text-base relative z-10">
-                    {order.notes || "Sin notas adicionales para esta orden."}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -3504,7 +3254,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               {/* CENTRO */}
               <div className="hidden md:flex items-center gap-10">
                 <div className="text-center">
-                  <p className="text-[9px] font-black uppercase text-foreground-muted">Prendas</p>
+                  <p className="text-[9px] font-black uppercase text-foreground-muted">Uniformes</p>
                   <p className="font-black text-sm">
                     {order.items?.length || 0}
                   </p>
@@ -4032,7 +3782,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
 
     // ✅ Si ya aprobaron diseño pero falta lista
     if (status === 'Diseño aprobado' && !hasItems) {
-      return 'Completa la lista de prendas para programar entrega';
+      return 'Completa la lista de uniformes para programar entrega';
     }
 
     // ✅ Mensajes por estado (ANTES de diseño aprobado)
@@ -4530,7 +4280,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
                 </div>
               )}
             
-            {/* Detalle de Prendas */}
+            {/* Detalle de Uniformes */}
             {editingItems.length > 0 && (canFillItems || isReadOnlyItems) && (
               <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl col-span-full">
                 <div className="flex flex-col md:flex-row items-center justify-between mb-10 gap-6">
@@ -4541,7 +4291,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
                         <Shirt className="text-accent" size={24} />
                       </div>
                       <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
-                        Detalle de Prendas
+                        Detalle de Uniformes
                         <p className="text-foreground-muted text-[10px] font-black uppercase tracking-widest">Completa la información técnica de cada prenda para producción</p>
                       </h4>
                     </div>
@@ -5985,7 +5735,7 @@ function EmployeeManagement({}: { key?: string }) {
                     ${(item.total_earned || 0).toLocaleString()}
                   </p>
                   <p className="text-[10px] text-white/70 font-black uppercase tracking-widest">
-                    {item.total_garments} prendas
+                    {item.total_garments} uniformes
                   </p>
                 </div>
               </div>
