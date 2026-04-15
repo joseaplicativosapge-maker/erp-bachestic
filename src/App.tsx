@@ -3515,6 +3515,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
   const [editingItems, setEditingItems] = useState<OrderItem[]>([]);
   const [isSavingItems, setIsSavingItems] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showThankYouMessage, setShowThankYouMessage] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
   const [isSubmittingReject, setIsSubmittingReject] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -3627,6 +3628,11 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
           items: editingItems,
           user_name: user?.name || 'Cliente'
         });
+
+        if (isPublic) {
+          setShowThankYouMessage(true);
+        }
+
         handleSearch();
       } catch (error) {
         console.error(error);
@@ -4673,6 +4679,47 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
         </div>
       )}
 
+      {showThankYouMessage && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[300] flex items-center justify-center p-6"
+        >
+          <div className="w-full max-w-md bg-surface rounded-[40px] border border-border-custom p-10 shadow-2xl text-center space-y-6 relative overflow-hidden">
+            
+            {/* Línea superior decorativa */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-accent"></div>
+
+            {/* Ícono / Logo */}
+            <img
+              src="/logo-bachestic.png"
+              alt="Bachestic"
+              className="mx-auto object-contain"
+            />
+
+            {/* Texto principal */}
+            <div className="space-y-3">
+              <h4 className="text-2xl font-black text-foreground-main tracking-tighter uppercase leading-tight">
+                ¡Bachestic está orgulloso de ser parte de tu equipo!
+              </h4>
+              <p className="text-foreground-muted text-sm font-bold leading-relaxed">
+                Gracias por preferirnos. Tu información fue guardada exitosamente y ya estamos trabajando para ti.
+              </p>
+            </div>
+
+            {/* Botón cerrar */}
+            <button
+              onClick={() => setShowThankYouMessage(false)}
+              className="w-full bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-xl shadow-accent/20"
+            >
+              ¡Perfecto!
+            </button>
+
+          </div>
+        </motion.div>
+      )}
+
       <AnimatePresence>
         {showConfirmModal && (
           <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
@@ -4782,6 +4829,8 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
         )}
       </AnimatePresence>
     </motion.div>
+
+    
   );
 }
 
