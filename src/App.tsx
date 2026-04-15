@@ -210,7 +210,9 @@ export default function App() {
   const [employeeReport, setEmployeeReport] = useState<any[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [includeInactive, setIncludeInactive] = useState(false);
-  
+  const REFRESH_INTERVAL = 30_000; // 30 segundos
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+
   const queryParams = new URLSearchParams(window.location.search);
   const publicOrderNumber = queryParams.get('order');
   
@@ -245,7 +247,6 @@ export default function App() {
       }
   }, []);
   
-  
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
@@ -258,9 +259,10 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (user) {
-      fetchData();
-    }
+    if (!user) return;
+    fetchData();
+    const interval = setInterval(fetchData, REFRESH_INTERVAL);
+    return () => clearInterval(interval);
   }, [user, includeInactive]);
 
   const handleLogin = (userData: User) => {
@@ -306,6 +308,7 @@ export default function App() {
       setOrders(ordersData);
       setStats(statsData);
       setEmployeeReport(reportData);
+      setLastRefresh(new Date());
     } catch (error) {
       console.error('Error fetching data:', error);
       setFetchError('Error al conectar con el servidor. Por favor, verifica tu conexión.');
@@ -553,15 +556,20 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
           </div>
           <div className="max-h-80 overflow-y-auto pr-2">
             {[
-              { name: 'Abono pendiente', color: '#F59E0B' },
-              { name: 'Diseño', color: '#6366F1' },
-              { name: 'Impresión', color: '#8B5CF6' },
-              { name: 'Sublimación', color: '#EC4899' },
-              { name: 'Corte', color: '#10B981' },
-              { name: 'Confección', color: '#3B82F6' },
-              { name: 'Empaque', color: '#06B6D4' },
-              { name: 'Transporte', color: '#14B8A6' },
-              { name: 'Entregado', color: '#22C55E' },
+              { name: 'Abono pendiente',       color: '#F59E0B' },
+              { name: 'Abono confirmado',      color: '#3B82F6' },
+              { name: 'En diseño',             color: '#6366F1' },
+              { name: 'Versión enviada',       color: '#8B5CF6' },
+              { name: 'Corrección solicitada', color: '#EC4899' },
+              { name: 'Diseño aprobado',       color: '#06B6D4' },
+              { name: 'En impresión',          color: '#8B5CF6' },
+              { name: 'En sublimación',        color: '#EC4899' },
+              { name: 'En corte',              color: '#10B981' },
+              { name: 'En confección',         color: '#3B82F6' },
+              { name: 'En empaque',            color: '#06B6D4' },
+              { name: 'En despacho',           color: '#F97316' },
+              { name: 'En transporte',         color: '#14B8A6' },
+              { name: 'Entregado',             color: '#22C55E' },
             ].map((status, i) => {
               const count = orders.filter(o => o.status === status.name).length;
               const percentage = orders.length > 0 ? (count / orders.length) * 100 : 0;
