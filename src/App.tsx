@@ -334,7 +334,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-background p-8">
         <div className="mx-auto">
-          <ClientRoadmap orders={orders} initialSearch={publicOrderNumber} role={role} />
+          <ClientRoadmap orders={orders} initialSearch={publicOrderNumber} role={role} isPublic={true}/>
         </div>
       </div>
     );
@@ -1147,8 +1147,6 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
       if (formData.payment_document) {
         paymentFormData.append('document', formData.payment_document);
       }
-      
-      await api.addPayment(id, paymentFormData);
       
       // Fetch the created order and payment for the receipt
       const [orderData] = await Promise.all([
@@ -3766,7 +3764,8 @@ function ReceiptModal({ order, payment, onClose }: { order: Order, payment: Paym
 }
 
 // --- Client Roadmap Component ---
-function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Order[], user?: User, initialSearch?: string, role: Role, key?: string }) {
+function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = false  }: 
+  { orders: Order[], user?: User, initialSearch?: string, role: Role, isPublic?: boolean, key?: string }) {
   const [search, setSearch] = useState(initialSearch);
   const [foundOrder, setFoundOrder] = useState<Order | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -3953,9 +3952,9 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
   const isPostDesign = foundOrder && ['En cuadro', 'En montaje', 'En impresión', 'En sublimación', 'En corte', 
   'En confección', 'En empaque', 'En transporte', 'Entregado'].includes(foundOrder.status);
   
-  const steps: OrderStatus[] = [
-    'Abono confirmado', 'En diseño', 'En sublimación', 'En confección', 'En transporte', 'Entregado'
-  ];
+  const steps: OrderStatus[] = isPublic
+  ? ['Abono confirmado', 'En producción' as any, 'En transporte', 'Entregado']
+  : ['Abono confirmado', 'En diseño', 'En sublimación', 'En confección', 'En transporte', 'Entregado'];
 
   const getDisplayStatus = (status: OrderStatus) => {
     if (['En diseño', 'Versión enviada', 'Corrección solicitada'].includes(status)) {
@@ -3964,23 +3963,32 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
     if (status === 'Arte final cargado') {
       return 'Diseño aprobado';
     }
+    // Para la vista pública, los estados de producción muestran "En producción"
+    if (isPublic && ['En sublimación', 'En corte', 'En confección', 'En empaque'].includes(status)) {
+      return 'En producción';
+    }
     return status;
   };
 
   const getNormalizedStatus = (status: OrderStatus) => {
-    if (['Diseño aprobado','En cuadro','En montaje','En impresión'].includes(status)) {
-      return 'En diseño';
+    if (isPublic) {
+      // En vista pública, todo desde diseño hasta empaque = "En producción"
+      if ([
+        'En diseño', 'Versión enviada', 'Corrección solicitada',
+        'Diseño aprobado', 'En cuadro', 'En montaje', 'En impresión',
+        'En sublimación', 'En corte', 'En confección', 'En empaque'
+      ].includes(status)) {
+        return 'En producción' as any;
+      }
+    } else {
+      if (['Diseño aprobado','En cuadro','En montaje','En impresión'].includes(status)) {
+        return 'En diseño';
+      }
+      if (status === "Versión enviada") return "En diseño";
+      if (['En sublimación', 'En corte'].includes(status)) return 'En sublimación';
+      if (['En confección', 'En empaque'].includes(status)) return 'En confección';
     }
-    if (status === "Versión enviada") return "En diseño";
-    if (['En sublimación', 'En corte'].includes(status)) {
-      return 'En sublimación';
-    }
-    if (['En confección', 'En empaque'].includes(status)) {
-      return 'En confección';
-    }
-    if (['En despacho', 'En transporte'].includes(status)) {
-      return 'En transporte';
-    }
+    if (['En despacho', 'En transporte'].includes(status)) return 'En transporte';
     return status;
   };
 
@@ -4103,6 +4111,18 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
         return 'Fecha por definir';
     }
   };
+
+  const productionSubSteps = [
+    'En diseño', 'Versión enviada', 'Corrección solicitada',
+    'Diseño aprobado', 'En cuadro', 'En montaje', 'En impresión',
+    'En sublimación', 'En corte', 'En confección', 'En empaque'
+  ];
+  const productionProgressIndex = foundOrder
+    ? productionSubSteps.indexOf(foundOrder.status)
+    : -1;
+  const productionPercent = productionProgressIndex >= 0
+    ? Math.round(((productionProgressIndex + 1) / productionSubSteps.length) * 100)
+    : 0;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mx-auto space-y-16">
@@ -4228,7 +4248,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                     </div>
 
                     {/* Sub-pasos dentro de Diseño Aprobado */}
-                    {isDesignApprovedStep && (
+                    {isDesignApprovedStep && !isPublic && (
                       <div className="absolute top-14 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 mt-2 w-32">
                         <div className="w-[1px] h-3 bg-border-custom mx-auto"></div>
                         <div className="bg-surface border border-border-custom rounded-2xl p-2 space-y-1.5 w-full shadow-lg">
@@ -4274,7 +4294,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                     )}
 
                     {/* Sub-pasos: Sublimación = En sublimación + En corte */}
-                    {step === 'En sublimación' && (
+                    {step === 'En sublimación' && !isPublic && (
                       <div className="absolute top-14 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 mt-2 w-32">
                         <div className="w-[1px] h-3 bg-border-custom mx-auto"></div>
                         <div className="bg-surface border border-border-custom rounded-2xl p-2 space-y-1.5 w-full shadow-lg">
@@ -4307,9 +4327,26 @@ function ClientRoadmap({ orders, user, initialSearch = '', role }: { orders: Ord
                         </div>
                       </div>
                     )}
-
+                    {/* Barra de progreso interna para "En producción" en vista pública */}
+                    {isPublic && step === ('En producción' as any) && isCurrent && (
+                      <div className="absolute top-14 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 mt-2 w-36">
+                        <div className="w-[1px] h-3 bg-border-custom mx-auto"></div>
+                        <div className="bg-surface border border-border-custom rounded-2xl p-3 w-full shadow-lg space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[8px] font-black uppercase tracking-wider text-foreground-muted">Avance</span>
+                            <span className="text-[10px] font-black text-accent">{productionPercent}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-surface-hover rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-accent rounded-full transition-all duration-700"
+                              style={{ width: `${productionPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {/* Sub-pasos: Confección = En confección + En empaque */}
-                    {step === 'En confección' && (
+                    {step === 'En confección' && !isPublic && (
                       <div className="absolute top-14 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 mt-2 w-32">
                         <div className="w-[1px] h-3 bg-border-custom mx-auto"></div>
                         <div className="bg-surface border border-border-custom rounded-2xl p-2 space-y-1.5 w-full shadow-lg">
