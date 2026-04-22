@@ -1968,12 +1968,21 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const handleStatusUpdate = async (newStatus: OrderStatus) => {
     try {
       setError(null);
+
+      // Al pasar a "En cuadro", fijar la fecha de entrega
+      if (newStatus === 'En cuadro') {
+        const deliveryDate = addBusinessDays(new Date(), 15);
+        await api.updateOrder(orderId, {
+          delivery_date: deliveryDate,
+          user_name: user.name
+        });
+      }
+
       await api.updateStatus(orderId, newStatus, user.name);
       await loadOrder();
       onUpdate();
     } catch (err: any) {
       setError(err.message || 'Error al actualizar el estado');
-      console.error('Error updating status:', err);
     }
   };
 
@@ -2250,6 +2259,26 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 
   if (!order) return null;
 
+  // 👇 AGREGAR AQUÍ
+  function addBusinessDays(startDate: Date, days: number): string {
+    let date = new Date(startDate);
+    let count = 0;
+    while (count < days) {
+      date.setDate(date.getDate() + 1);
+      if (date.getDay() !== 0 && date.getDay() !== 6) count++;
+    }
+    return date.toISOString().split('T')[0];
+  }
+
+  const preProductionStatuses = [
+    'Abono pendiente', 'Abono confirmado', 'En diseño',
+    'Versión enviada', 'Corrección solicitada', 'Diseño aprobado'
+  ];
+  const isPreProduction = preProductionStatuses.includes(order.status);
+  const displayDeliveryDate = isPreProduction
+    ? addBusinessDays(new Date(), 15)
+    : order.delivery_date;
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 pb-20">
       {isEditModalOpen && (
@@ -2355,7 +2384,12 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             <div className="min-w-[150px] flex-1 space-y-3">
               <p className="font-black text-foreground-main">Entrega</p>
                 <p className="font-black text-foreground-main tracking-tight">
-                  {order.delivery_date ? format(new Date(order.delivery_date), 'dd/MM/yyyy') : 'N/A'}
+                  {displayDeliveryDate ? format(new Date(displayDeliveryDate), 'dd/MM/yyyy') : 'N/A'}
+                  {isPreProduction && (
+                    <span className="text-foreground-muted text-[9px] font-bold uppercase tracking-widest ml-2">
+                      (estimado)
+                    </span>
+                  )}
                 </p>
             </div>
 
@@ -3911,14 +3945,14 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
               <div className="text-center md:text-right">
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground-muted mb-3">Fecha Estimada de Entrega</p>
                 <h4 className="text-3xl font-black tracking-tighter transition-all duration-500"
-                  style={{ color: canFillItems || isPostDesign ? 'var(--text-main)' : 'var(--text-muted)' }}
+                  style={{ color: isPostDesign ? 'var(--text-main)' : 'var(--text-muted)' }}
                 >
-                  {(canFillItems || isPostDesign)
+                {isPostDesign
                     ? (foundOrder.delivery_date ? format(new Date(foundOrder.delivery_date), 'dd MMM, yyyy') : 'PENDIENTE')
                     : 'Por confirmar'}
                 </h4>
 
-                {!(canFillItems || isPostDesign) && (
+                {!isPostDesign && (
                   <div className="mt-4 flex items-start gap-3 bg-red-500/10 border border-red-500/20 text-red-500 px-5 py-4 rounded-2xl shadow-lg animate-fade-in">
                     
                     {/* ICONO */}
@@ -4688,10 +4722,8 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
         >
           <div className="w-full max-w-md bg-surface rounded-[40px] border border-border-custom p-10 shadow-2xl text-center space-y-6 relative overflow-hidden">
             
-            {/* Línea superior decorativa */}
             <div className="absolute top-0 left-0 w-full h-1 bg-accent"></div>
 
-            {/* Ícono / Logo */}
             <img
               src="/logo-bachestic.png"
               alt="Bachestic"
