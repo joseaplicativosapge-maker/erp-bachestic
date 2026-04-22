@@ -275,8 +275,7 @@ export default function App() {
       'Sublimación',
       'Corte',
       'Confección',
-      'Empaque',
-      'Transporte'
+      'Empaque'
     ];
 
     if (productionRoles.includes(userData.role)) {
@@ -326,7 +325,7 @@ export default function App() {
     { id: 'orders', label: 'Órdenes', icon: ShoppingCart, roles: ['Admin', 'Ventas'] },
     { id: 'clients', label: 'Clientes', icon: Contact, roles: ['Admin', 'Ventas'] },
     { id: 'products', label: 'Productos', icon: Package, roles: ['Admin', 'Ventas'] },
-    { id: 'kds', label: 'KDS Producción', icon: Clock, roles: ['Admin', 'Diseño', 'Impresión', 'Sublimación', 'Corte', 'Confección', 'Empaque', 'Transporte'] },
+    { id: 'kds', label: 'KDS Producción', icon: Clock, roles: ['Admin', 'Diseño', 'Impresión', 'Sublimación', 'Corte', 'Confección', 'Empaque'] },
     { id: 'employees', label: 'Empleados', icon: Users, roles: ['Admin'] },
     { id: 'client', label: 'Seguimiento Cliente', icon: Eye, roles: ['Admin', 'Ventas', 'Cliente'] },
   ];
@@ -556,19 +555,20 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
           </div>
           <div className="max-h-80 overflow-y-auto pr-2">
             {[
-              { name: 'Abono pendiente',       color: '#F59E0B' },
               { name: 'Abono confirmado',      color: '#3B82F6' },
               { name: 'En diseño',             color: '#6366F1' },
               { name: 'Versión enviada',       color: '#8B5CF6' },
               { name: 'Corrección solicitada', color: '#EC4899' },
               { name: 'Diseño aprobado',       color: '#06B6D4' },
+              { name: 'Diseño aprobado',       color: '#06B6D4' },
+              { name: 'En cuadro',             color: '#7C3AED' },
+              { name: 'En montaje',            color: '#9333EA' },
               { name: 'En impresión',          color: '#8B5CF6' },
               { name: 'En sublimación',        color: '#EC4899' },
               { name: 'En corte',              color: '#10B981' },
               { name: 'En confección',         color: '#3B82F6' },
               { name: 'En empaque',            color: '#06B6D4' },
               { name: 'En despacho',           color: '#F97316' },
-              { name: 'En transporte',         color: '#14B8A6' },
               { name: 'Entregado',             color: '#22C55E' },
             ].map((status, i) => {
               const count = orders.filter(o => o.status === status.name).length;
@@ -794,7 +794,6 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
               'En confección',
               'En empaque',
               'En despacho',
-              'En transporte',
               'Entregado',
             ].map(s => (
               <option key={s} value={s} className="bg-surface">{s}</option>
@@ -1774,7 +1773,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
                 { value: 'En confección', label: 'En confección' },
                 { value: 'En empaque', label: 'En empaque' },
                 { value: 'En despacho', label: 'En despacho' },
-                { value: 'En transporte', label: 'En transporte' },
                 { value: 'Entregado', label: 'Entregado' },
               ]}
             />
@@ -1920,6 +1918,9 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const [lastPayment, setLastPayment] = useState<Payment | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [showStatusConfirm, setShowStatusConfirm] = useState(false);
+  const [showQualityRejectModal, setShowQualityRejectModal] = useState(false);
+  const [qualityRejectComment, setQualityRejectComment] = useState('');
+  const [isSubmittingQualityReject, setIsSubmittingQualityReject] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<OrderStatus | null>(null);
   const [pendingStatusLabel, setPendingStatusLabel] = useState('');
 
@@ -1978,6 +1979,38 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       setError(err.message || 'Error al guardar los cambios');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleQualityReject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!qualityRejectComment.trim()) {
+      toast.error('Debes ingresar el motivo del rechazo');
+      return;
+    }
+    setIsSubmittingQualityReject(true);
+    try {
+      await api.updateStatus(orderId, 'En cuadro', user.name);
+      // Segundo registro en historial con el motivo detallado
+      await fetch(`/api/orders/${orderId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'En cuadro',
+          user_name: user.name,
+          note: `Rechazo calidad: ${qualityRejectComment}`
+        })
+      });
+      toast.success('Rechazo registrado — orden devuelta a En cuadro');
+      setShowQualityRejectModal(false);
+      setQualityRejectComment('');
+      await loadOrder();
+      onUpdate();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al registrar el rechazo');
+    } finally {
+      setIsSubmittingQualityReject(false);
     }
   };
 
@@ -2757,25 +2790,34 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               })()}
 
               {/* Botones de avance para estados de producción */}
-              {(['En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En despacho'] as OrderStatus[]).includes(order.status) && (role === 'Admin' || role === 'Ventas' || role === 'Impresión' || role === 'En Sublimación' || role === 'Corte' || role === 'Confección' || role === 'Empaque' || role === 'Transporte') && (() => {
+              {(['En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En despacho'] as OrderStatus[]).includes(order.status) && (role === 'Admin' || role === 'Ventas' || role === 'Impresión' || role === 'En Sublimación' || role === 'Corte' || role === 'Confección' || role === 'Empaque') && (() => {
                 const nextMap: Partial<Record<OrderStatus, OrderStatus>> = {
                   'En impresión': 'En sublimación',
                   'En sublimación': 'En corte',
                   'En corte': 'En confección',
                   'En confección': 'En empaque',
                   'En empaque': 'En despacho',
-                  'En despacho': 'En transporte',
                   'En despacho': 'Entregado', 
                 };
                 const next = nextMap[order.status];
                 if (!next) return null;
                 return (
-                  <button
-                    onClick={() => handleStatusUpdate(next)}
-                    className="w-full bg-foreground-main text-background py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main/90 transition-all"
-                  >
-                    <CheckCircle2 size={18} /> Avanzar a: {next}
-                  </button>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => handleStatusUpdate(next)}
+                      className="w-full bg-foreground-main text-background py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main/90 transition-all"
+                    >
+                      <CheckCircle2 size={18} /> Avanzar a: {next}
+                    </button>
+                    {order.status === 'En impresión' && (role === 'Admin' || role === 'Ventas' || role === 'Impresión') && (
+                      <button
+                        onClick={() => setShowQualityRejectModal(true)}
+                        className="w-full bg-amber-500/10 border border-amber-500/30 text-amber-500 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-amber-500/20 transition-all"
+                      >
+                        <AlertTriangle size={18} /> Rechazar calidad → En cuadro
+                      </button>
+                    )}
+                  </div>
                 );
               })()}
 
@@ -3037,6 +3079,69 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
         )}
+
+        {showQualityRejectModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+            <div className="bg-surface w-full max-w-md rounded-[40px] p-10 border border-border-custom shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-amber-500" />
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-[60px] -mr-16 -mt-16"></div>
+              
+              <div className="flex items-center gap-4 mb-6 relative z-10">
+                <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500">
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-foreground-main tracking-tighter uppercase">Rechazar Calidad</h3>
+                  <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
+                    La orden volverá a En cuadro
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleQualityReject} className="space-y-6 relative z-10">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-foreground-muted mb-3">
+                    Motivo del Rechazo <span className="text-amber-500">*</span>
+                  </label>
+                  <textarea 
+                    value={qualityRejectComment}
+                    onChange={e => setQualityRejectComment(e.target.value)}
+                    className="w-full bg-background border border-border-custom rounded-2xl p-6 text-foreground-main text-sm font-bold outline-none focus:border-amber-500/50 transition-all resize-none min-h-[120px]"
+                    placeholder="Ej. Colores descuadrados, manchas en sublimación, bordes cortados incorrectamente..."
+                    required
+                  />
+                </div>
+                
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
+                    <AlertTriangle size={12} /> Este motivo quedará registrado en el historial de la orden.
+                  </p>
+                </div>
+
+                <div className="flex gap-4 pt-2">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setShowQualityRejectModal(false);
+                      setQualityRejectComment('');
+                    }}
+                    className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-foreground-main hover:bg-surface-hover transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isSubmittingQualityReject || !qualityRejectComment.trim()}
+                    className="flex-1 bg-amber-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-amber-500/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20"
+                  >
+                    {isSubmittingQualityReject ? <Clock className="animate-spin" size={16} /> : <AlertTriangle size={16} />}
+                    Confirmar Rechazo
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </motion.div>
     );
 }
@@ -3072,8 +3177,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     'Sublimación': ['En sublimación'],
     'Corte': ['En corte'],
     'Confección': ['En confección'],
-    'Empaque': ['En empaque'],
-    'Transporte': ['En despacho']
+    'Empaque': ['En empaque']
   };
 
   const nextStatusMap: Record<OrderStatus, OrderStatus> = {
@@ -3113,7 +3217,6 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     'En empaque': 'En confección',
     'En despacho': 'En empaque',
     'Devuelto': 'Devuelto',
-    'Entregado': 'En transporte', 
     'Entregado': 'En despacho'
   };
 
@@ -3220,7 +3323,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     'Abono pendiente', 'Abono confirmado', 'En diseño', 'Versión enviada',
     'Corrección solicitada', 'Diseño aprobado', 'Arte final cargado',
     'En impresión', 'En sublimación', 'En corte', 'En confección',
-    'En empaque', 'En despacho', 'En transporte'
+    'En empaque', 'En despacho'
   ];
 
   return (
@@ -3804,7 +3907,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
   };
 
   const isDesignPhase = foundOrder && ['En diseño', 'En cuadro', 'En montaje', 'Versión enviada', 'En corte', 'En impresión', 'En sublimación', 'En confección',
-    'En empaque', 'En transporte', 'Entregado', 'Corrección solicitada', 'Arte final cargado'].includes(foundOrder.status);
+    'En empaque', 'Entregado', 'Corrección solicitada', 'Arte final cargado'].includes(foundOrder.status);
 
   const canFillItems = foundOrder?.status === 'Diseño aprobado';
 
@@ -4172,7 +4275,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
                           {(['En sublimación', 'En corte'] as OrderStatus[]).map((sub) => {
                             const subCompleted =
                               currentStepIndex > i ||
-                              (sub === 'En sublimación' && ['En corte','En confección','En empaque','En despacho','En transporte','Entregado'].includes(foundOrder?.status || ''));
+                              (sub === 'En sublimación' && ['En corte','En confección','En empaque','En despacho','Entregado'].includes(foundOrder?.status || ''));
                             const subCurrent = foundOrder?.status === sub;
                             return (
                               <div key={sub} className="flex items-center gap-1.5">
@@ -4224,7 +4327,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
                           {(['En confección', 'En empaque'] as OrderStatus[]).map((sub) => {
                             const subCompleted =
                               currentStepIndex > i ||
-                              (sub === 'En confección' && ['En empaque','En despacho','En transporte','Entregado'].includes(foundOrder?.status || ''));
+                              (sub === 'En confección' && ['En empaque','En despacho','Entregado'].includes(foundOrder?.status || ''));
                             const subCurrent = foundOrder?.status === sub;
                             return (
                               <div key={sub} className="flex items-center gap-1.5">
@@ -6172,8 +6275,7 @@ function EmployeeManagement({}: { key?: string }) {
               { value: 'Sublimación', label: 'Sublimación' },
               { value: 'Corte', label: 'Corte' },
               { value: 'Confección', label: 'Confección' },
-              { value: 'Empaque', label: 'Empaque' },
-              { value: 'Transporte', label: 'Transporte' }
+              { value: 'Empaque', label: 'Empaque' }
             ]}
           />
           <Input 

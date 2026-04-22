@@ -387,7 +387,6 @@ async function startServer() {
 
   app.get('/api/orders/:id/history', (req, res) => {
     const history = db.prepare('SELECT * FROM order_history WHERE order_id = ? ORDER BY created_at DESC').all(req.params.id);
-    console.log(history);
     res.json(history);
   });
 
@@ -525,9 +524,10 @@ async function startServer() {
   });
 
   app.post('/api/orders/:id/status', (req, res) => {
-    const { status, user_name } = req.body;
+    const { status, user_name, details_override } = req.body;
     db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, req.params.id);
-    db.prepare('INSERT INTO order_history (order_id, user_name, action, details) VALUES (?, ?, ?, ?)').run(req.params.id, user_name || 'Sistema', 'Cambio de Estado', `Estado cambiado a: ${status}`);
+    const details = details_override || `Estado cambiado a: ${status}`;
+    db.prepare('INSERT INTO order_history (order_id, user_name, action, details) VALUES (?, ?, ?, ?)').run(req.params.id, user_name || 'Sistema', 'Cambio de Estado', details);
     res.json({ success: true });
   });
 
