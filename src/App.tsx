@@ -2733,7 +2733,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               })()}
 
               {/* Botones de avance para estados de producción */}
-              {(['En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En despacho', 'En transporte'] as OrderStatus[]).includes(order.status) && (role === 'Admin' || role === 'Ventas' || role === 'Impresión' || role === 'En Sublimación' || role === 'Corte' || role === 'Confección' || role === 'Empaque' || role === 'Transporte') && (() => {
+              {(['En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En despacho'] as OrderStatus[]).includes(order.status) && (role === 'Admin' || role === 'Ventas' || role === 'Impresión' || role === 'En Sublimación' || role === 'Corte' || role === 'Confección' || role === 'Empaque' || role === 'Transporte') && (() => {
                 const nextMap: Partial<Record<OrderStatus, OrderStatus>> = {
                   'En impresión': 'En sublimación',
                   'En sublimación': 'En corte',
@@ -2741,7 +2741,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                   'En confección': 'En empaque',
                   'En empaque': 'En despacho',
                   'En despacho': 'En transporte',
-                  'En transporte': 'Entregado',
+                  'En despacho': 'Entregado', 
                 };
                 const next = nextMap[order.status];
                 if (!next) return null;
@@ -2997,7 +2997,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     'Corte': ['En corte'],
     'Confección': ['En confección'],
     'Empaque': ['En empaque'],
-    'Transporte': ['En despacho', 'En transporte']
+    'Transporte': ['En despacho']
   };
 
   const nextStatusMap: Record<OrderStatus, OrderStatus> = {
@@ -3015,11 +3015,10 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     'En sublimación': 'En corte',
     'En corte': 'En confección',
     'En confección': 'En empaque',
-    'En empaque': 'En despacho',
-    'En despacho': 'En transporte',
-    'En transporte': 'Entregado',
     'Entregado': 'Entregado',
-    'Devuelto': 'Devuelto'
+    'Devuelto': 'Devuelto',
+    'En empaque': 'En despacho',
+    'En despacho': 'Entregado'
   };
 
   const previousStatusMap: Record<OrderStatus, OrderStatus> = {
@@ -3037,9 +3036,9 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     'En confección': 'En corte',
     'En empaque': 'En confección',
     'En despacho': 'En empaque',
-    'En transporte': 'En despacho',
-    'Entregado': 'En transporte',
-    'Devuelto': 'Devuelto'
+    'Devuelto': 'Devuelto',
+    'Entregado': 'En transporte', 
+    'Entregado': 'En despacho'
   };
 
   const handleAdvance = async (e: React.MouseEvent, order: Order) => {
@@ -3553,6 +3552,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
   const [rejectComment, setRejectComment] = useState('');
   const [isSubmittingReject, setIsSubmittingReject] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState('');
 
   const handleConfirmOrder = async () => {
@@ -3629,51 +3629,59 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
     checkAndTransition();
   }, [foundOrder, user]);
 
-  const handleSaveItems = async () => {
-      if (!foundOrder) return;
+  const handleSaveItems = () => {
+    if (!foundOrder) return;
 
-      // Validar campos requeridos (excepto observaciones)
-      const requiredFields: { key: keyof OrderItem; label: string }[] = [
-        { key: 'player_name', label: 'Nombre en Camiseta' },
-        { key: 'number',      label: 'Número' },
-        { key: 'size',        label: 'Talla' },
-        { key: 'sleeve',      label: 'Manga' },
-        { key: 'design_type', label: 'Jugador' },
-        { key: 'fit',         label: 'Horma' },
-      ];
+    const requiredFields: { key: keyof OrderItem; label: string }[] = [
+      { key: 'player_name', label: 'Nombre en Camiseta' },
+      { key: 'number',      label: 'Número' },
+      { key: 'size',        label: 'Talla' },
+      { key: 'sleeve',      label: 'Manga' },
+      { key: 'design_type', label: 'Jugador' },
+      { key: 'fit',         label: 'Horma' },
+    ];
 
-      for (let i = 0; i < editingItems.length; i++) {
-        const item = editingItems[i];
-        for (const field of requiredFields) {
-          const value = item[field.key as keyof typeof item];
-          if (!value || (typeof value === 'string' && value.trim() === '')) {
-            toast.error(`Prenda #${i + 1}: el campo "${field.label}" es obligatorio`);
-            return;
-          }
+    for (let i = 0; i < editingItems.length; i++) {
+      const item = editingItems[i];
+      for (const field of requiredFields) {
+        const value = item[field.key as keyof typeof item];
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          toast.error(`Prenda #${i + 1}: el campo "${field.label}" es obligatorio`);
+          return;
         }
       }
+    }
 
-      setIsSavingItems(true);
-      try {
-        await api.updateOrder(foundOrder.id, { 
-          ...foundOrder, 
-          active: foundOrder.active ? true : false,
-          status: 'En cuadro',
-          items: editingItems,
-          user_name: user?.name || 'Cliente'
-        });
+    if (isPublic) {
+      setShowSaveConfirmModal(true);
+    } else {
+      executeSaveItems();
+    }
+  };
 
-        if (isPublic) {
-          setShowThankYouMessage(true);
-        }
-
-        handleSearch();
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setIsSavingItems(false);
+  const executeSaveItems = async () => {
+    if (!foundOrder) return;
+    setIsSavingItems(true);
+    try {
+      await api.updateOrder(foundOrder.id, {
+        ...foundOrder,
+        active: foundOrder.active ? true : false,
+        status: 'En cuadro',
+        items: editingItems,
+        user_name: user?.name || 'Cliente'
+      });
+      setShowSaveConfirmModal(false);
+      if (isPublic) {
+        setShowThankYouMessage(true);
       }
-    };
+      handleSearch();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al guardar la información');
+    } finally {
+      setIsSavingItems(false);
+    }
+  };
 
   const handleApproveDesign = async () => {
     if (!foundOrder || !foundOrder.versions || foundOrder.versions.length === 0) return;
@@ -3726,16 +3734,16 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
     'En corte',
     'En confección',
     'En empaque',
-    'En transporte',
+    'En despacho',
     'Entregado'
   ].includes(foundOrder.status);
 
   const isPostDesign = foundOrder && ['En cuadro', 'En montaje', 'En impresión', 'En sublimación', 'En corte', 
-  'En confección', 'En empaque', 'En transporte', 'Entregado'].includes(foundOrder.status);
+  'En confección', 'En empaque', 'En despacho', 'Entregado'].includes(foundOrder.status);
   
   const steps: OrderStatus[] = isPublic
-  ? ['Abono confirmado', 'En producción' as any, 'En transporte', 'Entregado']
-  : ['Abono confirmado', 'En diseño', 'En sublimación', 'En confección', 'En transporte', 'Entregado'];
+  ? ['Abono confirmado', 'En producción' as any, 'En despacho', 'Entregado']
+  : ['Abono confirmado', 'En diseño', 'En sublimación', 'En confección', 'En despacho', 'Entregado'];
 
   const getDisplayStatus = (status: OrderStatus) => {
     if (['En diseño', 'Versión enviada', 'Corrección solicitada'].includes(status)) {
@@ -3769,7 +3777,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
       if (['En sublimación', 'En corte'].includes(status)) return 'En sublimación';
       if (['En confección', 'En empaque'].includes(status)) return 'En confección';
     }
-    if (['En despacho', 'En transporte'].includes(status)) return 'En transporte';
+    if (['En despacho'].includes(status)) return 'En despacho';
     return status;
   };
 
@@ -3861,7 +3869,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
     // ✅ Si ya está listo para mostrar fecha
     if ((canFillItems && hasItems) || isPostDesign) {
       return delivery_date
-        ? format(new Date(delivery_date), 'dd MMM, yyyy')
+        ? format(new Date(delivery_date), 'dd MMM, yyyy') + ' (Estimado) <br> Recuerde que debe de cargar el listado. <br> La fecha de entrega puede correr si pasa un dia y no ha cargado este listado.'
         : 'PENDIENTE';
     }
 
@@ -4233,15 +4241,15 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
                                 </form>
                               )}
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-  <a 
-    href={ref.file_path} 
-    download 
-    onClick={(e) => e.stopPropagation()}
-    className="p-4 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-accent transition-all"
-  >
-    <Download size={20} />
-  </a>
-</div>
+                                <a 
+                                  href={ref.file_path} 
+                                  download 
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-4 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-accent transition-all"
+                                >
+                                  <Download size={20} />
+                                </a>
+                              </div>
                             </div>
                           </div>
                         ) : (
@@ -4395,14 +4403,16 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
                     )}
                   </div>
                   
-                  <button 
-                    onClick={handleSaveItems}
-                    disabled={isSavingItems || !canFillItems}
-                    className="bg-accent text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 disabled:opacity-50"
-                  >
-                    {isSavingItems ? <RefreshCw className="animate-spin" size={18} /> : <Save size={18} />}
-                    Guardar Información Técnica
-                  </button>
+                  {canFillItems && (
+                    <button 
+                      onClick={handleSaveItems}
+                      disabled={isSavingItems}
+                      className="bg-accent text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 disabled:opacity-50"
+                    >
+                      {isSavingItems ? <RefreshCw className="animate-spin" size={18} /> : <Save size={18} />}
+                      Guardar Información Técnica
+                    </button>
+                  )}
                 </div>
 
                 <div className="overflow-x-auto -mx-8 px-8">
@@ -4753,6 +4763,67 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
       )}
 
       <AnimatePresence>
+          {showSaveConfirmModal && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[300] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="w-full max-w-lg bg-surface rounded-[40px] border border-border-custom p-10 shadow-2xl relative overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 w-full h-1 bg-accent" />
+
+                <div className="text-center space-y-6">
+                  {/* Ícono */}
+                  <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center text-accent mx-auto">
+                    <CheckCircle2 size={40} />
+                  </div>
+
+                  {/* Título */}
+                  <div>
+                    <h4 className="text-2xl font-black text-foreground-main tracking-tighter uppercase">
+                      ¿Confirmar Listado?
+                    </h4>
+                    <p className="text-foreground-muted text-[11px] font-bold uppercase tracking-widest mt-2 leading-relaxed">
+                      Una vez confirmado, el listado pasará a producción y <span className="text-accent">ya no podrás modificarlo</span>.
+                    </p>
+                  </div>
+
+                  {/* Resumen */}
+                  <div className="bg-surface-hover rounded-2xl border border-border-custom p-5 text-left space-y-2">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted mb-3">
+                      Resumen del listado
+                    </p>
+                    <div className="flex justify-between text-sm">
+                      <span className="font-bold text-foreground-muted">Total prendas:</span>
+                      <span className="font-black text-foreground-main">{editingItems.length}</span>
+                    </div>
+                  </div>
+
+                  {/* Botones */}
+                  <div className="flex gap-4 pt-2">
+                    <button
+                      onClick={() => setShowSaveConfirmModal(false)}
+                      className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
+                    >
+                      Revisar de nuevo
+                    </button>
+                    <button
+                      onClick={executeSaveItems}
+                      disabled={isSavingItems}
+                      className="flex-1 bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-xl shadow-accent/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isSavingItems
+                        ? <RefreshCw className="animate-spin" size={16} />
+                        : <CheckCircle2 size={16} />
+                      }
+                      Sí, confirmar
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
         {showConfirmModal && (
           <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
             <motion.div 
@@ -4861,7 +4932,6 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
         )}
       </AnimatePresence>
     </motion.div>
-
     
   );
 }
@@ -4968,7 +5038,7 @@ function ProductManagement({}: { key?: string }) {
             </button>
           </div>
         </div>
-        <button 
+        {/*<button 
           onClick={() => {
             setEditingProduct(null);
             setNewProduct({ name: '', category: 'Camiseta', sale_price: 0, sewing_cost: 0, active: true });
@@ -4977,7 +5047,7 @@ function ProductManagement({}: { key?: string }) {
           className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
         >
           <Plus size={18} /> Nuevo Producto
-        </button>
+        </button>*/}
       </div>
 
       {products.filter(p => includeInactive ? !p.active : p.active).length === 0 ? (
