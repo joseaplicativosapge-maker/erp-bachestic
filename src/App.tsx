@@ -682,7 +682,13 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
     }
 
     return matchesActive && matchesTeam && matchesDate && matchesStatus && matchesSearch;
-  }).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  }).sort((a, b) => {
+    // Entregadas siempre al final
+    if (a.status === 'Entregado' && b.status !== 'Entregado') return 1;
+    if (a.status !== 'Entregado' && b.status === 'Entregado') return -1;
+    // El resto por fecha de creación
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
 
   const copyPublicLink = (e: React.MouseEvent, orderNumber: string) => {
     e.stopPropagation();
@@ -1755,13 +1761,20 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
               onChange={e => setFormData({...formData, status: e.target.value as OrderStatus})}
               options={[
                 { value: 'Abono pendiente', label: 'Abono pendiente' },
-                { value: 'Diseño', label: 'Diseño' },
-                { value: 'Impresión', label: 'Impresión' },
-                { value: 'Sublimación', label: 'Sublimación' },
-                { value: 'Corte', label: 'Corte' },
-                { value: 'Confección', label: 'Confección' },
-                { value: 'Empaque', label: 'Empaque' },
-                { value: 'Transporte', label: 'Transporte' },
+                { value: 'Abono confirmado', label: 'Abono confirmado' },
+                { value: 'En diseño', label: 'En diseño' },
+                { value: 'Versión enviada', label: 'Versión enviada' },
+                { value: 'Corrección solicitada', label: 'Corrección solicitada' },
+                { value: 'Diseño aprobado', label: 'Diseño aprobado' },
+                { value: 'En cuadro', label: 'En cuadro' },
+                { value: 'En montaje', label: 'En montaje' },
+                { value: 'En impresión', label: 'En impresión' },
+                { value: 'En sublimación', label: 'En sublimación' },
+                { value: 'En corte', label: 'En corte' },
+                { value: 'En confección', label: 'En confección' },
+                { value: 'En empaque', label: 'En empaque' },
+                { value: 'En despacho', label: 'En despacho' },
+                { value: 'En transporte', label: 'En transporte' },
                 { value: 'Entregado', label: 'Entregado' },
               ]}
             />
@@ -1906,6 +1919,9 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [lastPayment, setLastPayment] = useState<Payment | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [showStatusConfirm, setShowStatusConfirm] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<OrderStatus | null>(null);
+  const [pendingStatusLabel, setPendingStatusLabel] = useState('');
 
   const role = user.role;
 
@@ -1966,10 +1982,16 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   };
 
   const handleStatusUpdate = async (newStatus: OrderStatus) => {
+    // Si no hay confirmación pendiente, pedir confirmación primero
+    if (!pendingStatus) {
+      setPendingStatus(newStatus);
+      setPendingStatusLabel(newStatus);
+      setShowStatusConfirm(true);
+      return;
+    }
+
     try {
       setError(null);
-
-      // Al pasar a "En cuadro", fijar la fecha de entrega
       if (newStatus === 'En cuadro') {
         const deliveryDate = addBusinessDays(new Date(), 15);
         await api.updateOrder(orderId, {
@@ -1977,12 +1999,15 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           user_name: user.name
         });
       }
-
       await api.updateStatus(orderId, newStatus, user.name);
       await loadOrder();
       onUpdate();
     } catch (err: any) {
       setError(err.message || 'Error al actualizar el estado');
+    } finally {
+      setShowStatusConfirm(false);
+      setPendingStatus(null);
+      setPendingStatusLabel('');
     }
   };
 
@@ -2259,7 +2284,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 
   if (!order) return null;
 
-  // 👇 AGREGAR AQUÍ
   function addBusinessDays(startDate: Date, days: number): string {
     let date = new Date(startDate);
     let count = 0;
@@ -2905,6 +2929,58 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
             
           </div>
+        
+        {showStatusConfirm && pendingStatus && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              className="w-full max-w-md bg-surface rounded-[40px] border border-border-custom p-10 shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-accent" />
+              <div className="text-center space-y-6">
+                <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center text-accent mx-auto">
+                  <CheckCircle2 size={40} />
+                </div>
+                <div>
+                  <h4 className="text-xl font-black text-foreground-main uppercase tracking-tight">
+                    ¿Confirmar cambio de estado?
+                  </h4>
+                  <p className="text-foreground-muted text-sm mt-2">
+                    Pasará a: <span className="font-black text-foreground-main uppercase">{pendingStatusLabel}</span>
+                  </p>
+                  <p className="text-foreground-muted text-xs mt-1">
+                    Esta acción quedará registrada en el historial.
+                  </p>
+                </div>
+                <div className="flex gap-4 pt-2">
+                  <button
+                    onClick={() => {
+                      setShowStatusConfirm(false);
+                      setPendingStatus(null);
+                      setPendingStatusLabel('');
+                    }}
+                    className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => {
+                      const statusToExecute = pendingStatus!;
+                      setShowStatusConfirm(false);
+                      setPendingStatus(null);
+                      setPendingStatusLabel('');
+                      handleStatusUpdate(statusToExecute);
+                    }}
+                    className="flex-1 bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-xl shadow-accent/20"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
 
         {showReceiptModal && lastPayment && order && (
           <ReceiptModal 
@@ -3132,7 +3208,13 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     }
 
     return true;
-  }).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  }).sort((a, b) => {
+    // Entregadas siempre al final
+    if (a.status === 'Entregado' && b.status !== 'Entregado') return 1;
+    if (a.status !== 'Entregado' && b.status === 'Entregado') return -1;
+    // El resto por fecha de creación
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
 
   const allStatuses: OrderStatus[] = [
     'Abono pendiente', 'Abono confirmado', 'En diseño', 'Versión enviada',
