@@ -1983,22 +1983,20 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   };
 
   const handleQualityReject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!qualityRejectComment.trim()) {
-      toast.error('Debes ingresar el motivo del rechazo');
-      return;
-    }
-    setIsSubmittingQualityReject(true);
+  e.preventDefault();
+  if (!qualityRejectComment.trim()) {
+    toast.error('Debes ingresar el motivo del rechazo');
+    return;
+  }
+  setIsSubmittingQualityReject(true);
     try {
-      await api.updateStatus(orderId, 'En cuadro', user.name);
-      // Segundo registro en historial con el motivo detallado
       await fetch(`/api/orders/${orderId}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: 'En cuadro',
           user_name: user.name,
-          note: `Rechazo calidad: ${qualityRejectComment}`
+          details_override: `⚠ Rechazo de calidad en impresión — Motivo: ${qualityRejectComment}`
         })
       });
       toast.success('Rechazo registrado — orden devuelta a En cuadro');
@@ -2397,7 +2395,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* Left Column: Info & Items */}
         <div className="lg:col-span-2 space-y-10">
           <div className="bg-surface p-12 rounded-[48px] border border-border-custom shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 blur-[100px] -mr-32 -mt-32"></div>
@@ -2533,10 +2530,8 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           </div>
 
         </div>
-
-        {/* Right Column: Actions & Design */}
         <div className="space-y-10">
-          {/* Payment History */}
+          
           <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
             
             <div className="flex items-center gap-4">
@@ -2565,7 +2560,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
 
-          {/* Final Designs per Category (Designer Only) */}
           {(role === 'Admin' || role === 'Diseño') && (
             <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
               
@@ -2659,10 +2653,8 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           )}
 
-
-          {/* Workflow Actions */}
           <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
-            
+
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
                 <CheckCircle2 className="text-accent" size={24} />
@@ -2829,7 +2821,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
 
-          {/* Design Versions */}
           <div className="bg-surface p-10 rounded-[40px] border border-border-custom shadow-2xl space-y-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-[60px] -mr-16 -mt-16"></div>
             <div className="flex items-center gap-6 relative z-10">
@@ -2925,12 +2916,43 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 </div>
               )}
             </div>
+
+            
+             {order.status === 'En cuadro' && history.length > 0 && (() => {
+                const lastReject = history.find(h => 
+                  (h.details && h.details.includes('Rechazo de calidad')) ||
+                  (h.details && h.details.includes('⚠')) ||
+                  (h.action && h.action.toLowerCase().includes('rechazo'))
+                );
+                if (!lastReject) return null;
+                const motivo = (lastReject.details || '')
+                  .replace('⚠ Rechazo de calidad en impresión — Motivo: ', '')
+                  .replace('⚠ ', '')
+                  .trim();
+                return (
+                  <div className="flex items-start gap-4 bg-amber-500/10 border-2 border-amber-500/40 rounded-[28px] px-8 py-6 my-4">
+                    <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-500 shrink-0 mt-0.5">
+                      <AlertTriangle size={20} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-500 mb-2">
+                        ⚠ Devuelto por rechazo de calidad en impresión
+                      </p>
+                      <p className="text-sm font-bold text-foreground-main leading-relaxed mb-2">
+                        {motivo}
+                      </p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+                        Registrado por: {lastReject.user_name} · {format(new Date(lastReject.created_at), 'dd/MM/yyyy HH:mm')}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
           </div>
-        </div>
 
         </div>
+      </div>
 
-        {/* Order History */}
           <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
             <div className="flex items-center justify-between">
               
@@ -2954,17 +2976,43 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
             
             <div className={cn("space-y-6 transition-all overflow-hidden relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-border-custom", showHistory ? "max-h-[500px] overflow-y-auto pr-2" : "max-h-[200px]")}>
-              {history.map((h) => (
-                <div key={h.id} className="relative pl-8 group">
-                  <div className="absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full bg-surface border-2 border-border-custom group-hover:border-accent transition-colors" />
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="text-[11px] font-black text-foreground-main tracking-tight leading-tight">{h.action}</p>
-                    <span className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest">{format(new Date(h.created_at), 'dd/MM HH:mm')}</span>
+              {history.map((h) => {
+                const isQualityReject = h.details?.includes('Rechazo de calidad');
+                return (
+                  <div key={h.id} className="relative pl-8 group">
+                    <div className={cn(
+                      "absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full border-2 transition-colors",
+                      isQualityReject 
+                        ? "bg-amber-500/20 border-amber-500" 
+                        : "bg-surface border-border-custom group-hover:border-accent"
+                    )} />
+                    <div className="flex justify-between items-start mb-1">
+                      <p className={cn(
+                        "text-[11px] font-black tracking-tight leading-tight",
+                        isQualityReject ? "text-amber-500" : "text-foreground-main"
+                      )}>
+                        {h.action}
+                      </p>
+                      <span className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest">
+                        {format(new Date(h.created_at), 'dd/MM HH:mm')}
+                      </span>
+                    </div>
+                    {isQualityReject ? (
+                      <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 mb-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1.5 mb-1">
+                          <AlertTriangle size={10} /> Motivo del rechazo:
+                        </p>
+                        <p className="text-[10px] text-foreground-main leading-relaxed">
+                          {h.details?.replace('⚠ Rechazo de calidad en impresión — Motivo: ', '')}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-foreground-muted leading-relaxed mb-1">{h.details}</p>
+                    )}
+                    <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Por: {h.user_name}</p>
                   </div>
-                  <p className="text-[10px] text-foreground-muted leading-relaxed mb-1">{h.details}</p>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Por: {h.user_name}</p>
-                </div>
-              ))}
+                );
+              })}
               {history.length === 0 && (
                 <p className="text-[10px] text-foreground-muted font-black uppercase tracking-widest italic text-center py-8">Sin historial registrado</p>
               )}
@@ -3142,6 +3190,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
         )}
+        
       </motion.div>
     );
 }
@@ -4855,16 +4904,42 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
               </div>
 
               <div className="space-y-8 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-border-custom">
-                {foundOrder.history?.slice(0, 5).map((h, i) => (
-                  <div key={i} className="relative pl-8 group">
-                    <div className="absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full bg-surface border-2 border-border-custom group-hover:border-accent transition-colors" />
-                    <div>
-                      <p className="text-[11px] font-black text-foreground-main tracking-tight leading-tight mb-1">{h.action}</p>
-                      <p className="text-[10px] text-foreground-muted leading-relaxed mb-2">{h.details}</p>
-                      <p className="text-[9px] text-foreground-muted/50 font-black uppercase tracking-widest">{format(new Date(h.created_at), 'dd MMM, HH:mm')}</p>
+                {foundOrder.history?.slice(0, 5).map((h, i) => {
+                  const isQualityReject = h.details?.includes('Rechazo de calidad');
+                  return (
+                    <div key={i} className="relative pl-8 group">
+                      <div className={cn(
+                        "absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full border-2 transition-colors",
+                        isQualityReject 
+                          ? "bg-amber-500/20 border-amber-500" 
+                          : "bg-surface border-border-custom group-hover:border-accent"
+                      )} />
+                      <div>
+                        <p className={cn(
+                          "text-[11px] font-black tracking-tight leading-tight mb-1",
+                          isQualityReject ? "text-amber-500" : "text-foreground-main"
+                        )}>
+                          {h.action}
+                        </p>
+                        {isQualityReject ? (
+                          <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 mb-2">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1.5 mb-1">
+                              <AlertTriangle size={10} /> Rechazo de calidad
+                            </p>
+                            <p className="text-[10px] text-foreground-main leading-relaxed">
+                              {h.details?.replace('⚠ Rechazo de calidad en impresión — Motivo: ', '')}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-foreground-muted leading-relaxed mb-2">{h.details}</p>
+                        )}
+                        <p className="text-[9px] text-foreground-muted/50 font-black uppercase tracking-widest">
+                          {format(new Date(h.created_at), 'dd MMM, HH:mm')}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {(!foundOrder.history || foundOrder.history.length === 0) && (
                   <div className="text-center py-12">
                     <History size={32} className="mx-auto text-foreground-muted/10 mb-4" />
