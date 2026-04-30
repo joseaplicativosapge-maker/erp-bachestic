@@ -120,6 +120,18 @@ async function startServer() {
     db.prepare('ALTER TABLE orders ADD COLUMN soligem_code TEXT').run();
   } catch (e) {}
 
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN is_reposition BOOLEAN DEFAULT 0').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN reposition_reason TEXT').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN reposition_from_status TEXT').run();
+  } catch (e) {}
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS order_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -371,8 +383,8 @@ async function startServer() {
   app.get('/api/orders', (req, res) => {
     const includeInactive = req.query.includeInactive === 'true';
     const query = includeInactive
-      ? `SELECT o.*, t.name as team_name FROM orders o LEFT JOIN teams t ON o.team_id = t.id ORDER BY o.created_at DESC`
-      : `SELECT o.*, t.name as team_name FROM orders o LEFT JOIN teams t ON o.team_id = t.id WHERE o.active = 1 ORDER BY o.created_at DESC`;
+      ? `SELECT o.*, t.name as team_name, o.is_reposition, o.reposition_reason FROM orders o LEFT JOIN teams t ON o.team_id = t.id ORDER BY o.created_at DESC`
+      : `SELECT o.*, t.name as team_name, o.is_reposition, o.reposition_reason FROM orders o LEFT JOIN teams t ON o.team_id = t.id WHERE o.active = 1 ORDER BY o.created_at DESC`;
 
     const orders = db.prepare(query).all();
     const getItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?');
@@ -392,7 +404,8 @@ async function startServer() {
 
   app.get('/api/orders/:id', (req, res) => {
     const order = db.prepare(`
-      SELECT o.*, t.name as team_name
+      SELECT o.*, t.name as team_name, 
+      o.is_reposition, o.reposition_reason
       FROM orders o
       LEFT JOIN teams t ON o.team_id = t.id
       WHERE o.id = ?
@@ -430,7 +443,8 @@ async function startServer() {
     const {
       client_id, client_name, client_doc, client_doc_type, client_phone,
       client_address, client_city, contact_method, delivery_date,
-      items, active, team_id, user_name, soligem_code, status
+      items, active, team_id, user_name, soligem_code, status, is_reposition,
+      reposition_reason, reposition_from_status
     } = req.body;
     const order_id = req.params.id;
 
@@ -450,13 +464,20 @@ async function startServer() {
     const updatedTeamId        = team_id           !== undefined ? team_id          : current.team_id;
     const updatedSoligemCode = soligem_code !== undefined ? soligem_code : current.soligem_code;
     const updatedStatus = status !== undefined ? status : current.status;
+    const updatedIsReposition = is_reposition !== undefined ? (is_reposition ? 1 : 0) 
+      : current.is_reposition;
+    const updatedRepositionReason = reposition_reason !== undefined ? reposition_reason 
+      : current.reposition_reason;
+    const updatedRepositionFromStatus = reposition_from_status !== undefined 
+      ? reposition_from_status 
+      : current.reposition_from_status;
 
     const transaction = db.transaction(() => {
       db.prepare(`
         UPDATE orders
         SET client_id = ?, client_name = ?, client_doc = ?, client_doc_type = ?, client_phone = ?,
             client_address = ?, client_city = ?, contact_method = ?, delivery_date = ?,
-            active = ?, team_id = ?, soligem_code = ?, status = ?
+            active = ?, team_id = ?, soligem_code = ?, status = ?, is_reposition = ?, reposition_reason = ?, reposition_from_status = ?
         WHERE id = ?
       `).run(
         updatedClientId, 
@@ -472,6 +493,9 @@ async function startServer() {
         updatedTeamId, 
         updatedSoligemCode, 
         updatedStatus,
+        updatedIsReposition,
+        updatedRepositionReason,
+        updatedRepositionFromStatus,
         order_id
       );
 

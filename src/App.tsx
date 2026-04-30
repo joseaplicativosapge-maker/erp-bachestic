@@ -683,6 +683,9 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
 
     return matchesActive && matchesTeam && matchesDate && matchesStatus && matchesSearch;
   }).sort((a, b) => {
+    // Reposiciones siempre primero
+    if (a.is_reposition && !b.is_reposition) return -1;
+    if (!a.is_reposition && b.is_reposition) return 1;
     // Entregadas siempre al final
     if (a.status === 'Entregado' && b.status !== 'Entregado') return 1;
     if (a.status !== 'Entregado' && b.status === 'Entregado') return -1;
@@ -1923,6 +1926,9 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const [isSubmittingQualityReject, setIsSubmittingQualityReject] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<OrderStatus | null>(null);
   const [pendingStatusLabel, setPendingStatusLabel] = useState('');
+  const [showRepositionModal, setShowRepositionModal] = useState(false);
+  const [repositionReason, setRepositionReason] = useState('');
+  const [isSubmittingReposition, setIsSubmittingReposition] = useState(false);
 
   const role = user.role;
 
@@ -2031,6 +2037,26 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
         });
       }
       await api.updateStatus(orderId, newStatus, user.name);
+
+      // ✅ Resetear reposición al avanzar de En cuadro
+      if (order?.is_reposition && order?.reposition_from_status) {
+        const statusOrder: OrderStatus[] = [
+          'En sublimación', 'En corte', 'En confección', 
+          'En empaque', 'En despacho', 'Entregado'
+        ];
+        const fromIndex = statusOrder.indexOf(order.reposition_from_status as OrderStatus);
+        const newIndex = statusOrder.indexOf(newStatus);
+        
+        if (fromIndex !== -1 && newIndex !== -1 && newIndex >= fromIndex) {
+          await api.updateOrder(orderId, {
+            is_reposition: false,
+            reposition_reason: null,
+            reposition_from_status: null,
+            user_name: user.name
+          });
+        }
+      }
+      
       await loadOrder();
       onUpdate();
     } catch (err: any) {
@@ -2100,6 +2126,48 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       console.error('Error uploading design:', err);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleMarkReposition = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingReposition(true);
+    try {
+      // Primero actualiza los campos de reposición
+      await api.updateOrder(orderId, {
+        is_reposition: true,
+        reposition_reason: repositionReason,
+        reposition_from_status: order?.status,
+        user_name: user.name
+      });
+
+      // Luego cambia el estado a "En cuadro" con prioridad
+      await api.updateStatus(
+        orderId, 
+        'En cuadro' as OrderStatus, 
+        user.name
+      );
+
+      // Registra en historial con nota especial
+      await fetch(`/api/orders/${orderId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'En cuadro',
+          user_name: user.name,
+          details_override: `⚡ REPOSICIÓN — Motivo: ${repositionReason}`
+        })
+      });
+
+      toast.success('Orden marcada como reposición — devuelta a En cuadro con prioridad máxima');
+      setShowRepositionModal(false);
+      setRepositionReason('');
+      await loadOrder();
+      onUpdate();
+    } catch (error) {
+      toast.error('Error al marcar la reposición');
+    } finally {
+      setIsSubmittingReposition(false);
     }
   };
 
@@ -2813,6 +2881,31 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 );
               })()}
 
+              {/* Botón de Reposición — visible desde En sublimación en adelante */}
+              {(['En sublimación', 'En corte', 'En confección', 'En empaque', 'En despacho'] as OrderStatus[]).includes(order.status) && 
+              (role === 'Admin' || role === 'Ventas') && (
+                <div className="pt-4 border-t border-border-custom">
+                  {!order.is_reposition ? (
+                    <button
+                      onClick={() => setShowRepositionModal(true)}
+                      className="w-full bg-orange-500/10 border border-orange-500/30 text-orange-500 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-orange-500/20 transition-all"
+                    >
+                      <AlertTriangle size={18} /> Marcar como Reposición
+                    </button>
+                  ) : (
+                    <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl flex items-center gap-3">
+                      <AlertTriangle size={18} className="text-orange-500 shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">⚡ Orden en Reposición</p>
+                        {order.reposition_reason && (
+                          <p className="text-xs text-foreground-muted mt-1">{order.reposition_reason}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {order.status === 'Entregado' && (
                 <div className="p-4 bg-green-500/10 rounded-2xl border border-green-500/20 text-center">
                   <p className="text-[10px] font-black uppercase tracking-widest text-green-500">✓ Orden completada y entregada</p>
@@ -3191,6 +3284,64 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           </div>
         )}
         
+        {showRepositionModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+            <div className="bg-surface w-full max-w-md rounded-[40px] p-10 border border-orange-500/30 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-orange-500" />
+              
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500">
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-foreground-main tracking-tighter uppercase">Marcar Reposición</h3>
+                  <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
+                    Esta orden tendrá prioridad inmediata en producción
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleMarkReposition} className="space-y-6">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-foreground-muted mb-3">
+                    Motivo de la Reposición <span className="text-orange-500">*</span>
+                  </label>
+                  <textarea
+                    value={repositionReason}
+                    onChange={e => setRepositionReason(e.target.value)}
+                    className="w-full bg-background border border-border-custom rounded-2xl p-6 text-foreground-main text-sm font-bold outline-none focus:border-orange-500/50 transition-all resize-none min-h-[100px]"
+                    placeholder="Ej. Defecto en sublimación, prenda dañada en corte..."
+                    required
+                  />
+                </div>
+
+                <div className="bg-orange-500/5 border border-orange-500/20 rounded-2xl p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-orange-500 flex items-center gap-2">
+                    <AlertTriangle size={12} /> Esta orden aparecerá primero en el KDS de producción.
+                  </p>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowRepositionModal(false)}
+                    className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReposition || !repositionReason.trim()}
+                    className="flex-1 bg-orange-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-orange-500/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-orange-500/20"
+                  >
+                    {isSubmittingReposition ? <Clock className="animate-spin" size={16} /> : <AlertTriangle size={16} />}
+                    Confirmar Reposición
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </motion.div>
     );
 }
@@ -3285,6 +3436,25 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     try {
       setUpdatingId(order.id);
       await api.updateStatus(order.id, nextStatus, user.name);
+
+      if (order.is_reposition && order.reposition_from_status) {
+        const statusOrder: OrderStatus[] = [
+          'En sublimación', 'En corte', 'En confección',
+          'En empaque', 'En despacho', 'Entregado'
+        ];
+        const fromIndex = statusOrder.indexOf(order.reposition_from_status as OrderStatus);
+        const newIndex = statusOrder.indexOf(nextStatus);
+        
+        if (fromIndex !== -1 && newIndex !== -1 && newIndex >= fromIndex) {
+          await api.updateOrder(order.id, {
+            is_reposition: false,
+            reposition_reason: null,
+            reposition_from_status: null,
+            user_name: user.name
+          });
+        }
+      }
+      
       onUpdate();
     } catch (error) {
       console.error('Error advancing order:', error);
@@ -3361,6 +3531,8 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
 
     return true;
   }).sort((a, b) => {
+    if (a.is_reposition && !b.is_reposition) return -1;
+    if (!a.is_reposition && b.is_reposition) return 1;
     // Entregadas siempre al final
     if (a.status === 'Entregado' && b.status !== 'Entregado') return 1;
     if (a.status !== 'Entregado' && b.status === 'Entregado') return -1;
@@ -3541,18 +3713,29 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
                 onClick={() => onOrderClick(order.id)}
                 className={cn(
                   "flex items-center justify-between bg-surface px-6 py-4 rounded-2xl border-l-4 border border-border-custom cursor-pointer transition-all hover:bg-background",
-                  colorClass
+                  order.is_reposition ? "border-l-orange-500 bg-orange-500/5 hover:bg-orange-500/10" : colorClass
                 )}
               >
                 {/* IZQUIERDA */}
                 <div className="flex items-center gap-6">
+                  
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
                       {order.order_number}
+                      {order.is_reposition && (
+                        <span className="flex items-center gap-1 bg-orange-500 text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full animate-pulse">
+                          <AlertTriangle size={9} /> REPOSICIÓN
+                        </span>
+                      )}
                     </p>
                     <h4 className="font-black text-sm text-foreground-main">
                       {order.client_name}
                     </h4>
+                    {order.is_reposition && order.reposition_reason && (
+                      <p className="text-[9px] text-orange-400 font-bold mt-0.5 italic truncate max-w-[200px]">
+                        {order.reposition_reason}
+                      </p>
+                    )}
                   </div>
 
                   {order.team_name && (

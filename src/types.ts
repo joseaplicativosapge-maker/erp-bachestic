@@ -67,6 +67,8 @@ export interface Order {
   team_id?: number;
   team_name?: string;
   assigned_employee_id?: number;
+  is_reposition?: boolean;
+  reposition_reason?: string;
 }
 
 export interface Client {
