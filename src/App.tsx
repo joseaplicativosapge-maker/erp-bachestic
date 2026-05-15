@@ -5388,6 +5388,7 @@ function ProductManagement({}: { key?: string }) {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [newProduct, setNewProduct] = useState({
+    code: '',
     name: '',
     category: 'Camiseta',
     sale_price: 0,
@@ -5423,7 +5424,7 @@ function ProductManagement({}: { key?: string }) {
       }
       setShowAdd(false);
       setEditingProduct(null);
-      setNewProduct({ name: '', category: 'Camiseta', sale_price: 0, sewing_cost: 0, active: true });
+      setNewProduct({ code: '', name: '', category: 'Camiseta', sale_price: 0, sewing_cost: 0, active: true });
       loadProducts();
     } catch (error) {
       console.error(error);
@@ -5433,6 +5434,7 @@ function ProductManagement({}: { key?: string }) {
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setNewProduct({
+      code: product.code || '', 
       name: product.name,
       category: product.category,
       sale_price: product.sale_price,
@@ -5481,16 +5483,16 @@ function ProductManagement({}: { key?: string }) {
             </button>
           </div>
         </div>
-        {/*<button 
+        <button 
           onClick={() => {
             setEditingProduct(null);
-            setNewProduct({ name: '', category: 'Camiseta', sale_price: 0, sewing_cost: 0, active: true });
+            setNewProduct({code: '',  name: '', category: 'Camiseta', sale_price: 0, sewing_cost: 0, active: true });
             setShowAdd(true);
           }}
           className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
         >
           <Plus size={18} /> Nuevo Producto
-        </button>*/}
+        </button>
       </div>
 
       {products.filter(p => includeInactive ? !p.active : p.active).length === 0 ? (
@@ -5528,7 +5530,7 @@ function ProductManagement({}: { key?: string }) {
                   >
                     <Edit2 size={18} />
                   </button>
-                  {/*<button 
+                  <button 
                     onClick={() => toggleProductActive(product)}
                     className={cn(
                       "p-3 rounded-xl transition-all",
@@ -5537,7 +5539,7 @@ function ProductManagement({}: { key?: string }) {
                     title={product.active ? "Desactivar producto" : "Activar producto"}
                   >
                     {product.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
-                  </button> */}
+                  </button>
                 </div>
               </div>
               <div className="space-y-4">
@@ -5567,11 +5569,10 @@ function ProductManagement({}: { key?: string }) {
         <form onSubmit={handleSubmit} className="space-y-6">
           <Input 
             label="Código del Producto"
-            value={newProduct.code}
-            onChange={e => setNewProduct({...newProduct, name: e.target.value})}
-            placeholder="Ej. Camiseta Deportiva Pro"
+            value={newProduct.code || ''}
+            onChange={e => setNewProduct({...newProduct, code: e.target.value})}  // ← code, no name
+            placeholder="Ej. PROD-001"
             className="bg-background"
-            required readonly="true"
           />
           <Input 
             label="Nombre del Producto"
@@ -5579,7 +5580,7 @@ function ProductManagement({}: { key?: string }) {
             onChange={e => setNewProduct({...newProduct, name: e.target.value})}
             placeholder="Ej. Camiseta Deportiva Pro"
             className="bg-background"
-            required readonly="true"
+            required
           />
           <div className="grid grid-cols-2 gap-4">
             <Input 
@@ -5905,7 +5906,6 @@ function ClientManagement({}: { key?: string }) {
             />
           </div>
 
-          {/* Revisar esto se va a integrar con el software contable
           <button 
             onClick={() => {
               setIsAdding(true);
@@ -5915,13 +5915,12 @@ function ClientManagement({}: { key?: string }) {
             className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
           >
             <Plus size={20} /> Nuevo Cliente
-          </button> */}
+          </button>
 
         </div>
       </div>
       
-      {/*
-       Esto se va a integrar con el software contable
+     
       <Modal 
         isOpen={showConfirmToggle} 
         onClose={() => setShowConfirmToggle(false)} 
@@ -6038,7 +6037,7 @@ function ClientManagement({}: { key?: string }) {
             </button>
           </div>
         </form>
-      </Modal>*/}
+      </Modal>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredClients.length === 0 ? (
@@ -6074,14 +6073,13 @@ function ClientManagement({}: { key?: string }) {
                 <Contact size={24} />
               </div>
               <div className="flex gap-3">
-                <button 
+               {/* <button 
                   onClick={() => { setSelectedClientForTeams(client); setShowTeamManagement(true); }}
                   className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
                   title="Gestionar equipos"
                 >
                   <Users size={18} />
-                </button>
-                {/* Esto se va a integrar con el software contable                
+                </button>               */}
                 <button 
                   onClick={() => handleEdit(client)}
                   className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
@@ -6099,7 +6097,6 @@ function ClientManagement({}: { key?: string }) {
                 >
                   {client.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
                 </button>
-                */}
               </div>
             </div>
             <h4 className="font-bold text-lg mb-1 text-foreground-main tracking-tight">{client.name}</h4>
@@ -6134,7 +6131,7 @@ function ClientManagement({}: { key?: string }) {
         ))}
       </div>
 
-      <Modal
+      {/*<Modal
         isOpen={showTeamManagement}
         onClose={() => setShowTeamManagement(false)}
         title="Gestión de Equipos"
@@ -6146,7 +6143,7 @@ function ClientManagement({}: { key?: string }) {
             onClose={() => setShowTeamManagement(false)} 
           />
         )}
-      </Modal>
+      </Modal>*/}
     </div>
   );
 }
