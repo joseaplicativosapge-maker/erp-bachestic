@@ -1248,99 +1248,93 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
       </div>
 
       {/* PANEL DINÁMICO — reemplaza según estado */}
-      <div className="mt-4">
+      <div className="mt-3">
 
-        {/* ESTADO 1: campo vacío */}
-        {!clientSearch.trim() && (
-          <div className="flex flex-col items-center justify-center py-12 px-8 text-center bg-surface-hover rounded-[24px] border-2 border-dashed border-border-custom">
-            <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center text-accent mb-4">
-              <Search size={28} />
-            </div>
-            <p className="text-sm font-black uppercase tracking-widest text-foreground-main mb-2">
-              Busca un cliente existente
-            </p>
-            <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">
-              Escribe el nombre o número de documento para encontrar al cliente
-            </p>
-          </div>
-        )}
+  {/* ESTADO 1: campo vacío */}
+  {!clientSearch.trim() && (
+    <div className="w-full flex items-center gap-4 px-6 h-[60px] bg-surface-hover rounded-[24px] border border-border-custom">
+      <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0">
+        <Search size={16} />
+      </div>
+      <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+        Escribe el <span className="text-foreground-main">nombre o documento</span> del cliente para buscar
+      </p>
+    </div>
+  )}
 
-        {/* ESTADO 2: escribiendo, menos de 3 chars */}
-        {clientSearch.trim() && clientSearch.length <= 2 && (
-          <div className="flex items-center gap-4 px-6 py-5 bg-surface-hover rounded-[24px] border border-border-custom">
-            <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0">
-              <Search size={18} />
-            </div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
-              Escribe al menos <span className="text-foreground-main">3 caracteres</span> para buscar...
-            </p>
-          </div>
-        )}
+  {/* ESTADO 2: menos de 3 chars */}
+  {clientSearch.trim() && clientSearch.length <= 2 && (
+    <div className="w-full flex items-center gap-4 px-6 h-[60px] bg-surface-hover rounded-[24px] border border-border-custom">
+      <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0">
+        <Search size={16} />
+      </div>
+      <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+        Escribe al menos <span className="text-foreground-main">3 caracteres</span> para buscar...
+      </p>
+    </div>
+  )}
 
-        {/* ESTADO 3: resultados encontrados */}
-        {clientSearch.length > 2 && searchResults.length > 0 && (
-          <div className="bg-background border border-border-custom rounded-[24px] shadow-2xl overflow-hidden">
-            <div className="px-6 py-3 border-b border-border-custom bg-surface-hover">
-              <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
-                {searchResults.length} resultado{searchResults.length !== 1 ? 's' : ''} encontrado{searchResults.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-            <div className="max-h-64 overflow-y-auto divide-y divide-border-custom">
-              {searchResults.map(client => (
-                <button
-                  key={client.id}
-                  onClick={() => handleSelectClient(client)}
-                  className="w-full p-5 text-left hover:bg-accent/10 flex items-center justify-between transition-colors group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-all">
-                      <Contact size={18} />
-                    </div>
-                    <div>
-                      <p className="font-bold text-foreground-main group-hover:text-accent transition-colors">{client.name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-black text-accent bg-accent/10 px-2 py-0.5 rounded-md uppercase tracking-widest">{client.doc_type || 'CC'}</span>
-                        <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest">{client.doc} • {client.phone}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight size={16} className="text-foreground-muted group-hover:text-accent transition-colors shrink-0" />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ESTADO 4: buscó y no encontró nada */}
-        {clientSearch.length > 2 && searchResults.length === 0 && (
-              <div className="space-y-3">
-                <div className="flex flex-col items-center justify-center py-10 px-8 text-center bg-surface-hover rounded-[24px] border border-border-custom">
-                  <div className="w-14 h-14 bg-foreground-muted/10 rounded-full flex items-center justify-center text-foreground-muted mb-4">
-                    <Search size={24} />
-                  </div>
-                  <p className="text-sm font-black uppercase tracking-widest text-foreground-main mb-1">
-                    Sin resultados
-                  </p>
-                  <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">
-                    No se encontró ningún cliente con "<span className="text-accent">{clientSearch}</span>"
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setIsCreatingClient(true);
-                    setFormData({...formData, client_name: clientSearch});
-                  }}
-                  className="w-full flex items-center justify-center gap-3 py-4 rounded-[20px] border-2 border-dashed border-accent/40 text-accent hover:bg-accent/5 transition-all"
-                >
-                  <Plus size={18} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">
-                    Crear nuevo cliente "{clientSearch}"
-                  </span>
-                </button>
+  {/* ESTADO 3: resultados encontrados */}
+  {clientSearch.length > 2 && searchResults.length > 0 && (
+    <div className="w-full bg-surface-hover border border-border-custom rounded-[24px] overflow-hidden">
+      <div className="px-6 h-[40px] flex items-center border-b border-border-custom">
+        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+          {searchResults.length} resultado{searchResults.length !== 1 ? 's' : ''} encontrado{searchResults.length !== 1 ? 's' : ''}
+        </p>
+      </div>
+      <div className="max-h-64 overflow-y-auto divide-y divide-border-custom">
+        {searchResults.map(client => (
+          <button
+            key={client.id}
+            onClick={() => handleSelectClient(client)}
+            className="w-full px-6 h-[60px] text-left hover:bg-accent/10 flex items-center justify-between transition-colors group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-all">
+                <Contact size={16} />
               </div>
-            )}
+              <div>
+                <p className="font-bold text-sm text-foreground-main group-hover:text-accent transition-colors leading-tight">{client.name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[9px] font-black text-accent bg-accent/10 px-1.5 py-0.5 rounded uppercase tracking-widest">{client.doc_type || 'CC'}</span>
+                  <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">{client.doc} • {client.phone}</p>
+                </div>
+              </div>
+            </div>
+            <ChevronRight size={14} className="text-foreground-muted group-hover:text-accent transition-colors shrink-0" />
+          </button>
+        ))}
+      </div>
+    </div>
+  )}
 
-          </div>
+  {/* ESTADO 4: sin resultados */}
+  {clientSearch.length > 2 && searchResults.length === 0 && (
+    <div className="w-full space-y-3">
+      <div className="w-full flex items-center gap-4 px-6 h-[60px] bg-surface-hover rounded-[24px] border border-border-custom">
+        <div className="w-8 h-8 bg-foreground-muted/10 rounded-xl flex items-center justify-center text-foreground-muted shrink-0">
+          <Search size={16} />
+        </div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+          Sin resultados para "<span className="text-accent">{clientSearch}</span>"
+        </p>
+      </div>
+      <button
+        onClick={() => {
+          setIsCreatingClient(true);
+          setFormData({...formData, client_name: clientSearch});
+        }}
+        className="w-full flex items-center justify-center gap-3 px-6 h-[60px] rounded-[24px] border-2 border-dashed border-accent/40 text-accent hover:bg-accent/5 transition-all"
+      >
+        <Plus size={16} />
+        <span className="text-[10px] font-black uppercase tracking-widest">
+          Crear nuevo cliente "{clientSearch}"
+        </span>
+      </button>
+    </div>
+  )}
+
+</div>
         </div>
       </div>
     ) : (
