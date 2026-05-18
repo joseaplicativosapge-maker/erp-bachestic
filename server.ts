@@ -206,21 +206,6 @@ async function startServer() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-    CREATE TABLE IF NOT EXISTS production_assignments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      order_id INTEGER,
-      employee_id INTEGER,
-      department TEXT,
-      status TEXT,
-      assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      completed_at DATETIME,
-      garment_count INTEGER,
-      price_per_unit REAL,
-      total_pay REAL,
-      FOREIGN KEY(order_id) REFERENCES orders(id),
-      FOREIGN KEY(employee_id) REFERENCES employees(id)
-    );
-
     -- Seed initial admin if no employees exist
     INSERT INTO employees (name, role, pin) 
     SELECT 'Administrador', 'Admin', '1234'
@@ -228,8 +213,22 @@ async function startServer() {
   `);
   
   db.exec(`
-    PRAGMA foreign_keys = OFF;
+    CREATE TABLE IF NOT EXISTS production_assignments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      employee_id INTEGER NOT NULL,
+      department TEXT NOT NULL DEFAULT 'Confección',
+      garment_count INTEGER NOT NULL DEFAULT 0,
+      price_per_unit REAL NOT NULL DEFAULT 0,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (order_id) REFERENCES orders(id),
+      FOREIGN KEY (employee_id) REFERENCES employees(id)
+    )
+  `);
 
+  db.exec(`
+    PRAGMA foreign_keys = OFF;
     DELETE FROM orders;
     DELETE FROM teams;
     DELETE FROM order_items;
@@ -237,11 +236,8 @@ async function startServer() {
     DELETE FROM design_references;
     DELETE FROM order_history;
     DELETE FROM production_assignments;
-
     DELETE FROM sqlite_sequence;
-
     PRAGMA foreign_keys = ON;
-
     VACUUM;
   `);
 
@@ -700,6 +696,60 @@ async function startServer() {
     console.error('API Error:', err);
     res.status(500).json({ error: err.message || 'Internal Server Error' });
   });
+
+  // POST /api/assignments
+app.post('/api/assignments', (req, res) => {
+  const { order_id, employee_id, department, garment_count, price_per_unit, notes } = req.body;
+  
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO production_assignments 
+        (order_id, employee_id, department, garment_count, price_per_unit, notes, created_at)
+      VALUES 
+        (?, ?, ?, ?, ?, ?, datetime('now'))
+    `);
+    
+    const result = stmt.run(order_id, employee_id, department, garment_count, price_per_unit, notes || '');
+    
+    // Registrar en historial
+    const histStmt = db.prepare(`
+      INSERT INTO order_history (order_id, action, details, user_name, created_at)
+      VALUES (?, 'Asignación de Confección', ?, ?, datetime('now'))
+    `);
+    
+    const emp = db.prepare('SELECT name FROM employees WHERE id = ?').get(employee_id);
+    histStmt.run(
+      order_id, 
+      `${emp?.name || 'Empleado'} — ${garment_count} prendas × $${price_per_unit} (${department})${notes ? ' — ' + notes : ''}`,
+      req.body.user_name || 'Sistema'
+    );
+    
+    res.json({ id: result.lastInsertRowid, success: true });
+  } catch (error) {
+    console.error('Error creating assignment:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/orders/:id/assignments
+app.get('/api/orders/:id/assignments', (req, res) => {
+  try {
+    const assignments = db.prepare(`
+      SELECT 
+        pa.*,
+        e.name as employee_name,
+        e.role
+      FROM production_assignments pa
+      LEFT JOIN employees e ON pa.employee_id = e.id
+      WHERE pa.order_id = ?
+      ORDER BY pa.created_at DESC
+    `).all(req.params.id);
+    
+    res.json(assignments);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
   // ─── Vite / Static ─────────────────────────────────────────────────────────
 

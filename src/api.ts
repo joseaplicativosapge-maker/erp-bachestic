@@ -89,6 +89,14 @@ export const api = {
     const res = await fetch(`${API_BASE}/stats`);
     return handleResponse(res);
   },
+  getOrderAssignments: async (orderId: number): Promise<ProductionAssignment[]> => {
+    try {
+      const res = await fetch(`${API_BASE}/orders/${orderId}/assignments`);
+      return handleResponse(res);
+    } catch {
+      return [];
+    }
+  },
   updateOrder: async (id: number, order: Partial<Order> & { user_name?: string }): Promise<void> => {
     const res = await fetch(`${API_BASE}/orders/${id}`, {
       method: 'PUT',

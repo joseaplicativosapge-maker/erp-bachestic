@@ -2005,6 +2005,29 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const [showRepositionModal, setShowRepositionModal] = useState(false);
   const [repositionReason, setRepositionReason] = useState('');
   const [isSubmittingReposition, setIsSubmittingReposition] = useState(false);
+  const [assignments, setAssignments] = useState<ProductionAssignment[]>([]);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  // Reemplaza el estado assignmentForm por:
+  const [assignmentForm, setAssignmentForm] = useState({
+    employee_id: '',
+    garment_type: 'Camiseta', // 'Camiseta' | 'Pantaloneta'
+    tasks: {
+      // Camiseta
+      filetes: { enabled: false, quantity: 0, price: 0 },
+      despuntes: { enabled: false, quantity: 0, price: 0 },
+      collarin: { enabled: false, quantity: 0, price: 0 },
+      dobladillo_remate: { enabled: false, quantity: 0, price: 0 },
+      // Pantaloneta
+      filete_p: { enabled: false, quantity: 0, price: 0 },
+      despuntes_p: { enabled: false, quantity: 0, price: 0 },
+      caucho: { enabled: false, quantity: 0, price: 0 },
+      sentar_caucho: { enabled: false, quantity: 0, price: 0 },
+      collarin_p: { enabled: false, quantity: 0, price: 0 },
+      remate: { enabled: false, quantity: 0, price: 0 },
+    },
+    notes: ''
+  });
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   const role = user.role;
 
@@ -2030,22 +2053,29 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     loadOrder();
   }, [orderId]);
 
+  useEffect(() => {
+    if (order?.status === 'En confección' || assignments.length > 0) {
+      api.getEmployees().then(setEmployees).catch(console.error);
+    }
+  }, [order?.status]);
+
   const loadOrder = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [orderData, historyData] = await Promise.all([
+      const [orderData, historyData, assignmentsData] = await Promise.all([
         api.getOrder(orderId),
-        api.getOrderHistory(orderId)
+        api.getOrderHistory(orderId),
+        api.getOrderAssignments(orderId)  // ← nuevo
       ]);
       setOrder(orderData);
       setHistory(historyData);
+      setAssignments(assignmentsData);   // ← nuevo
       setPayments([orderData]);
       setEditData(orderData);
       setEditItems(orderData.items || []);
     } catch (err: any) {
       setError(err.message || 'Error al cargar la orden');
-      console.error('Error loading order:', err);
     } finally {
       setLoading(false);
     }
@@ -2065,34 +2095,34 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   };
 
   const handleQualityReject = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!qualityRejectComment.trim()) {
-    toast.error('Debes ingresar el motivo del rechazo');
-    return;
-  }
-  setIsSubmittingQualityReject(true);
-    try {
-      await fetch(`/api/orders/${orderId}/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'En cuadro',
-          user_name: user.name,
-          details_override: `⚠ Rechazo de calidad en impresión — Motivo: ${qualityRejectComment}`
-        })
-      });
-      toast.success('Rechazo registrado — orden devuelta a En cuadro');
-      setShowQualityRejectModal(false);
-      setQualityRejectComment('');
-      await loadOrder();
-      onUpdate();
-    } catch (error) {
-      console.error(error);
-      toast.error('Error al registrar el rechazo');
-    } finally {
-      setIsSubmittingQualityReject(false);
+    e.preventDefault();
+    if (!qualityRejectComment.trim()) {
+      toast.error('Debes ingresar el motivo del rechazo');
+      return;
     }
-  };
+    setIsSubmittingQualityReject(true);
+      try {
+        await fetch(`/api/orders/${orderId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'En cuadro',
+            user_name: user.name,
+            details_override: `⚠ Rechazo de calidad en impresión — Motivo: ${qualityRejectComment}`
+          })
+        });
+        toast.success('Rechazo registrado — orden devuelta a En cuadro');
+        setShowQualityRejectModal(false);
+        setQualityRejectComment('');
+        await loadOrder();
+        onUpdate();
+      } catch (error) {
+        console.error(error);
+        toast.error('Error al registrar el rechazo');
+      } finally {
+        setIsSubmittingQualityReject(false);
+      }
+    };
 
   const handleStatusUpdate = async (newStatus: OrderStatus) => {
     // Si no hay confirmación pendiente, pedir confirmación primero
@@ -2265,6 +2295,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       setIsUploading(false);
     }
   };
+
   const SIZES = ['2','4','6','8','10','12','14','16','S','M','L','XL','XXL'];
   const [selectedImageUrl, setSelectedImageUrl] = useState('');
   const [showImageModal, setShowImageModal] = useState(false);
@@ -2437,6 +2468,67 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     XLSX.utils.book_append_sheet(workbook, worksheet, "Pedido");
 
     XLSX.writeFile(workbook, `Pedido_${order.order_number}.xlsx`);
+  };
+
+  // Reemplaza handleCreateAssignment:
+  const handleCreateAssignment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assignmentForm.employee_id) {
+      toast.error('Selecciona un empleado');
+      return;
+    }
+
+    const taskLabels: Record<string, string> = {
+      filetes: 'Filetes', despuntes: 'Despuntes', collarin: 'Collarín',
+      dobladillo_remate: 'Dobladillo y Remate',
+      filete_p: 'Filete', despuntes_p: 'Despuntes', caucho: 'Caucho',
+      sentar_caucho: 'Sentar Caucho', collarin_p: 'Collarín', remate: 'Remate'
+    };
+
+    const activeTasks = Object.entries(assignmentForm.tasks)
+      .filter(([_, t]) => t.enabled && t.quantity > 0);
+
+    if (activeTasks.length === 0) {
+      toast.error('Selecciona al menos una tarea con cantidad mayor a 0');
+      return;
+    }
+
+    try {
+      // Crear una asignación por cada tarea activa
+      for (const [key, task] of activeTasks) {
+        await api.createAssignment({
+          order_id: orderId,
+          employee_id: parseInt(assignmentForm.employee_id),
+          department: 'Confección',
+          garment_count: task.quantity,
+          price_per_unit: task.price,
+          notes: `[${assignmentForm.garment_type}] ${taskLabels[key]}${assignmentForm.notes ? ' — ' + assignmentForm.notes : ''}`
+        });
+      }
+
+      toast.success('Asignación registrada correctamente');
+      setShowAssignmentModal(false);
+      setAssignmentForm({
+        employee_id: '',
+        garment_type: 'Camiseta',
+        tasks: {
+          filetes: { enabled: false, quantity: 0, price: 0 },
+          despuntes: { enabled: false, quantity: 0, price: 0 },
+          collarin: { enabled: false, quantity: 0, price: 0 },
+          dobladillo_remate: { enabled: false, quantity: 0, price: 0 },
+          filete_p: { enabled: false, quantity: 0, price: 0 },
+          despuntes_p: { enabled: false, quantity: 0, price: 0 },
+          caucho: { enabled: false, quantity: 0, price: 0 },
+          sentar_caucho: { enabled: false, quantity: 0, price: 0 },
+          collarin_p: { enabled: false, quantity: 0, price: 0 },
+          remate: { enabled: false, quantity: 0, price: 0 },
+        },
+        notes: ''
+      });
+      loadOrder();
+    } catch (error) {
+      toast.error('Error al registrar la asignación');
+    }
   };
 
   if (loading) return <LoadingState message="Cargando Orden" />;
@@ -2989,6 +3081,379 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               )}
             </div>
           </div>
+          
+          {/* SECCIÓN ASIGNACIONES DE CONFECCIÓN */}
+{(order.status === 'En confección' || order.status === 'En empaque' || 
+  order.status === 'En despacho' || order.status === 'Entregado') && 
+  (role === 'Admin' || role === 'Ventas' || role === 'Confección') && (
+
+  <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
+    
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+          <Shirt className="text-accent" size={24} />
+        </div>
+        <div>
+          <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px]">Confección</h4>
+          <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
+            {assignments.reduce((sum, a) => sum + (a.garment_count || 0), 0)} prendas registradas
+          </p>
+        </div>
+      </div>
+      {order.status === 'En confección' && (role === 'Admin' || role === 'Ventas') && (
+        <button
+          onClick={() => {
+            api.getEmployees().then(setEmployees).catch(console.error);
+            setShowAssignmentModal(true);
+          }}
+          className="bg-accent text-white px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 hover:scale-105 transition-all"
+        >
+          <Plus size={14} /> Registrar
+        </button>
+      )}
+    </div>
+
+    {assignments.length === 0 ? (
+      <div className="text-center py-8 bg-surface-hover rounded-2xl border border-dashed border-border-custom">
+        <Shirt size={32} className="mx-auto text-foreground-muted/20 mb-3" />
+        <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted/40">
+          Sin asignaciones registradas
+        </p>
+      </div>
+    ) : (
+      <div className="space-y-3">
+        {/* Resumen por empleado */}
+        {Object.values(
+          assignments.reduce((acc, a) => {
+            const key = a.employee_id;
+            if (!acc[key]) {
+              acc[key] = {
+                employee_name: a.employee_name || `Empleado #${a.employee_id}`,
+                total_garments: 0,
+                total_earned: 0,
+                items: []
+              };
+            }
+            acc[key].total_garments += a.garment_count || 0;
+            acc[key].total_earned += (a.garment_count || 0) * (a.price_per_unit || 0);
+            acc[key].items.push(a);
+            return acc;
+          }, {} as Record<number, any>)
+        ).map((emp: any, i) => (
+          <div key={i} className="bg-surface-hover p-5 rounded-2xl border border-border-custom">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
+                  <Users size={14} />
+                </div>
+                <div>
+                  <p className="font-black text-sm text-foreground-main">{emp.employee_name}</p>
+                  <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">Confección</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-black text-lg text-accent">{emp.total_garments} prendas</p>
+                <p className="text-[9px] font-bold text-foreground-muted">${emp.total_earned.toLocaleString()}</p>
+              </div>
+            </div>
+            {/* Detalle de cada registro */}
+            {emp.items.map((item: any, j: number) => (
+              <div key={j} className="flex items-center justify-between py-2 border-t border-border-custom text-[10px]">
+                <span className="text-foreground-muted font-bold uppercase tracking-widest">
+                  {format(new Date(item.created_at), 'dd/MM HH:mm')}
+                </span>
+                <div className="flex items-center gap-4">
+                  <span className="text-foreground-main font-bold">{item.garment_count} uds × ${(item.price_per_unit || 0).toLocaleString()}</span>
+                  {item.notes && (
+                    <span className="text-foreground-muted italic max-w-[120px] truncate">{item.notes}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+
+        {/* Total general */}
+        <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
+          <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total Confeccionado</p>
+          <div className="text-right">
+            <p className="font-black text-foreground-main">
+              {assignments.reduce((sum, a) => sum + (a.garment_count || 0), 0)} / {order.items?.length || 0} prendas
+            </p>
+            <p className="text-[9px] text-foreground-muted font-bold">
+              ${assignments.reduce((sum, a) => sum + (a.garment_count || 0) * (a.price_per_unit || 0), 0).toLocaleString()}
+            </p>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
+          {/* MODAL REGISTRAR ASIGNACIÓN */}
+          {showAssignmentModal && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                className="w-full max-w-2xl bg-surface rounded-[40px] border border-border-custom p-10 shadow-2xl relative overflow-y-auto max-h-[90vh]"
+              >
+                <div className="absolute top-0 left-0 w-full h-1 bg-accent" />
+
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
+                    <Shirt size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-foreground-main uppercase tracking-tight">Registrar Confección</h3>
+                    <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
+                      Orden {order.order_number} · {order.items?.length || 0} prendas totales
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleCreateAssignment} className="space-y-6">
+
+                  {/* EMPLEADO */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Empleado</label>
+                    <div className="relative">
+                      <select
+                        value={assignmentForm.employee_id}
+                        onChange={e => setAssignmentForm({...assignmentForm, employee_id: e.target.value})}
+                        required
+                        className="w-full px-6 py-4 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main appearance-none cursor-pointer pr-12"
+                      >
+                        <option value="" disabled>Seleccionar empleado...</option>
+                        {employees.filter(e => e.active && (e.role === 'Confección' || e.role === 'Admin')).map(emp => (
+                          <option key={emp.id} value={emp.id}>{emp.name} — {emp.role}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-foreground-muted" size={18} />
+                      {employees.filter(e => e.active && (e.role === 'Confección' || e.role === 'Admin')).length === 0 && (
+                        <p className="text-[10px] font-black uppercase tracking-widest text-accent mt-2 flex items-center gap-1.5">
+                          <AlertCircle size={12} /> No hay empleados de Confección activos
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* TIPO DE PRENDA */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Tipo de Prenda</label>
+                    <div className="flex gap-3">
+                      {['Camiseta', 'Pantaloneta'].map(tipo => (
+                        <button
+                          key={tipo}
+                          type="button"
+                          onClick={() => setAssignmentForm({...assignmentForm, garment_type: tipo})}
+                          className={cn(
+                            "flex-1 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border",
+                            assignmentForm.garment_type === tipo
+                              ? "bg-accent text-white border-accent shadow-lg shadow-accent/20"
+                              : "bg-surface-hover text-foreground-muted border-border-custom hover:text-foreground-main"
+                          )}
+                        >
+                          {tipo}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* TAREAS */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">
+                      Tareas realizadas — {assignmentForm.garment_type}
+                    </label>
+
+                    <div className="bg-surface-hover rounded-[24px] border border-border-custom overflow-hidden">
+                      
+                      {/* Header tabla */}
+                      <div className="grid grid-cols-[auto_1fr_120px_120px_100px] gap-4 px-5 py-3 border-b border-border-custom bg-surface">
+                        <div className="w-5" />
+                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+                          Tarea
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">
+                          Cantidad
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">
+                          $ x Prenda
+                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-right">
+                          Subtotal
+                        </p>
+                      </div>
+
+                      {/* Filas de tareas */}
+                      {(
+                        assignmentForm.garment_type === 'Camiseta'
+                          ? [
+                              { key: 'filetes', label: 'Filetes' },
+                              { key: 'despuntes', label: 'Despuntes' },
+                              { key: 'collarin', label: 'Collarín' },
+                              { key: 'dobladillo_remate', label: 'Dobladillo y Remate' },
+                            ]
+                          : [
+                              { key: 'filete_p', label: 'Filete' },
+                              { key: 'despuntes_p', label: 'Despuntes' },
+                              { key: 'caucho', label: 'Caucho' },
+                              { key: 'sentar_caucho', label: 'Sentar Caucho' },
+                              { key: 'collarin_p', label: 'Collarín' },
+                              { key: 'remate', label: 'Remate' },
+                            ]
+                      ).map(({ key, label }) => {
+                        const task = assignmentForm.tasks[key];
+
+                        return (
+                          <div
+                            key={key}
+                            className={cn(
+                              "grid grid-cols-[auto_1fr_120px_120px_100px] gap-4 items-center px-5 py-3 border-b border-border-custom last:border-0 transition-all",
+                              task.enabled ? "bg-accent/5" : "opacity-50"
+                            )}
+                          >
+                            {/* Checkbox */}
+                            <input
+                              type="checkbox"
+                              checked={task.enabled}
+                              onChange={e =>
+                                setAssignmentForm(prev => ({
+                                  ...prev,
+                                  tasks: {
+                                    ...prev.tasks,
+                                    [key]: {
+                                      ...prev.tasks[key],
+                                      enabled: e.target.checked
+                                    }
+                                  }
+                                }))
+                              }
+                              className="w-4 h-4 accent-accent cursor-pointer"
+                            />
+
+                            {/* Label */}
+                            <p
+                              className={cn(
+                                "text-[11px] font-black uppercase tracking-wider",
+                                task.enabled
+                                  ? "text-foreground-main"
+                                  : "text-foreground-muted"
+                              )}
+                            >
+                              {label}
+                            </p>
+
+                            {/* Cantidad */}
+                            <input
+                              type="number"
+                              min={0}
+                              value={task.quantity || ''}
+                              disabled={!task.enabled}
+                              onChange={e =>
+                                setAssignmentForm(prev => ({
+                                  ...prev,
+                                  tasks: {
+                                    ...prev.tasks,
+                                    [key]: {
+                                      ...prev.tasks[key],
+                                      quantity: Number(e.target.value)
+                                    }
+                                  }
+                                }))
+                              }
+                              placeholder="0"
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm disabled:opacity-30 focus:border-accent/50"
+                            />
+
+                            {/* Precio */}
+                            <input
+                              type="number"
+                              min={0}
+                              value={task.price || ''}
+                              disabled={!task.enabled}
+                              onChange={e =>
+                                setAssignmentForm(prev => ({
+                                  ...prev,
+                                  tasks: {
+                                    ...prev.tasks,
+                                    [key]: {
+                                      ...prev.tasks[key],
+                                      price: Number(e.target.value)
+                                    }
+                                  }
+                                }))
+                              }
+                              placeholder="$0"
+                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm disabled:opacity-30 focus:border-accent/50"
+                            />
+
+                            {/* Subtotal */}
+                            <p
+                              className={cn(
+                                "text-right font-black text-sm",
+                                task.enabled && task.quantity > 0
+                                  ? "text-accent"
+                                  : "text-foreground-muted/30"
+                              )}
+                            >
+                              ${(task.quantity * task.price).toLocaleString()}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* TOTAL */}
+                  <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total a Pagar</p>
+                      <p className="text-[9px] text-foreground-muted font-bold mt-0.5">
+                        {Object.values(assignmentForm.tasks).filter(t => t.enabled && t.quantity > 0).reduce((sum, t) => sum + t.quantity, 0)} tareas registradas
+                      </p>
+                    </div>
+                    <p className="font-black text-2xl text-foreground-main tracking-tighter">
+                      ${Object.values(assignmentForm.tasks)
+                        .filter(t => t.enabled)
+                        .reduce((sum, t) => sum + t.quantity * t.price, 0)
+                        .toLocaleString()}
+                    </p>
+                  </div>
+
+                  {/* OBSERVACIONES */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Observaciones (opcional)</label>
+                    <input
+                      type="text"
+                      value={assignmentForm.notes}
+                      onChange={e => setAssignmentForm({...assignmentForm, notes: e.target.value})}
+                      placeholder="Ej. Prendas con refuerzo, ajuste especial..."
+                      className="w-full px-6 py-4 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main"
+                    />
+                  </div>
+
+                  {/* BOTONES */}
+                  <div className="flex gap-4 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAssignmentModal(false)}
+                      className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-xl shadow-accent/20"
+                    >
+                      <CheckCircle2 size={16} className="inline mr-2" /> Registrar
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
 
           <div className="bg-surface p-10 rounded-[40px] border border-border-custom shadow-2xl space-y-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-[60px] -mr-16 -mt-16"></div>
