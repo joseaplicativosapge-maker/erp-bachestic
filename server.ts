@@ -72,66 +72,6 @@ async function startServer() {
     );
   `);
   
-  try {
-    db.prepare('ALTER TABLE products DROP COLUMN sale_price').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE products ADD COLUMN code TEXT').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE clients ADD COLUMN doc_type TEXT').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE orders ADD COLUMN client_doc_type TEXT').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE orders ADD COLUMN client_id INTEGER REFERENCES clients(id)').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE orders ADD COLUMN assigned_employee_id INTEGER REFERENCES employees(id)').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE orders ADD COLUMN team_id INTEGER REFERENCES teams(id)').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE order_items ADD COLUMN sewing_price REAL DEFAULT 0').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE order_items ADD COLUMN design_path TEXT').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE employees ADD COLUMN photo_path TEXT').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE design_versions ADD COLUMN client_comments TEXT').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE orders ADD COLUMN soligem_code TEXT').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE orders ADD COLUMN is_reposition BOOLEAN DEFAULT 0').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE orders ADD COLUMN reposition_reason TEXT').run();
-  } catch (e) {}
-
-  try {
-    db.prepare('ALTER TABLE orders ADD COLUMN reposition_from_status TEXT').run();
-  } catch (e) {}
-
   db.exec(`
     CREATE TABLE IF NOT EXISTS order_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -201,6 +141,7 @@ async function startServer() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT NOT NULL,
       name TEXT NOT NULL,
+      category TEXT DEFAULT 'Uniforme',
       sewing_cost REAL DEFAULT 0,
       active BOOLEAN DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -226,6 +167,76 @@ async function startServer() {
       FOREIGN KEY (employee_id) REFERENCES employees(id)
     )
   `);
+  
+  try { db.prepare('ALTER TABLE products ADD COLUMN price_filetes REAL DEFAULT 0').run(); } catch (e) {}
+  try { db.prepare('ALTER TABLE products ADD COLUMN price_despuntes REAL DEFAULT 0').run(); } catch (e) {}
+  try { db.prepare('ALTER TABLE products ADD COLUMN price_collarin REAL DEFAULT 0').run(); } catch (e) {}
+  try { db.prepare('ALTER TABLE products ADD COLUMN price_dobladillo_remate REAL DEFAULT 0').run(); } catch (e) {}
+  try { db.prepare('ALTER TABLE products ADD COLUMN price_filete_p REAL DEFAULT 0').run(); } catch (e) {}
+  try { db.prepare('ALTER TABLE products ADD COLUMN price_despuntes_p REAL DEFAULT 0').run(); } catch (e) {}
+  try { db.prepare('ALTER TABLE products ADD COLUMN price_caucho REAL DEFAULT 0').run(); } catch (e) {}
+  try { db.prepare('ALTER TABLE products ADD COLUMN price_sentar_caucho REAL DEFAULT 0').run(); } catch (e) {}
+  try { db.prepare('ALTER TABLE products ADD COLUMN price_collarin_p REAL DEFAULT 0').run(); } catch (e) {}
+  try { db.prepare('ALTER TABLE products ADD COLUMN price_remate REAL DEFAULT 0').run(); } catch (e) {}
+ try {
+    db.prepare('ALTER TABLE products DROP COLUMN sale_price').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE products ADD COLUMN code TEXT').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE clients ADD COLUMN doc_type TEXT').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN client_doc_type TEXT').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN client_id INTEGER REFERENCES clients(id)').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN assigned_employee_id INTEGER REFERENCES employees(id)').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN team_id INTEGER REFERENCES teams(id)').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE order_items ADD COLUMN sewing_price REAL DEFAULT 0').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE order_items ADD COLUMN design_path TEXT').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE employees ADD COLUMN photo_path TEXT').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE design_versions ADD COLUMN client_comments TEXT').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN soligem_code TEXT').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN is_reposition BOOLEAN DEFAULT 0').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN reposition_reason TEXT').run();
+  } catch (e) {}
+
+  try {
+    db.prepare('ALTER TABLE orders ADD COLUMN reposition_from_status TEXT').run();
+  } catch (e) {}
 
   db.exec(`
     PRAGMA foreign_keys = OFF;
@@ -313,27 +324,69 @@ async function startServer() {
   // ─── Product Routes ────────────────────────────────────────────────────────
 
   app.get('/api/products', (req, res) => {
-    const products = db.prepare('SELECT * FROM products WHERE active = 1 ORDER BY category, name').all();
+    const products = db.prepare('SELECT * FROM products WHERE active = 1 ORDER BY name').all();
     res.json(products);
   });
 
-  app.post('/api/products', (req, res) => {
-    const { code, name, category, sewing_cost } = req.body;
-    const info = db.prepare(`
-      INSERT INTO products (code, name, category, sewing_cost)
-      VALUES (?, ?, ?, ?)
-    `).run(code, name, category, sewing_cost);
-    res.json({ id: info.lastInsertRowid });
+ app.put('/api/products/:id', (req, res) => {
+    const { 
+      code, name, category, sewing_cost, active,
+      price_filetes, price_despuntes, price_collarin, price_dobladillo_remate,
+      price_filete_p, price_despuntes_p, price_caucho, price_sentar_caucho,
+      price_collarin_p, price_remate
+    } = req.body;
+    const current = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id) as any;
+    if (!current) return res.status(404).json({ error: 'Product not found' });
+
+    db.prepare(`
+      UPDATE products SET
+        code = ?, name = ?, category = ?, sewing_cost = ?, active = ?,
+        price_filetes = ?, price_despuntes = ?, price_collarin = ?, price_dobladillo_remate = ?,
+        price_filete_p = ?, price_despuntes_p = ?, price_caucho = ?, price_sentar_caucho = ?,
+        price_collarin_p = ?, price_remate = ?
+      WHERE id = ?
+    `).run(
+      code          ?? current.code,
+      name          ?? current.name,
+      category      ?? current.category,
+      sewing_cost   ?? current.sewing_cost,
+      active !== undefined ? (active ? 1 : 0) : current.active,
+      price_filetes           ?? current.price_filetes           ?? 0,
+      price_despuntes         ?? current.price_despuntes         ?? 0,
+      price_collarin          ?? current.price_collarin          ?? 0,
+      price_dobladillo_remate ?? current.price_dobladillo_remate ?? 0,
+      price_filete_p          ?? current.price_filete_p          ?? 0,
+      price_despuntes_p       ?? current.price_despuntes_p       ?? 0,
+      price_caucho            ?? current.price_caucho            ?? 0,
+      price_sentar_caucho     ?? current.price_sentar_caucho     ?? 0,
+      price_collarin_p        ?? current.price_collarin_p        ?? 0,
+      price_remate            ?? current.price_remate            ?? 0,
+      req.params.id
+    );
+    res.json({ success: true });
   });
 
-  app.put('/api/products/:id', (req, res) => {
-    const { code, name, category, sewing_cost, active } = req.body;
-    db.prepare(`
-      UPDATE products
-      SET code = ?, name = ?, category = ?, sewing_cost = ?, active = ?
-      WHERE id = ?
-    `).run(code, name, category, sewing_cost, active !== undefined ? (active ? 1 : 0) : 1, req.params.id);
-    res.json({ success: true });
+  app.post('/api/products', (req, res) => {
+    const { 
+      code, name, category, sewing_cost,
+      price_filetes, price_despuntes, price_collarin, price_dobladillo_remate,
+      price_filete_p, price_despuntes_p, price_caucho, price_sentar_caucho,
+      price_collarin_p, price_remate
+    } = req.body;
+    const info = db.prepare(`
+      INSERT INTO products (
+        code, name, category, sewing_cost,
+        price_filetes, price_despuntes, price_collarin, price_dobladillo_remate,
+        price_filete_p, price_despuntes_p, price_caucho, price_sentar_caucho,
+        price_collarin_p, price_remate
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      code, name, category, sewing_cost || 0,
+      price_filetes || 0, price_despuntes || 0, price_collarin || 0, price_dobladillo_remate || 0,
+      price_filete_p || 0, price_despuntes_p || 0, price_caucho || 0, price_sentar_caucho || 0,
+      price_collarin_p || 0, price_remate || 0
+    );
+    res.json({ id: info.lastInsertRowid });
   });
 
   // ─── Production Assignment Routes ─────────────────────────────────────────
@@ -359,20 +412,25 @@ async function startServer() {
   // ─── Reports Routes ────────────────────────────────────────────────────────
 
   app.get('/api/reports/employees', (req, res) => {
+  try {
     const report = db.prepare(`
       SELECT
         e.name as employee_name,
         e.role,
         SUM(pa.garment_count) as total_garments,
-        SUM(pa.total_pay) as total_earned
+        SUM(pa.garment_count * pa.price_per_unit) as total_earned
       FROM employees e
       JOIN production_assignments pa ON e.id = pa.employee_id
-      WHERE pa.assigned_at >= date('now', 'start of month')
+      WHERE pa.created_at >= date('now', 'start of month')
       GROUP BY e.id
       ORDER BY total_earned DESC
     `).all();
     res.json(report);
-  });
+  } catch (error: any) {
+    console.error('Error en reporte empleados:', error);
+    res.json([]);
+  }
+});;
 
   // ─── Order Routes ──────────────────────────────────────────────────────────
 
@@ -686,18 +744,7 @@ async function startServer() {
     res.json({ activeOrders, delayedOrders });
   });
 
-  // ─── Fallbacks ─────────────────────────────────────────────────────────────
-
-  app.all('/api/*', (req, res) => {
-    res.status(404).json({ error: 'API endpoint not found' });
-  });
-
-  app.use('/api', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error('API Error:', err);
-    res.status(500).json({ error: err.message || 'Internal Server Error' });
-  });
-
-  // POST /api/assignments
+   // POST /api/assignments
 app.post('/api/assignments', (req, res) => {
   const { order_id, employee_id, department, garment_count, price_per_unit, notes } = req.body;
   
@@ -750,6 +797,19 @@ app.get('/api/orders/:id/assignments', (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+  // ─── Fallbacks ─────────────────────────────────────────────────────────────
+
+  app.all('/api/*', (req, res) => {
+    res.status(404).json({ error: 'API endpoint not found' });
+  });
+
+  app.use('/api', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('API Error:', err);
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
+  });
+
+ 
 
   // ─── Vite / Static ─────────────────────────────────────────────────────────
 

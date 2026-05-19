@@ -2059,6 +2059,30 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     }
   }, [order?.status]);
 
+  useEffect(() => {
+    if (showAssignmentModal) {
+      api.getProducts().then(prods => {
+        // Toma el primer producto activo como referencia de precios
+        // (o puedes buscar por el tipo de prenda de la orden)
+        if (prods.length > 0) {
+          const p = prods[0] as any;
+          setProductPrices({
+            filetes: p.price_filetes || 0,
+            despuntes: p.price_despuntes || 0,
+            collarin: p.price_collarin || 0,
+            dobladillo_remate: p.price_dobladillo_remate || 0,
+            filete_p: p.price_filete_p || 0,
+            despuntes_p: p.price_despuntes_p || 0,
+            caucho: p.price_caucho || 0,
+            sentar_caucho: p.price_sentar_caucho || 0,
+            collarin_p: p.price_collarin_p || 0,
+            remate: p.price_remate || 0,
+          });
+        }
+      }).catch(console.error);
+    }
+  }, [showAssignmentModal]);
+
   const loadOrder = async () => {
     try {
       setLoading(true);
@@ -2081,6 +2105,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     }
   };
 
+  const [productPrices, setProductPrices] = useState<Record<string, number>>({});
   const handleSaveEdit = async () => {
     try {
       setLoading(true);
@@ -2496,12 +2521,20 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     try {
       // Crear una asignación por cada tarea activa
       for (const [key, task] of activeTasks) {
+        const priceKeyMap: Record<string, string> = {
+          filetes: 'filetes', despuntes: 'despuntes', collarin: 'collarin',
+          dobladillo_remate: 'dobladillo_remate', filete_p: 'filete_p',
+          despuntes_p: 'despuntes_p', caucho: 'caucho', sentar_caucho: 'sentar_caucho',
+          collarin_p: 'collarin_p', remate: 'remate'
+        };
+        const unitPrice = productPrices[priceKeyMap[key]] || 0;
+        
         await api.createAssignment({
           order_id: orderId,
           employee_id: parseInt(assignmentForm.employee_id),
           department: 'Confección',
           garment_count: task.quantity,
-          price_per_unit: task.price,
+          price_per_unit: unitPrice,  // ← del catálogo, no del form
           notes: `[${assignmentForm.garment_type}] ${taskLabels[key]}${assignmentForm.notes ? ' — ' + assignmentForm.notes : ''}`
         });
       }
@@ -3266,139 +3299,59 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">
                       Tareas realizadas — {assignmentForm.garment_type}
                     </label>
-
                     <div className="bg-surface-hover rounded-[24px] border border-border-custom overflow-hidden">
-                      
-                      {/* Header tabla */}
-                      <div className="grid grid-cols-[auto_1fr_120px_120px_100px] gap-4 px-5 py-3 border-b border-border-custom bg-surface">
+                      <div className="grid grid-cols-[auto_1fr_120px_100px] gap-4 px-5 py-3 border-b border-border-custom bg-surface">
                         <div className="w-5" />
-                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
-                          Tarea
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">
-                          Cantidad
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">
-                          $ x Prenda
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-right">
-                          Subtotal
-                        </p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Tarea</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">Cantidad</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-right">Subtotal</p>
                       </div>
-
-                      {/* Filas de tareas */}
                       {(
                         assignmentForm.garment_type === 'Camiseta'
                           ? [
-                              { key: 'filetes', label: 'Filetes' },
-                              { key: 'despuntes', label: 'Despuntes' },
-                              { key: 'collarin', label: 'Collarín' },
-                              { key: 'dobladillo_remate', label: 'Dobladillo y Remate' },
+                              { key: 'filetes',           label: 'Filetes',             priceKey: 'filetes' },
+                              { key: 'despuntes',         label: 'Despuntes',           priceKey: 'despuntes' },
+                              { key: 'collarin',          label: 'Collarín',            priceKey: 'collarin' },
+                              { key: 'dobladillo_remate', label: 'Dobladillo y Remate', priceKey: 'dobladillo_remate' },
                             ]
                           : [
-                              { key: 'filete_p', label: 'Filete' },
-                              { key: 'despuntes_p', label: 'Despuntes' },
-                              { key: 'caucho', label: 'Caucho' },
-                              { key: 'sentar_caucho', label: 'Sentar Caucho' },
-                              { key: 'collarin_p', label: 'Collarín' },
-                              { key: 'remate', label: 'Remate' },
+                              { key: 'filete_p',      label: 'Filete',        priceKey: 'filete_p' },
+                              { key: 'despuntes_p',   label: 'Despuntes',     priceKey: 'despuntes_p' },
+                              { key: 'caucho',        label: 'Caucho',         priceKey: 'caucho' },
+                              { key: 'sentar_caucho', label: 'Sentar Caucho', priceKey: 'sentar_caucho' },
+                              { key: 'collarin_p',    label: 'Collarín',      priceKey: 'collarin_p' },
+                              { key: 'remate',        label: 'Remate',         priceKey: 'remate' },
                             ]
-                      ).map(({ key, label }) => {
+                      ).map(({ key, label, priceKey }) => {
                         const task = assignmentForm.tasks[key];
-
+                        const unitPrice = productPrices[priceKey] || 0;
+                        const subtotal = (task.quantity || 0) * unitPrice;
                         return (
-                          <div
-                            key={key}
-                            className={cn(
-                              "grid grid-cols-[auto_1fr_120px_120px_100px] gap-4 items-center px-5 py-3 border-b border-border-custom last:border-0 transition-all",
-                              task.enabled ? "bg-accent/5" : "opacity-50"
-                            )}
-                          >
-                            {/* Checkbox */}
-                            <input
-                              type="checkbox"
-                              checked={task.enabled}
-                              onChange={e =>
-                                setAssignmentForm(prev => ({
-                                  ...prev,
-                                  tasks: {
-                                    ...prev.tasks,
-                                    [key]: {
-                                      ...prev.tasks[key],
-                                      enabled: e.target.checked
-                                    }
-                                  }
-                                }))
-                              }
+                          <div key={key} className={cn(
+                            "grid grid-cols-[auto_1fr_120px_100px] gap-4 items-center px-5 py-3 border-b border-border-custom last:border-0 transition-all",
+                            task.enabled ? "bg-accent/5" : "opacity-50"
+                          )}>
+                            <input type="checkbox" checked={task.enabled}
+                              onChange={e => setAssignmentForm(prev => ({
+                                ...prev,
+                                tasks: { ...prev.tasks, [key]: { ...prev.tasks[key], enabled: e.target.checked } }
+                              }))}
                               className="w-4 h-4 accent-accent cursor-pointer"
                             />
-
-                            {/* Label */}
-                            <p
-                              className={cn(
-                                "text-[11px] font-black uppercase tracking-wider",
-                                task.enabled
-                                  ? "text-foreground-main"
-                                  : "text-foreground-muted"
-                              )}
-                            >
-                              {label}
-                            </p>
-
-                            {/* Cantidad */}
-                            <input
-                              type="number"
-                              min={0}
-                              value={task.quantity || ''}
-                              disabled={!task.enabled}
-                              onChange={e =>
-                                setAssignmentForm(prev => ({
-                                  ...prev,
-                                  tasks: {
-                                    ...prev.tasks,
-                                    [key]: {
-                                      ...prev.tasks[key],
-                                      quantity: Number(e.target.value)
-                                    }
-                                  }
-                                }))
-                              }
+                            <div>
+                              <p className={cn("text-[11px] font-black uppercase tracking-wider", task.enabled ? "text-foreground-main" : "text-foreground-muted")}>{label}</p>
+                              <p className="text-[9px] text-foreground-muted font-bold">${unitPrice.toLocaleString()} c/u</p>
+                            </div>
+                            <input type="number" min={0} value={task.quantity || ''} disabled={!task.enabled}
+                              onChange={e => setAssignmentForm(prev => ({
+                                ...prev,
+                                tasks: { ...prev.tasks, [key]: { ...prev.tasks[key], quantity: Number(e.target.value), price: unitPrice } }
+                              }))}
                               placeholder="0"
                               className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm disabled:opacity-30 focus:border-accent/50"
                             />
-
-                            {/* Precio */}
-                            <input
-                              type="number"
-                              min={0}
-                              value={task.price || ''}
-                              disabled={!task.enabled}
-                              onChange={e =>
-                                setAssignmentForm(prev => ({
-                                  ...prev,
-                                  tasks: {
-                                    ...prev.tasks,
-                                    [key]: {
-                                      ...prev.tasks[key],
-                                      price: Number(e.target.value)
-                                    }
-                                  }
-                                }))
-                              }
-                              placeholder="$0"
-                              className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm disabled:opacity-30 focus:border-accent/50"
-                            />
-
-                            {/* Subtotal */}
-                            <p
-                              className={cn(
-                                "text-right font-black text-sm",
-                                task.enabled && task.quantity > 0
-                                  ? "text-accent"
-                                  : "text-foreground-muted/30"
-                              )}
-                            >
-                              ${(task.quantity * task.price).toLocaleString()}
+                            <p className={cn("text-right font-black text-sm", task.enabled && task.quantity > 0 ? "text-accent" : "text-foreground-muted/30")}>
+                              ${subtotal.toLocaleString()}
                             </p>
                           </div>
                         );
@@ -3406,19 +3359,41 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                     </div>
                   </div>
 
+{/* TOTAL */}
+<div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
+  <div>
+    <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total a Pagar</p>
+    <p className="text-[9px] text-foreground-muted font-bold mt-0.5">
+      Tarifas tomadas del catálogo de productos
+    </p>
+  </div>
+  <p className="font-black text-2xl text-foreground-main tracking-tighter">
+    ${Object.entries(assignmentForm.tasks)
+      .filter(([_, t]) => t.enabled && t.quantity > 0)
+      .reduce((sum, [key, t]) => {
+        const priceKeyMap: Record<string, string> = {
+          filetes: 'filetes', despuntes: 'despuntes', collarin: 'collarin',
+          dobladillo_remate: 'dobladillo_remate', filete_p: 'filete_p',
+          despuntes_p: 'despuntes_p', caucho: 'caucho', sentar_caucho: 'sentar_caucho',
+          collarin_p: 'collarin_p', remate: 'remate'
+        };
+        return sum + t.quantity * (productPrices[priceKeyMap[key]] || 0);
+      }, 0).toLocaleString()}
+  </p>
+</div>
+
                   {/* TOTAL */}
                   <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total a Pagar</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total Prendas</p>
                       <p className="text-[9px] text-foreground-muted font-bold mt-0.5">
-                        {Object.values(assignmentForm.tasks).filter(t => t.enabled && t.quantity > 0).reduce((sum, t) => sum + t.quantity, 0)} tareas registradas
+                        Las tarifas se calculan desde el catálogo de productos
                       </p>
                     </div>
                     <p className="font-black text-2xl text-foreground-main tracking-tighter">
-                      ${Object.values(assignmentForm.tasks)
-                        .filter(t => t.enabled)
-                        .reduce((sum, t) => sum + t.quantity * t.price, 0)
-                        .toLocaleString()}
+                      {Object.values(assignmentForm.tasks)
+                        .filter(t => t.enabled && t.quantity > 0)
+                        .reduce((sum, t) => sum + t.quantity, 0)} uds
                     </p>
                   </div>
 
@@ -4272,16 +4247,16 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
                     <h4 className="font-black text-sm text-foreground-main">
                       {order.client_name}
                     </h4>
-                    {order.is_reposition && order.reposition_reason && (
+                    {!!order.is_reposition && order.reposition_reason && (
                       <p className="text-[9px] text-orange-400 font-bold mt-0.5 italic truncate max-w-[200px]">
                         {order.reposition_reason}
                       </p>
                     )}
                   </div>
 
-                  {order.team_name && (
+                  {typeof order.team_name === 'string' && order.team_name.trim() !== '' && (
                     <p className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-1">
-                      <Users size={12} /> {order.team_name}
+                      <Users size={12} /> {order.team_name} 
                     </p>
                   )}
                 </div>
@@ -4291,7 +4266,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
                   <div className="text-center">
                     <p className="text-[9px] font-black uppercase text-foreground-muted">Uniformes</p>
                     <p className="font-black text-sm">
-                      {order.items?.length || 0}
+                      {order.items?.length || 0} 
                     </p>
                   </div>
 
@@ -5934,7 +5909,19 @@ function ProductManagement({}: { key?: string }) {
     category: 'Camiseta',
     sale_price: 0,
     sewing_cost: 0,
-    active: true
+    active: true,
+    // Precios confección camiseta
+    price_filetes: 0,
+    price_despuntes: 0,
+    price_collarin: 0,
+    price_dobladillo_remate: 0,
+    // Precios confección pantaloneta
+    price_filete_p: 0,
+    price_despuntes_p: 0,
+    price_caucho: 0,
+    price_sentar_caucho: 0,
+    price_collarin_p: 0,
+    price_remate: 0,
   });
 
   useEffect(() => {
@@ -5975,12 +5962,22 @@ function ProductManagement({}: { key?: string }) {
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setNewProduct({
-      code: product.code || '', 
+      code: (product as any).code || '',
       name: product.name,
       category: product.category,
       sale_price: product.sale_price,
       sewing_cost: product.sewing_cost,
-      active: product.active
+      active: product.active,
+      price_filetes:           (product as any).price_filetes           || 0,
+      price_despuntes:         (product as any).price_despuntes         || 0,
+      price_collarin:          (product as any).price_collarin          || 0,
+      price_dobladillo_remate: (product as any).price_dobladillo_remate || 0,
+      price_filete_p:          (product as any).price_filete_p          || 0,
+      price_despuntes_p:       (product as any).price_despuntes_p       || 0,
+      price_caucho:            (product as any).price_caucho            || 0,
+      price_sentar_caucho:     (product as any).price_sentar_caucho     || 0,
+      price_collarin_p:        (product as any).price_collarin_p        || 0,
+      price_remate:            (product as any).price_remate            || 0,
     });
     setShowAdd(true);
   };
@@ -6100,7 +6097,6 @@ function ProductManagement({}: { key?: string }) {
         </div>
       )}
 
-
       <Modal 
         isOpen={showAdd} 
         onClose={() => setShowAdd(false)} 
@@ -6108,40 +6104,67 @@ function ProductManagement({}: { key?: string }) {
         subtitle="Configuración de precios y costos"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Input 
-            label="Código del Producto"
-            value={newProduct.code || ''}
-            onChange={e => setNewProduct({...newProduct, code: e.target.value})}  // ← code, no name
-            placeholder="Ej. PROD-001"
-            className="bg-background"
-          />
-          <Input 
-            label="Nombre del Producto"
-            value={newProduct.name}
-            onChange={e => setNewProduct({...newProduct, name: e.target.value})}
-            placeholder="Ej. Camiseta Deportiva Pro"
-            className="bg-background"
-            required
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <Input 
-              label="Costo de Costura"
-              type="number"
-              value={newProduct.sewing_cost.toString()}
-              onChange={e => setNewProduct({...newProduct, sewing_cost: Number(e.target.value)})}
-              required
-            />
+          <Input label="Código del Producto" value={newProduct.code || ''} onChange={e => setNewProduct({...newProduct, code: e.target.value})} placeholder="Ej. PROD-001" className="bg-background" />
+          <Input label="Nombre del Producto" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} placeholder="Ej. Uniforme Completo" className="bg-background" required />
+          <Input label="Costo de Costura" type="number" value={newProduct.sewing_cost.toString()} onChange={e => setNewProduct({...newProduct, sewing_cost: Number(e.target.value)})} required />
+
+          {/* CAMISETA */}
+          <div className="space-y-3 pt-4 border-t border-border-custom">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted flex items-center gap-2">
+              <Shirt size={14} className="text-accent" /> Precios Confección — Camiseta
+            </p>
+            <div className="bg-surface-hover rounded-[20px] border border-border-custom overflow-hidden">
+              <div className="grid grid-cols-[1fr_120px] gap-4 px-5 py-2.5 border-b border-border-custom bg-surface">
+                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Tarea</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">$ x Prenda</p>
+              </div>
+              {[
+                { key: 'price_filetes',           label: 'Filetes' },
+                { key: 'price_despuntes',         label: 'Despuntes' },
+                { key: 'price_collarin',          label: 'Collarín' },
+                { key: 'price_dobladillo_remate', label: 'Dobladillo y Remate' },
+              ].map(({ key, label }) => (
+                <div key={key} className="grid grid-cols-[1fr_120px] gap-4 items-center px-5 py-2.5 border-b border-border-custom last:border-0">
+                  <p className="text-[11px] font-black uppercase tracking-wider text-foreground-main">{label}</p>
+                  <input type="number" min={0} value={(newProduct as any)[key] || ''} onChange={e => setNewProduct({ ...newProduct, [key]: Number(e.target.value) })} placeholder="$0"
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm focus:border-accent/50" />
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-3 pt-4">
-            <input 
-              type="checkbox" 
-              checked={newProduct.active} 
-              onChange={e => setNewProduct({...newProduct, active: e.target.checked})}
-              className="w-5 h-5 rounded-lg accent-accent"
-            />
+
+          {/* PANTALONETA */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted flex items-center gap-2">
+              <Shirt size={14} className="text-accent" /> Precios Confección — Pantaloneta
+            </p>
+            <div className="bg-surface-hover rounded-[20px] border border-border-custom overflow-hidden">
+              <div className="grid grid-cols-[1fr_120px] gap-4 px-5 py-2.5 border-b border-border-custom bg-surface">
+                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Tarea</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">$ x Prenda</p>
+              </div>
+              {[
+                { key: 'price_filete_p',      label: 'Filete' },
+                { key: 'price_despuntes_p',   label: 'Despuntes' },
+                { key: 'price_caucho',        label: 'Caucho' },
+                { key: 'price_sentar_caucho', label: 'Sentar Caucho' },
+                { key: 'price_collarin_p',    label: 'Collarín' },
+                { key: 'price_remate',        label: 'Remate' },
+              ].map(({ key, label }) => (
+                <div key={key} className="grid grid-cols-[1fr_120px] gap-4 items-center px-5 py-2.5 border-b border-border-custom last:border-0">
+                  <p className="text-[11px] font-black uppercase tracking-wider text-foreground-main">{label}</p>
+                  <input type="number" min={0} value={(newProduct as any)[key] || ''} onChange={e => setNewProduct({ ...newProduct, [key]: Number(e.target.value) })} placeholder="$0"
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm focus:border-accent/50" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <input type="checkbox" checked={newProduct.active} onChange={e => setNewProduct({...newProduct, active: e.target.checked})} className="w-5 h-5 rounded-lg accent-accent" />
             <label className="text-xs font-bold text-foreground-main uppercase tracking-widest">Producto Activo</label>
           </div>
-          <button type="submit" className="w-full bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-accent/20 hover:scale-[1.02] transition-all mt-4">
+          <button type="submit" className="w-full bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-accent/20 hover:scale-[1.02] transition-all">
             {editingProduct ? 'Actualizar Producto' : 'Guardar Producto'}
           </button>
         </form>
