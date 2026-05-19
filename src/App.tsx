@@ -1876,6 +1876,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const [isSubmittingReposition, setIsSubmittingReposition] = useState(false);
   const [assignments, setAssignments] = useState<ProductionAssignment[]>([]);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [payments, setPayments] = useState([]);
   // Reemplaza el estado assignmentForm por:
   const [assignmentForm, setAssignmentForm] = useState({
     employee_id: '',
@@ -6733,11 +6734,8 @@ function EmployeeManagement({}: { key?: string }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="font-black text-foreground-main uppercase tracking-widest text-xs">Lista de Empleados</h4>
-          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6 w-full justify-center">
             {filteredEmployees.length === 0 ? (
               <div className="col-span-full">
                 <Card className="py-20">
@@ -6818,51 +6816,6 @@ function EmployeeManagement({}: { key?: string }) {
             ))}
           </div>
         </div>
-
-
-        <Card className="overflow-hidden p-0 border-accent/20 !bg-accent text-white">
-
-          <div className="p-6 border-b border-white/20">
-            <h4 className="font-black flex items-center gap-2 uppercase tracking-widest text-xs">
-              <DollarSign size={18} /> Rendimiento Mensual
-            </h4>
-          </div>
-
-          <div className="p-6 space-y-6">
-            {report.map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-white/10 border border-white/20 hover:border-white/40 transition-all">
-                <div>
-                  <p className="font-bold text-sm tracking-tight">
-                    {item.employee_name}
-                  </p>
-                  <p className="text-[10px] text-white/70 uppercase font-black tracking-widest mt-0.5">
-                    {item.role}
-                  </p>
-                </div>
-
-                <div className="text-right">
-                  <p className="font-black tracking-tighter text-lg">
-                    ${(item.total_earned || 0).toLocaleString()}
-                  </p>
-                  <p className="text-[10px] text-white/70 font-black uppercase tracking-widest">
-                    {item.total_garments} uniformes
-                  </p>
-                </div>
-              </div>
-            ))}
-
-            {report.length === 0 && (
-              <div className="text-center py-12 text-white/40">
-                <Users size={48} className="mx-auto mb-4" />
-                <p className="text-sm font-black uppercase tracking-widest">
-                  Sin registros este mes
-                </p>
-              </div>
-            )}
-
-          </div>
-
-        </Card>
       </div>
 
       <Modal 
