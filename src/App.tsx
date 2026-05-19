@@ -390,13 +390,6 @@ export default function App() {
 
             <div className="mt-auto p-4 border-t border-border-custom space-y-2">
               <button 
-                onClick={toggleTheme}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-foreground-muted hover:text-foreground-main hover:bg-surface-hover transition-all duration-200"
-              >
-                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                <span className="font-medium">{theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}</span>
-              </button>
-              <button 
                 onClick={handleLogout}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-foreground-muted hover:text-accent hover:bg-accent/10 transition-all duration-200"
               >
