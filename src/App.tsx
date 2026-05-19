@@ -440,7 +440,24 @@ export default function App() {
           <AnimatePresence mode="wait">
             {view === 'dashboard' && <Dashboard key="dashboard" stats={stats} orders={orders} employeeReport={employeeReport} onOrderClick={navigateToOrder} />}
             {view === 'orders' && <OrdersList key="orders" orders={orders} user={user!} onOrderClick={navigateToOrder} onCreateClick={() => setShowCreateOrder(true)} canCreate={canEditOrders} includeInactive={includeInactive} onToggleInactive={() => setIncludeInactive(!includeInactive)} onUpdate={fetchData} onShowRoadmap={(orderNum) => setShowRoadmapModal(orderNum)} />}
-            {showCreateOrder && canEditOrders && <CreateOrder key="create" onCancel={() => setShowCreateOrder(false)} onSuccess={() => { fetchData(); setShowCreateOrder(false); }} user={user!} />}
+            {showCreateOrder && canEditOrders && (
+              <Modal
+                isOpen={showCreateOrder}
+                onClose={() => setShowCreateOrder(false)}
+                title="Nueva Orden"
+                maxWidth="max-w-5xl"
+              >
+                <CreateOrder
+                  key="create"
+                  onCancel={() => setShowCreateOrder(false)}
+                  onSuccess={() => {
+                    fetchData();
+                    setShowCreateOrder(false);
+                  }}
+                  user={user!}
+                />
+              </Modal>
+            )}
             {showRoadmapModal && (
               <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[150] flex items-center justify-center p-4 overflow-y-auto">
                 <div className="w-full max-w-5xl bg-background rounded-[40px] p-8 relative border border-border-custom shadow-2xl">
@@ -1690,6 +1707,8 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
       setCreatedOrder(orderData);
       toast.success('Orden creada correctamente');
       setShowReceipt(true);
+
+      onSuccess();
     } catch (error) {
       console.error(error);
       toast.error('Error al crear la orden');
