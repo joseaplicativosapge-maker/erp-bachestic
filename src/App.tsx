@@ -473,21 +473,43 @@ export default function App() {
 function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any, orders: Order[], employeeReport: any[], onOrderClick: (id: number) => void, key?: string }) {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-10 mt-8">
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {[
           { label: 'Órdenes Activas', value: stats.activeOrders, icon: ShoppingCart, color: 'text-accent', trend: '+12%' },
           { label: 'Órdenes Retrasadas', value: stats.delayedOrders, icon: AlertCircle, color: 'text-accent', trend: '-2%' },
+
+          // 🔥 NUEVO CARD
+          { 
+            label: 'Órdenes Entregadas', 
+            value: orders.filter(o => o.status === 'Entregado').length, 
+            icon: CheckCircle2, 
+            color: 'text-green-500', 
+            trend: '+0%' 
+          },
         ].map((stat, i) => (
           <Card key={i} className="flex items-center justify-between group">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-foreground-muted mb-3">{stat.label}</p>
-              <h3 className="text-3xl font-black tracking-tighter text-foreground-main">{stat.value}</h3>
-              <p className={cn("text-[10px] font-bold mt-3 flex items-center gap-1.5", stat.trend.startsWith('+') ? "text-green-500" : "text-red-500")}>
+              <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-foreground-muted mb-3">
+                {stat.label}
+              </p>
+              <h3 className="text-3xl font-black tracking-tighter text-foreground-main">
+                {stat.value}
+              </h3>
+              <p className={cn(
+                "text-[10px] font-bold mt-3 flex items-center gap-1.5",
+                stat.trend.startsWith('+') ? "text-green-500" : "text-red-500"
+              )}>
                 <span className="px-1.5 py-0.5 rounded-md bg-current/10">{stat.trend}</span>
-                <span className="text-foreground-muted font-medium uppercase tracking-wider">vs mes anterior</span>
+                <span className="text-foreground-muted font-medium uppercase tracking-wider">
+                  vs mes anterior
+                </span>
               </p>
             </div>
-            <div className={cn("w-14 h-14 rounded-xl flex items-center justify-center bg-surface-hover group-hover:bg-accent/10 transition-colors", stat.color)}>
+            <div className={cn(
+              "w-14 h-14 rounded-xl flex items-center justify-center bg-surface-hover group-hover:bg-accent/10 transition-colors",
+              stat.color
+            )}>
               <stat.icon size={28} />
             </div>
           </Card>
@@ -546,6 +568,7 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
               <span className="text-[10px] uppercase tracking-widest text-foreground-muted font-bold">Órdenes</span>
             </div>
           </div>
+
           <div className="max-h-80 overflow-y-auto pr-2">
             {[
               { name: 'Abono confirmado',      color: '#3B82F6' },
@@ -566,10 +589,13 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
             ].map((status, i) => {
               const count = orders.filter(o => o.status === status.name).length;
               const percentage = orders.length > 0 ? (count / orders.length) * 100 : 0;
+
               return (
                 <div key={i} className="space-y-2 group">
                   <div className="flex justify-between items-end">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted group-hover:text-foreground-main transition-colors">{status.name}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted group-hover:text-foreground-main transition-colors">
+                      {status.name}
+                    </p>
                     <p className="text-sm font-black text-foreground-main tracking-tighter">{count}</p>
                   </div>
                   <div className="h-2 w-full bg-surface-hover rounded-full overflow-hidden">
@@ -583,9 +609,12 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
                 </div>
               );
             })}
+
             {orders.length === 0 && (
               <div className="text-center py-12 opacity-20">
-                <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">Sin datos disponibles</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+                  Sin datos disponibles
+                </p>
               </div>
             )}
           </div>
@@ -597,6 +626,7 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
           <div className="p-8 border-b border-border-custom flex items-center justify-between">
             <h3 className="font-bold text-lg tracking-tight text-foreground-main">Órdenes Recientes</h3>
           </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
@@ -608,15 +638,26 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
                   <th className="px-8 py-5 text-right">Acción</th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-border-custom">
                 {orders.filter(o => o.active).slice(0, 5).map(order => (
-                  <tr key={order.id} className="hover:bg-surface-hover transition-colors cursor-pointer group" onClick={() => onOrderClick(order.id)}>
-                    <td className="px-8 py-6 font-bold text-foreground-main tracking-tight">{order.order_number}</td>
-                    <td className="px-8 py-6 text-foreground-muted font-medium">{order.client_name}</td>
+                  <tr
+                    key={order.id}
+                    className="hover:bg-surface-hover transition-colors cursor-pointer group"
+                    onClick={() => onOrderClick(order.id)}
+                  >
+                    <td className="px-8 py-6 font-bold text-foreground-main tracking-tight">
+                      {order.order_number}
+                    </td>
+                    <td className="px-8 py-6 text-foreground-muted font-medium">
+                      {order.client_name}
+                    </td>
                     <td className="px-8 py-6">
                       <span className={cn(
                         "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest",
-                        order.status === 'Entregado' ? "bg-green-500/10 text-green-500" : "bg-accent/10 text-accent"
+                        order.status === 'Entregado'
+                          ? "bg-green-500/10 text-green-500"
+                          : "bg-accent/10 text-accent"
                       )}>
                         {order.status}
                       </span>
@@ -632,6 +673,7 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
                   </tr>
                 ))}
               </tbody>
+
             </table>
           </div>
         </Card>
