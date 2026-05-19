@@ -1524,149 +1524,49 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 gap-8">
+              <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-black text-xl tracking-tight text-foreground-main uppercase">Listado de Uniformes</h4>
+                  <h4 className="font-black text-xl tracking-tight text-foreground-main uppercase">
+                    Listado de Uniformes
+                  </h4>
                 </div>
+
                 <div className="overflow-x-auto border border-border-custom rounded-[32px] bg-surface-hover">
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="bg-surface-hover text-[9px] uppercase font-black tracking-[0.2em] text-foreground-muted">
                         <th className="py-5 px-6">Prenda</th>
                         <th className="py-5 px-6 text-center">Cant.</th>
-                        <th className="py-5 px-6 text-right">P. Unitario</th>
-                        <th className="py-5 px-6 text-right">Subtotal</th>
                       </tr>
                     </thead>
+
                     <tbody className="divide-y divide-border-custom">
                       {groupedList.map((group, idx) => (
-                        <tr key={idx} className="hover:bg-surface-hover transition-colors group">
-                          <td className="py-4 px-6">
-                            <span className="text-foreground-muted font-bold text-[10px] uppercase">{group.garment_type}</span>
-                          </td>
-                          <td className="py-4 px-6 text-center">
-                            <span className="font-black text-foreground-main text-[10px]">{group.quantity}</span>
-                          </td>
-                          <td className="py-4 px-6 text-right">
-                            <input 
-                              type="number" 
-                              value={group.sale_price}
-                              onChange={e => {
-                                const newPrice = Number(e.target.value);
-                                setItems(prev => prev.map(item =>
-                                  item.garment_type === group.garment_type
-                                    ? { ...item, sale_price: newPrice }
-                                    : item
-                                ));
-                              }}
-                              className="w-24 bg-transparent outline-none text-foreground-muted font-black text-right text-[10px]"
-                              placeholder="0"
-                            />
-                          </td>
-                          <td className="py-4 px-6 text-right">
-                            <span className="font-black text-accent text-[10px]">
-                              ${(group.quantity * group.sale_price).toLocaleString()}
+                        <tr
+                          key={idx}
+                          className="hover:bg-surface-hover transition-colors"
+                        >
+                          <td className="py-4 px-6 whitespace-nowrap">
+                            <span className="text-foreground-muted font-bold text-[10px] uppercase">
+                              {group.garment_type}
                             </span>
                           </td>
+
+                          <td className="py-4 px-6 text-center whitespace-nowrap">
+                            <span className="font-black text-foreground-main text-[10px]">
+                              {group.quantity}
+                            </span>
+                          </td>
+
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               </div>
-
-              <div className="space-y-8">
-                <div className="bg-surface-hover p-8 rounded-[32px] border border-border-custom space-y-6">
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">Resumen de Pago</h4>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-bold text-foreground-muted">Valor Total:</span>
-                      <span className="text-xl font-black text-foreground-main tracking-tighter">${formData.total_amount.toLocaleString()}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center p-4 bg-accent/10 rounded-2xl border border-accent/20">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-black text-accent uppercase tracking-widest">Abono</span>
-                        <div className="flex items-center gap-1 bg-background border border-accent/20 rounded-lg px-2 py-1">
-                          <input
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={advancePercent}
-                            onChange={e => setAdvancePercent(Math.min(100, Math.max(0, Number(e.target.value))))}
-                            className="w-10 bg-transparent outline-none text-accent font-black text-sm text-right"
-                          />
-                          <span className="text-accent font-black text-sm">%</span>
-                        </div>
-                        <span className="text-accent font-black text-sm">:</span>
-                      </div>
-                      <span className="text-2xl font-black text-accent tracking-tighter">
-                        ${Math.round(formData.total_amount * (advancePercent / 100)).toLocaleString()}
-                      </span>
-                    </div>
-                  
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Detalles del Pago</h4>
-                  <div className="grid grid-cols-1 gap-6">
-                    <Select
-                      label="Método de Pago"
-                      value={formData.payment_method}
-                      onChange={e => setFormData({...formData, payment_method: e.target.value})}
-                      options={[
-                        { value: 'Efectivo', label: 'Efectivo' },
-                        { value: 'Transferencia', label: 'Transferencia Bancaria' },
-                        { value: 'Nequi', label: 'Nequi' },
-                        { value: 'Daviplata', label: 'Daviplata' },
-                        { value: 'Bancolombia', label: 'Bancolombia' }
-                      ]}
-                    />
-
-                    {formData.payment_method === 'Efectivo' ? (
-                      <div className="space-y-4 p-6 bg-background rounded-2xl border border-border-custom">
-                        <Input 
-                          label="Efectivo Recibido"
-                          type="number"
-                          value={formData.cash_received.toString()}
-                          onChange={e => setFormData({...formData, cash_received: Number(e.target.value)})}
-                          placeholder="0"
-                        />
-                        <div className="flex justify-between items-center pt-2 border-t border-border-custom">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">Cambio (Vuelto)</p>
-                          <p className="font-black text-xl text-green-500 tracking-tighter">
-                            ${Math.max(0, formData.cash_received - (formData.total_amount * 0.5)).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted ml-1">Comprobante de Pago</p>
-                        <div className="relative group">
-                          <input 
-                            type="file" 
-                            onChange={e => setFormData({...formData, payment_document: e.target.files?.[0] || null})}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            accept="image/*,application/pdf"
-                          />
-                          <div className={cn(
-                            "w-full py-4 px-6 rounded-2xl border-2 border-dashed transition-all flex items-center justify-center gap-3",
-                            formData.payment_document ? "border-accent bg-accent/5 text-accent" : "border-border-custom bg-surface hover:border-accent/50 text-foreground-muted"
-                          )}>
-                            <Upload size={18} />
-                            <span className="text-[11px] font-bold uppercase tracking-widest">
-                              {formData.payment_document ? formData.payment_document.name : 'Adjuntar Documento'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
             </div>
+
           </div>
         )}
 

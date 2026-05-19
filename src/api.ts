@@ -90,10 +90,10 @@ export const api = {
     return handleResponse(res);
   },
   getOrderAssignments: async (orderId: number) => {
-  const res = await fetch(`${API_BASE}/orders/${orderId}/assignments`);
-  if (!res.ok) return [];
-  return res.json();
-},
+    const res = await fetch(`${API_BASE}/orders/${orderId}/assignments`);
+    if (!res.ok) return [];
+    return res.json();
+  },
   updateOrder: async (id: number, order: Partial<Order> & { user_name?: string }): Promise<void> => {
     const res = await fetch(`${API_BASE}/orders/${id}`, {
       method: 'PUT',
