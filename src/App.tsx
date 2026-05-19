@@ -1585,7 +1585,7 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
             disabled={step === 1 && !selectedClient && !isCreatingClient}
             className="bg-accent text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-accent/20 disabled:opacity-50 disabled:hover:scale-100 active:scale-95"
           >
-            {step === 2 ? 'Finalizar y Confirmar Abono' : 'Siguiente'}
+            {step === 2 ? 'Finalizar' : 'Siguiente'}
           </button>
         </div>
       </div>
@@ -1865,7 +1865,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const [isSubmittingReject, setIsSubmittingReject] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [lastPayment, setLastPayment] = useState<Payment | null>(null);
-  const [payments, setPayments] = useState<Payment[]>([]);
   const [showStatusConfirm, setShowStatusConfirm] = useState(false);
   const [showQualityRejectModal, setShowQualityRejectModal] = useState(false);
   const [qualityRejectComment, setQualityRejectComment] = useState('');
@@ -1960,12 +1959,11 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       const [orderData, historyData, assignmentsData] = await Promise.all([
         api.getOrder(orderId),
         api.getOrderHistory(orderId),
-        api.getOrderAssignments(orderId)  // ← nuevo
+        api.getOrderAssignments(orderId) 
       ]);
       setOrder(orderData);
       setHistory(historyData);
-      setAssignments(assignmentsData);   // ← nuevo
-      setPayments([orderData]);
+      setAssignments(assignmentsData);
       setEditData(orderData);
       setEditItems(orderData.items || []);
     } catch (err: any) {
