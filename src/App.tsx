@@ -3942,6 +3942,10 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
   const [dateTo, setDateTo] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // ✅ PAGINACIÓN
+  const ITEMS_PER_PAGE = 100;
+  const [currentPage, setCurrentPage] = useState(1);
+
   const availableTeams = ['Todos', ...Array.from(new Set(
     orders.filter(o => o.team_name).map(o => o.team_name as string)
   ))];
@@ -3951,6 +3955,19 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
       api.getEmployees().then(setEmployees).catch(console.error);
     }
   }, [role]);
+
+  // ✅ RESETEAR PAGINA CUANDO CAMBIEN FILTROS
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    showDelivered,
+    statusFilter,
+    teamFilter,
+    dateField,
+    dateFrom,
+    dateTo,
+    searchTerm
+  ]);
 
   const departmentMap: Record<string, OrderStatus[]> = {
     'Diseño': ['En diseño', 'Versión enviada', 'Corrección solicitada'],
@@ -4025,7 +4042,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
         ];
         const fromIndex = statusOrder.indexOf(order.reposition_from_status as OrderStatus);
         const newIndex = statusOrder.indexOf(nextStatus);
-        
+
         if (fromIndex !== -1 && newIndex !== -1 && newIndex >= fromIndex) {
           await api.updateOrder(order.id, {
             is_reposition: false,
@@ -4035,7 +4052,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
           });
         }
       }
-      
+
       onUpdate();
     } catch (error) {
       console.error('Error advancing order:', error);
@@ -4048,8 +4065,10 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
   const handleConfirmAssignment = async () => {
     if (!showAssign) return;
     const nextStatus = nextStatusMap[showAssign.status];
+
     try {
       setUpdatingId(showAssign.id);
+
       await api.createAssignment({
         order_id: showAssign.id,
         employee_id: parseInt(assignment.employee_id),
@@ -4057,9 +4076,12 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
         garment_count: assignment.garment_count,
         price_per_unit: assignment.price_per_unit
       });
+
       await api.updateStatus(showAssign.id, nextStatus, user.name);
+
       setShowAssign(null);
       onUpdate();
+
     } catch (error) {
       console.error('Error in assignment:', error);
       toast.error('Error al asignar y avanzar la orden');
@@ -4070,8 +4092,10 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
 
   const handleRevert = async (e: React.MouseEvent, order: Order) => {
     e.stopPropagation();
+
     const prevStatus = previousStatusMap[order.status];
     if (prevStatus === order.status) return;
+
     try {
       setUpdatingId(order.id);
       await api.updateStatus(order.id, prevStatus);
@@ -4084,28 +4108,37 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     }
   };
 
-  // Reemplaza el filtro filteredOrders:
   const filteredOrders = orders.filter(o => {
-  if (showDelivered) {
-    if (o.status !== 'Entregado') return false;
-  } else {
-    if (o.status === 'Entregado') return false;
-    if (role !== 'Admin' && !departmentMap[role]?.includes(o.status)) return false;
-    if (role === 'Admin' && statusFilter !== 'Todos' && o.status !== statusFilter) return false;
-  }
+    if (showDelivered) {
+      if (o.status !== 'Entregado') return false;
+    } else {
+      if (o.status === 'Entregado') return false;
 
-  const matchesTeam = teamFilter === 'Todos' || o.team_name === teamFilter;
+      if (role !== 'Admin' && !departmentMap[role]?.includes(o.status)) {
+        return false;
+      }
+
+      if (role === 'Admin' && statusFilter !== 'Todos' && o.status !== statusFilter) {
+        return false;
+      }
+    }
+
+    const matchesTeam = teamFilter === 'Todos' || o.team_name === teamFilter;
     if (!matchesTeam) return false;
 
-    const matchesSearch = !searchTerm.trim() ||
+    const matchesSearch =
+      !searchTerm.trim() ||
       o.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       o.order_number.toLowerCase().includes(searchTerm.toLowerCase());
+
     if (!matchesSearch) return false;
 
     if (dateFrom || dateTo) {
       const raw = o[dateField];
       if (!raw) return false;
+
       const orderDate = new Date(raw).toISOString().split('T')[0];
+
       if (dateFrom && orderDate < dateFrom) return false;
       if (dateTo && orderDate > dateTo) return false;
     }
@@ -4114,23 +4147,45 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
   }).sort((a, b) => {
     if (a.is_reposition && !b.is_reposition) return -1;
     if (!a.is_reposition && b.is_reposition) return 1;
-    // Entregadas siempre al final
+
     if (a.status === 'Entregado' && b.status !== 'Entregado') return 1;
     if (a.status !== 'Entregado' && b.status === 'Entregado') return -1;
-    // El resto por fecha de creación
+
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
 
+  // ✅ PAGINACIÓN
+  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   const allStatuses: OrderStatus[] = [
-    'Abono pendiente', 'Abono confirmado', 'En diseño', 'Versión enviada',
-    'Corrección solicitada', 'Diseño aprobado', 'Arte final cargado',
-    'En impresión', 'En sublimación', 'En corte', 'En confección',
-    'En empaque', 'En despacho'
+    'Abono pendiente',
+    'Abono confirmado',
+    'En diseño',
+    'Versión enviada',
+    'Corrección solicitada',
+    'Diseño aprobado',
+    'Arte final cargado',
+    'En impresión',
+    'En sublimación',
+    'En corte',
+    'En confección',
+    'En empaque',
+    'En despacho'
   ];
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-10"
+    >
       <div className="flex flex-col gap-6">
+
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <h3 className="text-4xl font-black text-foreground-main tracking-tighter">
@@ -4144,16 +4199,21 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               onClick={() => setShowDelivered(false)}
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                !showDelivered ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-foreground-muted hover:text-foreground-main"
+                !showDelivered
+                  ? "bg-accent text-white shadow-lg shadow-accent/20"
+                  : "text-foreground-muted hover:text-foreground-main"
               )}
             >
               En Producción
             </button>
+
             <button
               onClick={() => setShowDelivered(true)}
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                showDelivered ? "bg-green-600 text-white shadow-lg shadow-green-600/20" : "text-foreground-muted hover:text-foreground-main"
+                showDelivered
+                  ? "bg-green-600 text-white shadow-lg shadow-green-600/20"
+                  : "text-foreground-muted hover:text-foreground-main"
               )}
             >
               <CheckCircle2 size={14} /> Entregadas
@@ -4163,21 +4223,30 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
           <div className="flex items-center gap-6 bg-surface px-6 py-3 rounded-2xl border border-border-custom">
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">A tiempo</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+                A tiempo
+              </span>
             </div>
+
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]"></div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Próximo</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+                Próximo
+              </span>
             </div>
+
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-accent shadow-[0_0_10px_var(--accent-glow)]"></div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Vencido</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+                Vencido
+              </span>
             </div>
           </div>
         </div>
 
         {/* FILTROS */}
         <div className="flex flex-wrap items-center gap-4">
+
           {role === 'Admin' && !showDelivered && (
             <select
               value={statusFilter}
@@ -4185,15 +4254,22 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main appearance-none cursor-pointer"
             >
               <option value="Todos">Todos los estados</option>
+
               {allStatuses.map(s => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>
+                  {s}
+                </option>
               ))}
             </select>
           )}
 
-          {/* Búsqueda por cliente */}
+          {/* BÚSQUEDA */}
           <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors" size={16} />
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors"
+              size={16}
+            />
+
             <input
               type="text"
               placeholder="Buscar cliente..."
@@ -4201,8 +4277,12 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               onChange={e => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2.5 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main text-[10px] font-black uppercase tracking-widest placeholder:text-foreground-muted/30 transition-all w-56"
             />
+
             {searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors">
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
+              >
                 <X size={14} />
               </button>
             )}
@@ -4228,7 +4308,9 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               className="bg-transparent text-[10px] font-black text-foreground-main outline-none [color-scheme:dark]"
             />
 
-            <span className="text-[10px] font-black text-foreground-muted">—</span>
+            <span className="text-[10px] font-black text-foreground-muted">
+              —
+            </span>
 
             <input
               type="date"
@@ -4238,7 +4320,10 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
             />
 
             {(dateFrom || dateTo) && (
-              <button onClick={() => { setDateFrom(''); setDateTo(''); }}>
+              <button onClick={() => {
+                setDateFrom('');
+                setDateTo('');
+              }}>
                 <X size={14} />
               </button>
             )}
@@ -4253,24 +4338,25 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
 
       {/* LISTA */}
       <div className="flex flex-col gap-4">
-        {filteredOrders.length === 0 ? (
+
+        {paginatedOrders.length === 0 ? (
           <div className="bg-surface border border-border-custom rounded-2xl p-8 text-center">
-            
+
             <p className="text-lg font-black text-foreground-main">
-              {showDelivered 
-                ? "No hay órdenes entregadas" 
+              {showDelivered
+                ? "No hay órdenes entregadas"
                 : "No hay órdenes en producción"}
             </p>
 
             <p className="text-[10px] text-foreground-muted mt-3 tracking-widest">
-              {showDelivered 
+              {showDelivered
                 ? "Las entregas están completas"
                 : "Todo está al día"}
             </p>
 
           </div>
         ) : (
-          filteredOrders.map(order => {
+          paginatedOrders.map(order => {
             const daysLeft = order.delivery_date
               ? differenceInBusinessDays(new Date(order.delivery_date), new Date())
               : 0;
@@ -4278,14 +4364,14 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
             const colorClass = daysLeft < 0
               ? "border-accent"
               : daysLeft < 3
-              ? "border-yellow-500"
-              : "border-green-500";
+                ? "border-yellow-500"
+                : "border-green-500";
 
             const statusColorClass = daysLeft < 0
               ? "text-accent"
               : daysLeft < 3
-              ? "text-yellow-500"
-              : "text-green-500";
+                ? "text-yellow-500"
+                : "text-green-500";
 
             return (
               <motion.div
@@ -4294,24 +4380,29 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
                 onClick={() => onOrderClick(order.id)}
                 className={cn(
                   "flex items-center justify-between bg-surface px-6 py-4 rounded-2xl border-l-4 border border-border-custom cursor-pointer transition-all hover:bg-background",
-                  order.is_reposition ? "border-l-orange-500 bg-orange-500/5 hover:bg-orange-500/10" : colorClass
+                  order.is_reposition
+                    ? "border-l-orange-500 bg-orange-500/5 hover:bg-orange-500/10"
+                    : colorClass
                 )}
               >
                 {/* IZQUIERDA */}
                 <div className="flex items-center gap-6">
-                  
+
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
                       {order.order_number}
+
                       {order.is_reposition && (
                         <span className="flex items-center gap-1 bg-orange-500 text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full animate-pulse">
                           <AlertTriangle size={9} /> REPOSICIÓN
                         </span>
                       )}
                     </p>
+
                     <h4 className="font-black text-sm text-foreground-main">
                       {order.client_name}
                     </h4>
+
                     {!!order.is_reposition && order.reposition_reason && (
                       <p className="text-[9px] text-orange-400 font-bold mt-0.5 italic truncate max-w-[200px]">
                         {order.reposition_reason}
@@ -4321,29 +4412,36 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
 
                   {typeof order.team_name === 'string' && order.team_name.trim() !== '' && (
                     <p className="text-[10px] font-black uppercase tracking-widest text-accent flex items-center gap-1">
-                      <Users size={12} /> {order.team_name} 
+                      <Users size={12} /> {order.team_name}
                     </p>
                   )}
                 </div>
 
                 {/* CENTRO */}
                 <div className="hidden md:flex items-center gap-10">
+
                   <div className="text-center">
-                    <p className="text-[9px] font-black uppercase text-foreground-muted">Uniformes</p>
+                    <p className="text-[9px] font-black uppercase text-foreground-muted">
+                      Uniformes
+                    </p>
+
                     <p className="font-black text-sm">
-                      {order.items?.length || 0} 
+                      {order.items?.length || 0}
                     </p>
                   </div>
 
                   <div className="text-center">
-                    <p className="text-[9px] font-black uppercase text-foreground-muted">Estado</p>
+                    <p className="text-[9px] font-black uppercase text-foreground-muted">
+                      Estado
+                    </p>
+
                     <span className={cn(
                       "text-[9px] font-black uppercase px-2 py-0.5 rounded-md border",
                       order.status === 'Abono confirmado'
                         ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
                         : order.status === 'Entregado'
-                        ? "bg-green-500/10 text-green-500 border-green-500/20"
-                        : "bg-accent/10 text-accent border-accent/20"
+                          ? "bg-green-500/10 text-green-500 border-green-500/20"
+                          : "bg-accent/10 text-accent border-accent/20"
                     )}>
                       {order.status}
                     </span>
@@ -4352,6 +4450,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
 
                 {/* DERECHA */}
                 <div className="flex items-center gap-6">
+
                   <div className={cn(
                     "text-[10px] font-black uppercase",
                     statusColorClass
@@ -4366,7 +4465,48 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               </motion.div>
             );
           })
-        )} 
+        )}
+
+        {/* ✅ PAGINACIÓN */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 pt-6 flex-wrap">
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-xl border border-border-custom bg-surface text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+            >
+              Anterior
+            </button>
+
+            <div className="flex items-center gap-2 flex-wrap justify-center">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={cn(
+                    "w-10 h-10 rounded-xl text-[10px] font-black transition-all",
+                    currentPage === page
+                      ? "bg-accent text-white"
+                      : "bg-surface border border-border-custom text-foreground-muted hover:text-foreground-main"
+                  )}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-xl border border-border-custom bg-surface text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+            >
+              Siguiente
+            </button>
+
+          </div>
+        )}
+
       </div>
     </motion.div>
   );
