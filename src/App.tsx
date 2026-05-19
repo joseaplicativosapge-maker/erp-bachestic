@@ -759,9 +759,11 @@ function OrdersList({
       );
     })
     .sort((a, b) => {
+      // Reposiciones primero
       if (a.is_reposition && !b.is_reposition) return -1;
       if (!a.is_reposition && b.is_reposition) return 1;
 
+      // Entregadas al final
       if (a.status === 'Entregado' && b.status !== 'Entregado') return 1;
       if (a.status !== 'Entregado' && b.status === 'Entregado') return -1;
 
@@ -771,13 +773,16 @@ function OrdersList({
       );
     });
 
+  // ✅ TOTAL DE PÁGINAS
   const totalPages = Math.ceil(filteredOrders.length / ORDERS_PER_PAGE);
 
+  // ✅ ÓRDENES DE LA PÁGINA ACTUAL
   const paginatedOrders = filteredOrders.slice(
     (currentPage - 1) * ORDERS_PER_PAGE,
     currentPage * ORDERS_PER_PAGE
   );
 
+  // ✅ RESET PAGINACIÓN CUANDO CAMBIAN FILTROS
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -862,20 +867,6 @@ function OrdersList({
 
         {/* FILTROS */}
         <div className="flex flex-wrap items-center gap-4">
-
-          {/* EQUIPO ✔ NUEVO */}
-          <select
-            value={teamFilter}
-            onChange={e => setTeamFilter(e.target.value)}
-            className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main transition-all appearance-none cursor-pointer"
-          >
-            {availableTeams.map(team => (
-              <option key={team} value={team}>
-                {team}
-              </option>
-            ))}
-          </select>
-
           {/* Toggle */}
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button
@@ -988,6 +979,7 @@ function OrdersList({
             />
           </div>
 
+          {/* CONTADOR */}
           <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
             {filteredOrders.length}{' '}
             {filteredOrders.length === 1 ? 'orden' : 'órdenes'}
@@ -1067,7 +1059,10 @@ function OrdersList({
                 </div>
 
                 <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
-                  <LayoutDashboard size={16} className="text-accent" />
+                  <LayoutDashboard
+                    size={16}
+                    className="text-accent"
+                  />
 
                   <span>
                     Estado:{' '}
@@ -1077,7 +1072,6 @@ function OrdersList({
                   </span>
                 </div>
 
-                {/* ✅ SOLO SE AGREGÓ ESTO */}
                 {order.team_name && (
                   <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
                     <span>
@@ -1127,7 +1121,9 @@ function OrdersList({
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 pt-4 flex-wrap">
           <button
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            onClick={() =>
+              setCurrentPage(prev => Math.max(prev - 1, 1))
+            }
             disabled={currentPage === 1}
             className="px-5 py-3 rounded-2xl bg-surface border border-border-custom text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
           >
@@ -1136,6 +1132,7 @@ function OrdersList({
 
           {Array.from({ length: totalPages }).map((_, index) => {
             const page = index + 1;
+
             return (
               <button
                 key={page}
@@ -1154,7 +1151,9 @@ function OrdersList({
 
           <button
             onClick={() =>
-              setCurrentPage(prev => Math.min(prev + 1, totalPages))
+              setCurrentPage(prev =>
+                Math.min(prev + 1, totalPages)
+              )
             }
             disabled={currentPage === totalPages}
             className="px-5 py-3 rounded-2xl bg-surface border border-border-custom text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
@@ -1164,7 +1163,7 @@ function OrdersList({
         </div>
       )}
 
-      {/* MODAL (SIN CAMBIOS) */}
+      {/* MODAL */}
       <Modal
         isOpen={showConfirmToggle}
         onClose={() => setShowConfirmToggle(false)}
@@ -1183,7 +1182,10 @@ function OrdersList({
           <div>
             <h4 className="text-xl font-black text-foreground-main uppercase tracking-tight">
               ¿Estás seguro de{' '}
-              {orderToToggle?.active ? 'desactivar' : 'activar'} este pedido?
+              {orderToToggle?.active
+                ? 'desactivar'
+                : 'activar'}{' '}
+              este pedido?
             </h4>
 
             <p className="text-foreground-muted text-sm mt-2">
