@@ -125,6 +125,11 @@ export const api = {
     });
     return handleResponse(res);
   },
+  getAllAssignments: async () => {
+    const res = await fetch('/api/assignments');
+    if (!res.ok) throw new Error('Error al obtener asignaciones');
+    return res.json();
+  },
   updateEmployee: async (id: number, formData: FormData): Promise<void> => {
     const res = await fetch(`${API_BASE}/employees/${id}`, {
       method: 'PUT',

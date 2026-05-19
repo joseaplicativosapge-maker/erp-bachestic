@@ -201,7 +201,7 @@ function Select({ label, options, ...props }: { label: string, options: { value:
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('light');
-  const [view, setView] = useState<'dashboard' | 'orders' | 'kds' | 'client' | 'create-order' | 'order-details' | 'employees' | 'clients' | 'products'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'orders' | 'kds' | 'client' | 'create-order' | 'order-details' | 'employees' | 'clients' | 'products' | 'confection-report'>('dashboard');
   const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [showRoadmapModal, setShowRoadmapModal] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
@@ -344,6 +344,7 @@ export default function App() {
     { id: 'kds', label: 'Producción', icon: Clock, roles: ['Admin', 'Diseño', 'Impresión', 'Sublimación', 'Corte', 'Confección', 'Empaque'] },
     { id: 'employees', label: 'Empleados', icon: Users, roles: ['Admin'] },
     { id: 'client', label: 'Seguimiento', icon: Eye, roles: ['Admin', 'Ventas', 'Cliente'] },
+    { id: 'confection-report', label: 'Confección', icon: Shirt, roles: ['Admin', 'Ventas'] },
   ];
 
   const filteredSidebarItems = sidebarItems.filter(item => item.roles.includes(role));
@@ -477,6 +478,7 @@ export default function App() {
             {view === 'products' && <ProductManagement key="products" />}
             {view === 'clients' && <ClientManagement key="clients" />}
             {view === 'client' && <ClientRoadmap key="client" orders={orders} user={user!} role={role} />}
+            {view === 'confection-report' && <ConfectionReport key="confection-report" />}
           </AnimatePresence>
         </div>
 
@@ -8905,5 +8907,307 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
 
   </div>
 </div>
+  );
+}
+
+// --- Confection Report Component ---
+function ConfectionReport({ key }: { key?: string }) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [empFilter, setEmpFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [orderFilter, setOrderFilter] = useState('');
+  const [tab, setTab] = useState<'detail' | 'summary'>('detail');
+
+  const CAM_TASKS = [
+    { key: 'filetes',           label: 'Filetes' },
+    { key: 'despuntes',         label: 'Despuntes' },
+    { key: 'collarin',          label: 'Collarín' },
+    { key: 'dobladillo_remate', label: 'Dobladillo y remate' },
+  ];
+  const PANT_TASKS = [
+    { key: 'filete_p',      label: 'Filete' },
+    { key: 'despuntes_p',   label: 'Despuntes' },
+    { key: 'caucho',        label: 'Caucho' },
+    { key: 'sentar_caucho', label: 'Sentar caucho' },
+    { key: 'collarin_p',    label: 'Collarín' },
+    { key: 'remate',        label: 'Remate' },
+  ];
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        // Obtiene TODAS las asignaciones del endpoint general
+        const assignments = await api.getAllAssignments();
+        // Parsea el campo notes para extraer garment_type y task_label
+        // El formato guardado es: "[Camiseta] Filetes" o "[Pantaloneta] Caucho — obs"
+        const parsed = assignments.map((a: any) => {
+          const notesRaw: string = a.notes || '';
+          const typeMatch = notesRaw.match(/^\[(.+?)\]/);
+          const garment_type = typeMatch ? typeMatch[1] : 'Camiseta';
+          const rest = notesRaw.replace(/^\[.+?\]\s*/, '').split(' — ')[0].trim();
+          // Mapear label a task_key
+          const allTasks = [...CAM_TASKS, ...PANT_TASKS];
+          const found = allTasks.find(t => t.label.toLowerCase() === rest.toLowerCase());
+          return {
+            ...a,
+            garment_type,
+            task_label: rest,
+            task_key: found?.key || rest.toLowerCase().replace(/\s/g, '_'),
+          };
+        });
+        setData(parsed);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const employees = [...new Set(data.map(r => r.employee_name).filter(Boolean))].sort();
+
+  const filtered = data.filter(r =>
+    (!empFilter || r.employee_name === empFilter) &&
+    (!typeFilter || r.garment_type === typeFilter) &&
+    (!orderFilter || (r.order_number || '').toLowerCase().includes(orderFilter.toLowerCase()))
+  );
+
+  const totalQty  = filtered.reduce((s, r) => s + (r.garment_count || 0), 0);
+  const totalCost = filtered.reduce((s, r) => s + (r.garment_count || 0) * (r.price_per_unit || 0), 0);
+  const camQty    = filtered.filter(r => r.garment_type === 'Camiseta').reduce((s, r) => s + (r.garment_count || 0), 0);
+  const pantQty   = filtered.filter(r => r.garment_type === 'Pantaloneta').reduce((s, r) => s + (r.garment_count || 0), 0);
+
+  if (loading) return <LoadingState message="Cargando reporte de confección" />;
+
+  // ---- Render tabla detalle ----
+  const renderDetail = (rows: any[], tipo: string) => {
+    if (!rows.length) return null;
+    const totQty  = rows.reduce((s, r) => s + (r.garment_count || 0), 0);
+    const totCost = rows.reduce((s, r) => s + (r.garment_count || 0) * (r.price_per_unit || 0), 0);
+    return (
+      <div className="mb-8">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted mb-4 flex items-center gap-2">
+          <Shirt size={14} className={tipo === 'Camiseta' ? 'text-blue-400' : 'text-purple-400'} />
+          {tipo}
+        </p>
+        <div className="overflow-x-auto rounded-[24px] border border-border-custom">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="bg-surface-hover text-[9px] uppercase font-black tracking-[0.2em] text-foreground-muted">
+                <th className="py-4 px-5">Orden</th>
+                <th className="py-4 px-5">Responsable</th>
+                <th className="py-4 px-5">Tarea</th>
+                <th className="py-4 px-5 text-right">Cant.</th>
+                <th className="py-4 px-5 text-right">$ Unit.</th>
+                <th className="py-4 px-5 text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-custom">
+              {rows.map((r, i) => (
+                <tr key={i} className="hover:bg-surface-hover transition-colors">
+                  <td className="py-3 px-5 text-[11px] text-foreground-muted">{r.order_number || `#${r.order_id}`}</td>
+                  <td className="py-3 px-5 font-bold text-foreground-main text-[11px]">{r.employee_name || `Emp #${r.employee_id}`}</td>
+                  <td className="py-3 px-5 text-[11px]">{r.task_label}</td>
+                  <td className="py-3 px-5 text-right font-black text-foreground-main">{(r.garment_count || 0).toLocaleString()}</td>
+                  <td className="py-3 px-5 text-right text-foreground-muted text-[11px]">${(r.price_per_unit || 0).toLocaleString()}</td>
+                  <td className="py-3 px-5 text-right font-black text-foreground-main">${((r.garment_count || 0) * (r.price_per_unit || 0)).toLocaleString()}</td>
+                </tr>
+              ))}
+              <tr className="bg-surface-hover font-black">
+                <td colSpan={3} className="py-3 px-5 text-[10px] uppercase tracking-widest">Total {tipo}</td>
+                <td className="py-3 px-5 text-right">{totQty.toLocaleString()}</td>
+                <td />
+                <td className="py-3 px-5 text-right text-accent">${totCost.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  // ---- Render resumen por empleado ----
+  const renderSummary = () => {
+    const byEmp: Record<string, any> = {};
+    filtered.forEach(r => {
+      const k = r.employee_name || `Emp #${r.employee_id}`;
+      if (!byEmp[k]) byEmp[k] = { name: k, cam: {} as any, pant: {} as any, total_cost: 0, total_qty: 0 };
+      const bucket = r.garment_type === 'Camiseta' ? byEmp[k].cam : byEmp[k].pant;
+      if (!bucket[r.task_label]) bucket[r.task_label] = { qty: 0, cost: 0 };
+      bucket[r.task_label].qty  += r.garment_count || 0;
+      bucket[r.task_label].cost += (r.garment_count || 0) * (r.price_per_unit || 0);
+      byEmp[k].total_cost += (r.garment_count || 0) * (r.price_per_unit || 0);
+      byEmp[k].total_qty  += r.garment_count || 0;
+    });
+
+    return Object.values(byEmp).sort((a: any, b: any) => b.total_cost - a.total_cost).map((emp: any, i) => (
+      <Card key={i} className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
+              <Users size={24} />
+            </div>
+            <div>
+              <p className="font-black text-lg text-foreground-main tracking-tight">{emp.name}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Confección</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="font-black text-2xl text-accent tracking-tighter">${emp.total_cost.toLocaleString()}</p>
+            <p className="text-[10px] font-bold text-foreground-muted">{emp.total_qty} prendas</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border-custom">
+          {Object.keys(emp.cam).length > 0 && (
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-3 flex items-center gap-1.5">
+                <Shirt size={12} /> Camiseta
+              </p>
+              <div className="space-y-2">
+                {Object.entries(emp.cam).map(([label, v]: any) => (
+                  <div key={label} className="flex justify-between items-center py-2 border-b border-border-custom last:border-0">
+                    <span className="text-[11px] font-bold text-foreground-muted uppercase tracking-wider">{label}</span>
+                    <div className="text-right">
+                      <span className="font-black text-foreground-main text-sm">{v.qty}</span>
+                      <span className="text-[10px] text-foreground-muted ml-3">${v.cost.toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {Object.keys(emp.pant).length > 0 && (
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-3 flex items-center gap-1.5">
+                <Shirt size={12} /> Pantaloneta
+              </p>
+              <div className="space-y-2">
+                {Object.entries(emp.pant).map(([label, v]: any) => (
+                  <div key={label} className="flex justify-between items-center py-2 border-b border-border-custom last:border-0">
+                    <span className="text-[11px] font-bold text-foreground-muted uppercase tracking-wider">{label}</span>
+                    <div className="text-right">
+                      <span className="font-black text-foreground-main text-sm">{v.qty}</span>
+                      <span className="text-[10px] text-foreground-muted ml-3">${v.cost.toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+    ));
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+
+      {/* Cabecera */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-3xl font-black tracking-tighter text-foreground-main">Reporte de Confección</h3>
+      </div>
+
+      {/* Métricas */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        {[
+          { label: 'Total prendas', value: totalQty.toLocaleString() },
+          { label: 'Camisetas',     value: camQty.toLocaleString() },
+          { label: 'Pantalonetas',  value: pantQty.toLocaleString() },
+          { label: 'Costo total',   value: '$' + totalCost.toLocaleString() },
+        ].map((m, i) => (
+          <div key={i} className="bg-surface-hover rounded-[24px] border border-border-custom p-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted mb-2">{m.label}</p>
+            <p className="text-2xl font-black text-foreground-main tracking-tighter">{m.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-wrap items-center gap-4 p-4 rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl">
+        {/* Responsable */}
+        <div className="relative">
+          <select
+            value={empFilter}
+            onChange={e => setEmpFilter(e.target.value)}
+            className="appearance-none bg-surface border border-border-custom rounded-2xl pl-5 pr-10 py-3 text-[10px] font-black uppercase tracking-widest text-foreground-main outline-none cursor-pointer min-w-[180px]"
+          >
+            <option value="">Todos los responsables</option>
+            {employees.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none" />
+        </div>
+
+        {/* Tipo prenda */}
+        <div className="relative">
+          <select
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            className="appearance-none bg-surface border border-border-custom rounded-2xl pl-5 pr-10 py-3 text-[10px] font-black uppercase tracking-widest text-foreground-main outline-none cursor-pointer min-w-[160px]"
+          >
+            <option value="">Ambas prendas</option>
+            <option value="Camiseta">Camiseta</option>
+            <option value="Pantaloneta">Pantaloneta</option>
+          </select>
+          <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none" />
+        </div>
+
+        {/* Orden */}
+        <div className="relative group flex-1 min-w-[200px]">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted" size={16} />
+          <input
+            type="text"
+            placeholder="Buscar orden..."
+            value={orderFilter}
+            onChange={e => setOrderFilter(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main text-[10px] font-black uppercase tracking-widest"
+          />
+        </div>
+
+        {/* Contador */}
+        <div className="ml-auto px-5 py-3 rounded-2xl bg-accent/10 border border-accent/10 text-accent text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
+          {filtered.length} registros
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-3">
+        {(['detail', 'summary'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={cn(
+              'px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border',
+              tab === t
+                ? 'bg-accent text-white border-accent shadow-lg shadow-accent/20'
+                : 'bg-surface-hover text-foreground-muted border-border-custom hover:text-foreground-main'
+            )}
+          >
+            {t === 'detail' ? 'Detalle por tarea' : 'Resumen por responsable'}
+          </button>
+        ))}
+      </div>
+
+      {/* Contenido */}
+      {tab === 'detail' ? (
+        <div>
+          {renderDetail(filtered.filter(r => r.garment_type === 'Camiseta'), 'Camiseta')}
+          {renderDetail(filtered.filter(r => r.garment_type === 'Pantaloneta'), 'Pantaloneta')}
+          {filtered.length === 0 && (
+            <EmptyState icon={Shirt} title="Sin registros" message="No hay asignaciones de confección para los filtros seleccionados." />
+          )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {renderSummary()}
+          {filtered.length === 0 && (
+            <EmptyState icon={Shirt} title="Sin registros" message="No hay asignaciones de confección para los filtros seleccionados." />
+          )}
+        </div>
+      )}
+    </motion.div>
   );
 }

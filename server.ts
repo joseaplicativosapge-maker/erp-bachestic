@@ -268,6 +268,26 @@ async function startServer() {
     }
   });
 
+  // GET /api/assignments — devuelve todas las asignaciones con join a orders y employees
+  app.get('/api/assignments', (req, res) => {
+    try {
+      const assignments = db.prepare(`
+        SELECT 
+          pa.*,
+          o.order_number,
+          e.name as employee_name
+        FROM production_assignments pa
+        LEFT JOIN orders o ON o.id = pa.order_id
+        LEFT JOIN employees e ON e.id = pa.employee_id
+        ORDER BY pa.created_at DESC
+      `).all();
+      res.json(assignments);
+    } catch (error: any) {
+      console.error('Error obteniendo asignaciones:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get('/api/employees', (req, res) => {
     const includeInactive = req.query.includeInactive === 'true';
     const query = includeInactive
