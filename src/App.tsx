@@ -7487,12 +7487,19 @@ function EmployeeManagement({}: { key?: string }) {
   const [showConfirmToggle, setShowConfirmToggle] = useState(false);
   const [employeeToToggle, setEmployeeToToggle] = useState<Employee | null>(null);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+
+  // PAGINACIÓN
+  const ITEMS_PER_PAGE = 9;
+  const [currentPageActive, setCurrentPageActive] = useState(1);
+  const [currentPageInactive, setCurrentPageInactive] = useState(1);
+
   const [newEmployee, setNewEmployee] = useState({
     name: '',
     role: 'Confección' as Role,
     phone: '',
     pin: ''
   });
+
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
@@ -7500,15 +7507,26 @@ function EmployeeManagement({}: { key?: string }) {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (activeTab === 'active') {
+      setCurrentPageActive(1);
+    } else {
+      setCurrentPageInactive(1);
+    }
+  }, [activeTab]);
+
   const loadData = async () => {
     try {
       setLoading(true);
+
       const [empData, reportData] = await Promise.all([
         api.getEmployees(true),
         api.getEmployeeReport()
       ]);
+
       setEmployees(empData);
       setReport(reportData);
+
     } catch (error) {
       console.error(error);
     } finally {
@@ -7520,11 +7538,14 @@ function EmployeeManagement({}: { key?: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
       const formData = new FormData();
+
       formData.append('name', newEmployee.name);
       formData.append('role', newEmployee.role);
       formData.append('phone', newEmployee.phone);
+
       if (newEmployee.pin) formData.append('pin', newEmployee.pin);
       if (photoFile) formData.append('photo', photoFile);
 
@@ -7535,12 +7556,22 @@ function EmployeeManagement({}: { key?: string }) {
         await api.createEmployee(formData);
         toast.success('Empleado registrado correctamente');
       }
+
       setShowAdd(false);
       setEditingEmployee(null);
-      setNewEmployee({ name: '', role: 'Confección', phone: '', pin: '' });
+
+      setNewEmployee({
+        name: '',
+        role: 'Confección',
+        phone: '',
+        pin: ''
+      });
+
       setPhotoFile(null);
       setPhotoPreview(null);
+
       loadData();
+
     } catch (error) {
       console.error(error);
     }
@@ -7548,27 +7579,42 @@ function EmployeeManagement({}: { key?: string }) {
 
   const handleEdit = (emp: Employee) => {
     setEditingEmployee(emp);
+
     setNewEmployee({
       name: emp.name,
       role: emp.role,
       phone: emp.phone || '',
-      pin: '' // Don't show PIN for security, but allow updating it
+      pin: ''
     });
-    setPhotoPreview(emp.photo_path ? `/uploads/${emp.photo_path}` : null);
+
+    setPhotoPreview(
+      emp.photo_path ? `/uploads/${emp.photo_path}` : null
+    );
+
     setShowAdd(true);
   };
 
   const handleToggleStatus = async () => {
     if (!employeeToToggle) return;
+
     const emp = employeeToToggle;
+
     try {
       const formData = new FormData();
+
       formData.append('active', (!emp.active).toString());
+
       await api.updateEmployee(emp.id, formData);
-      toast.success(`Empleado ${emp.active ? 'desactivado' : 'activado'} correctamente`);
+
+      toast.success(
+        `Empleado ${emp.active ? 'desactivado' : 'activado'} correctamente`
+      );
+
       setShowConfirmToggle(false);
       setEmployeeToToggle(null);
+
       loadData();
+
     } catch (error) {
       console.error(error);
       toast.error('Error al cambiar el estado del empleado');
@@ -7576,202 +7622,421 @@ function EmployeeManagement({}: { key?: string }) {
   };
 
   const confirmToggleStatus = (emp: Employee) => {
-    if (emp.active) {
-      setEmployeeToToggle(emp);
-      setShowConfirmToggle(true);
+    setEmployeeToToggle(emp);
+    setShowConfirmToggle(true);
+  };
+
+  // FILTRADO
+  const filteredEmployees = employees.filter(emp =>
+    activeTab === 'active'
+      ? emp.active
+      : !emp.active
+  );
+
+  // PAGINACIÓN
+  const currentPage =
+    activeTab === 'active'
+      ? currentPageActive
+      : currentPageInactive;
+
+  const totalPages = Math.ceil(
+    filteredEmployees.length / ITEMS_PER_PAGE
+  );
+
+  const paginatedEmployees = filteredEmployees.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const changePage = (page: number) => {
+    if (activeTab === 'active') {
+      setCurrentPageActive(page);
     } else {
-      // If activating, we can do it directly or also confirm. User said "todos los desactivar deben de tener confirmacion".
-      // I'll confirm both for consistency, or just deactivate.
-      setEmployeeToToggle(emp);
-      setShowConfirmToggle(true);
+      setCurrentPageInactive(page);
     }
   };
 
-  const filteredEmployees = employees.filter(emp => activeTab === 'active' ? emp.active : !emp.active);
-
   return (
     <div className="space-y-8">
+
       {/* Cabecera Principal */}
       <div className="flex items-center justify-between">
+
         <div className="flex items-center gap-8">
+
           <div>
-            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Empleados</h3>
+            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">
+              Empleados
+            </h3>
           </div>
+
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
-            <button 
+
+            <button
               onClick={() => setActiveTab('active')}
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                activeTab === 'active' ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-foreground-muted hover:text-foreground-main"
+                activeTab === 'active'
+                  ? "bg-accent text-white shadow-lg shadow-accent/20"
+                  : "text-foreground-muted hover:text-foreground-main"
               )}
             >
               Activos
             </button>
-            <button 
+
+            <button
               onClick={() => setActiveTab('inactive')}
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                activeTab === 'inactive' ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-foreground-muted hover:text-foreground-main"
+                activeTab === 'inactive'
+                  ? "bg-accent text-white shadow-lg shadow-accent/20"
+                  : "text-foreground-muted hover:text-foreground-main"
               )}
             >
               Desactivados
             </button>
+
           </div>
+
         </div>
-        <button 
+
+        <button
           onClick={() => {
             setEditingEmployee(null);
-            setNewEmployee({ name: '', role: 'Confección', phone: '', pin: '' });
+
+            setNewEmployee({
+              name: '',
+              role: 'Confección',
+              phone: '',
+              pin: ''
+            });
+
             setShowAdd(true);
           }}
           className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20"
         >
-          <Plus size={20} /> Registrar Empleado
+          <Plus size={20} />
+          Registrar Empleado
         </button>
+
       </div>
 
-      {/* Grid de Empleados Corregido (Eliminados los contenedores lg:grid-cols-3 y lg:col-span-2) */}
+      {/* Grid de Empleados */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6 w-full">
+
         {filteredEmployees.length === 0 ? (
+
           <div className="col-span-full">
-              <EmptyState 
-                icon={Users} 
-                title={activeTab === 'active' ? "No hay empleados activos" : "No hay empleados inactivos"} 
-                message={activeTab === 'active' ? "Aún no has registrado ningún empleado activo." : "No tienes empleados desactivados en este momento."}
-                actionLabel={activeTab === 'active' ? "Registrar Primer Empleado" : undefined}
-                onAction={activeTab === 'active' ? () => { setEditingEmployee(null); setNewEmployee({ name: '', role: 'Confección', phone: '', pin: '' }); setShowAdd(true); } : undefined}
-              />
+
+            <EmptyState
+              icon={Users}
+              title={
+                activeTab === 'active'
+                  ? "No hay empleados activos"
+                  : "No hay empleados inactivos"
+              }
+              message={
+                activeTab === 'active'
+                  ? "Aún no has registrado ningún empleado activo."
+                  : "No tienes empleados desactivados en este momento."
+              }
+              actionLabel={
+                activeTab === 'active'
+                  ? "Registrar Primer Empleado"
+                  : undefined
+              }
+              onAction={
+                activeTab === 'active'
+                  ? () => {
+                      setEditingEmployee(null);
+
+                      setNewEmployee({
+                        name: '',
+                        role: 'Confección',
+                        phone: '',
+                        pin: ''
+                      });
+
+                      setShowAdd(true);
+                    }
+                  : undefined
+              }
+            />
+
           </div>
-        ) : filteredEmployees.map(emp => (
-          <Card 
-            key={emp.id} 
+
+        ) : paginatedEmployees.map(emp => (
+
+          <Card
+            key={emp.id}
             className={cn(
               "group hover:border-accent/30 transition-all relative overflow-hidden",
               !emp.active && "opacity-60 grayscale-[0.5]"
             )}
           >
+
             {!emp.active && (
               <div className="absolute top-0 right-0 bg-accent text-white text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-bl-xl">
                 Inactivo
               </div>
             )}
+
             <div className="flex justify-between items-start mb-4">
+
               <div className="flex items-center gap-4">
+
                 <div className="w-14 h-14 rounded-2xl bg-surface-hover overflow-hidden flex items-center justify-center border border-border-custom shadow-inner">
+
                   {emp.photo_path ? (
-                    <img src={`/uploads/${emp.photo_path}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img
+                      src={`/uploads/${emp.photo_path}`}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
                   ) : (
                     <Users size={24} className="text-foreground-muted/30" />
                   )}
+
                 </div>
+
                 <div>
-                  <h4 className="font-bold text-lg text-foreground-main tracking-tight">{emp.name}</h4>
+
+                  <h4 className="font-bold text-lg text-foreground-main tracking-tight">
+                    {emp.name}
+                  </h4>
+
                   <span className="text-[10px] font-black uppercase tracking-widest text-accent bg-accent/5 px-2 py-1 rounded-md">
                     {emp.role}
                   </span>
+
                 </div>
+
               </div>
+
               <div className="flex gap-2">
-                <button 
+
+                <button
                   onClick={() => handleEdit(emp)}
                   className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
                   title="Editar empleado"
                 >
                   <Edit2 size={18} />
                 </button>
-                <button 
+
+                <button
                   onClick={() => confirmToggleStatus(emp)}
                   className={cn(
                     "p-3 rounded-xl transition-all",
-                    emp.active ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent" : "bg-accent text-white"
+                    emp.active
+                      ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent"
+                      : "bg-accent text-white"
                   )}
-                  title={emp.active ? "Desactivar empleado" : "Activar empleado"}
+                  title={
+                    emp.active
+                      ? "Desactivar empleado"
+                      : "Activar empleado"
+                  }
                 >
-                  {emp.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
+                  {emp.active
+                    ? <Trash2 size={18} />
+                    : <RefreshCw size={18} />
+                  }
                 </button>
+
               </div>
+
             </div>
-            
+
             <div className="space-y-3 pt-4 border-t border-border-custom">
+
               <div className="flex items-center gap-3 text-sm text-foreground-muted">
+
                 <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
                   <Clock size={14} />
                 </div>
-                <span className="font-bold tracking-tight">{emp.phone || 'Sin teléfono'}</span>
+
+                <span className="font-bold tracking-tight">
+                  {emp.phone || 'Sin teléfono'}
+                </span>
+
               </div>
+
               <div className="flex items-center gap-3 text-sm text-foreground-muted">
+
                 <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
                   <LayoutDashboard size={14} />
                 </div>
-                <span className="font-bold tracking-tight capitalize">{emp.active ? 'Estado: Activo' : 'Estado: Inactivo'}</span>
+
+                <span className="font-bold tracking-tight capitalize">
+                  {emp.active
+                    ? 'Estado: Activo'
+                    : 'Estado: Inactivo'}
+                </span>
+
               </div>
+
             </div>
+
           </Card>
+
         ))}
+
       </div>
 
+      {/* PAGINACIÓN */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-6 flex-wrap">
+
+          <button
+            onClick={() =>
+              changePage(Math.max(currentPage - 1, 1))
+            }
+            disabled={currentPage === 1}
+            className={cn(
+              "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all",
+              currentPage === 1
+                ? "opacity-40 cursor-not-allowed border-border-custom"
+                : "border-border-custom hover:border-accent hover:text-accent"
+            )}
+          >
+            Anterior
+          </button>
+
+          {Array.from(
+            { length: totalPages },
+            (_, i) => i + 1
+          )
+            .slice(
+              Math.max(currentPage - 3, 0),
+              Math.min(currentPage + 2, totalPages)
+            )
+            .map(page => (
+
+              <button
+                key={page}
+                onClick={() => changePage(page)}
+                className={cn(
+                  "w-10 h-10 rounded-xl text-[10px] font-black transition-all",
+                  currentPage === page
+                    ? "bg-accent text-white shadow-lg shadow-accent/20"
+                    : "bg-surface border border-border-custom hover:border-accent hover:text-accent"
+                )}
+              >
+                {page}
+              </button>
+
+            ))}
+
+          <button
+            onClick={() =>
+              changePage(Math.min(currentPage + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+            className={cn(
+              "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all",
+              currentPage === totalPages
+                ? "opacity-40 cursor-not-allowed border-border-custom"
+                : "border-border-custom hover:border-accent hover:text-accent"
+            )}
+          >
+            Siguiente
+          </button>
+
+        </div>
+      )}
+
       {/* Modal Confirmar Estado */}
-      <Modal 
-        isOpen={showConfirmToggle} 
-        onClose={() => setShowConfirmToggle(false)} 
+      <Modal
+        isOpen={showConfirmToggle}
+        onClose={() => setShowConfirmToggle(false)}
         title="Confirmar Cambio de Estado"
         maxWidth="max-w-md"
       >
+
         <div className="space-y-6 text-center">
+
           <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center text-accent mx-auto">
-            {employeeToToggle?.active ? <UserMinus size={40} /> : <UserPlus size={40} />}
+            {employeeToToggle?.active
+              ? <UserMinus size={40} />
+              : <UserPlus size={40} />
+            }
           </div>
+
           <div>
+
             <h4 className="text-xl font-black text-foreground-main uppercase tracking-tight">
               ¿Estás seguro de {employeeToToggle?.active ? 'desactivar' : 'activar'} a este empleado?
             </h4>
+
             <p className="text-foreground-muted text-sm mt-2">
-              {employeeToToggle?.active 
-                ? 'El empleado no podrá acceder al sistema ni se le podrán asignar nuevas tareas.' 
-                : 'El empleado recuperará el acceso al sistema y podrá recibir asignaciones.'}
+              {employeeToToggle?.active
+                ? 'El empleado no podrá acceder al sistema ni se le podrán asignar nuevas tareas.'
+                : 'El empleado recuperará el acceso al sistema y podrá recibir asignaciones.'
+              }
             </p>
+
           </div>
+
           <div className="flex gap-4 pt-4">
-            <button 
+
+            <button
               onClick={() => setShowConfirmToggle(false)}
               className="flex-1 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
             >
               Cancelar
             </button>
-            <button 
+
+            <button
               onClick={handleToggleStatus}
               className="flex-1 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] bg-accent text-white hover:scale-105 transition-all shadow-xl shadow-accent/20"
             >
               Confirmar
             </button>
+
           </div>
+
         </div>
+
       </Modal>
 
       {/* Modal Formulario */}
-      <Modal 
-        isOpen={showAdd} 
-        onClose={() => setShowAdd(false)} 
+      <Modal
+        isOpen={showAdd}
+        onClose={() => setShowAdd(false)}
         title={editingEmployee ? 'Editar Empleado' : 'Nuevo Empleado'}
       >
+
         <form onSubmit={handleSubmit} className="space-y-6">
+
           <div className="flex justify-center mb-8">
+
             <div className="relative group">
+
               <div className="w-32 h-32 rounded-[32px] bg-surface-hover border-2 border-dashed border-border-custom flex items-center justify-center overflow-hidden transition-all group-hover:border-accent/50">
+
                 {photoPreview ? (
-                  <img src={photoPreview} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img
+                    src={photoPreview}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
                 ) : (
                   <div className="text-center p-4">
                     <Upload size={24} className="mx-auto mb-2 text-foreground-muted" />
-                    <p className="text-[8px] font-black uppercase tracking-widest text-foreground-muted">Subir Foto</p>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-foreground-muted">
+                      Subir Foto
+                    </p>
                   </div>
                 )}
+
               </div>
-              <input 
-                type="file" 
+
+              <input
+                type="file"
                 accept="image/*"
                 onChange={e => {
                   const file = e.target.files?.[0];
+
                   if (file) {
                     setPhotoFile(file);
                     setPhotoPreview(URL.createObjectURL(file));
@@ -7779,28 +8044,46 @@ function EmployeeManagement({}: { key?: string }) {
                 }}
                 className="absolute inset-0 opacity-0 cursor-pointer"
               />
+
               {photoPreview && (
-                <button 
+                <button
                   type="button"
-                  onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                  onClick={() => {
+                    setPhotoFile(null);
+                    setPhotoPreview(null);
+                  }}
                   className="absolute -top-2 -right-2 p-2 bg-accent text-white rounded-xl shadow-lg hover:scale-110 transition-all"
                 >
                   <X size={14} />
                 </button>
               )}
+
             </div>
+
           </div>
-          <Input 
+
+          <Input
             label="Nombre Completo"
             required
             value={newEmployee.name}
-            onChange={e => setNewEmployee({...newEmployee, name: e.target.value})}
+            onChange={e =>
+              setNewEmployee({
+                ...newEmployee,
+                name: e.target.value
+              })
+            }
             placeholder="Ej. Juan Pérez"
           />
-          <Select 
+
+          <Select
             label="Departamento"
             value={newEmployee.role}
-            onChange={e => setNewEmployee({...newEmployee, role: e.target.value as any})}
+            onChange={e =>
+              setNewEmployee({
+                ...newEmployee,
+                role: e.target.value as any
+              })
+            }
             options={[
               { value: 'Admin', label: 'Admin' },
               { value: 'Ventas', label: 'Ventas' },
@@ -7812,26 +8095,51 @@ function EmployeeManagement({}: { key?: string }) {
               { value: 'Empaque', label: 'Empaque' }
             ]}
           />
-          <Input 
+
+          <Input
             label="Teléfono"
             value={newEmployee.phone}
-            onChange={e => setNewEmployee({...newEmployee, phone: e.target.value})}
+            onChange={e =>
+              setNewEmployee({
+                ...newEmployee,
+                phone: e.target.value
+              })
+            }
             placeholder="Ej. 3001234567"
           />
-          <Input 
-            label={editingEmployee ? "Nuevo PIN (Opcional)" : "PIN de Acceso (4 dígitos)"}
+
+          <Input
+            label={
+              editingEmployee
+                ? "Nuevo PIN (Opcional)"
+                : "PIN de Acceso (4 dígitos)"
+            }
             type="password"
             maxLength={4}
             required={!editingEmployee}
             value={newEmployee.pin}
-            onChange={(e) => setNewEmployee({...newEmployee, pin: e.target.value.replace(/\D/g, '')})}
+            onChange={(e) =>
+              setNewEmployee({
+                ...newEmployee,
+                pin: e.target.value.replace(/\D/g, '')
+              })
+            }
             placeholder="****"
           />
-          <button type="submit" className="w-full bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-accent/20 hover:scale-[1.02] transition-all mt-4">
-            {editingEmployee ? 'Actualizar Registro' : 'Guardar Registro'}
+
+          <button
+            type="submit"
+            className="w-full bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-accent/20 hover:scale-[1.02] transition-all mt-4"
+          >
+            {editingEmployee
+              ? 'Actualizar Registro'
+              : 'Guardar Registro'}
           </button>
+
         </form>
+
       </Modal>
+
     </div>
   );
 }
