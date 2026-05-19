@@ -50,7 +50,8 @@ import {
   Maximize2,
   Mail,
   LocationEditIcon,
-  Locate
+  Locate,
+  ArrowRight 
 } from 'lucide-react';
 import * as XLSX from "xlsx-js-style";
 import { motion, AnimatePresence } from 'motion/react';
@@ -213,6 +214,20 @@ export default function App() {
   const REFRESH_INTERVAL = 30_000; // 30 segundos
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
+  useEffect(() => {
+    const handleNavigate = (event: any) => {
+      if (event.detail?.tab) {
+        setView(event.detail.tab);
+      }
+    };
+
+    window.addEventListener('navigate', handleNavigate);
+
+    return () => {
+      window.removeEventListener('navigate', handleNavigate);
+    };
+  }, []);
+
   const queryParams = new URLSearchParams(window.location.search);
   const publicOrderNumber = queryParams.get('order');
   
@@ -265,6 +280,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [user, includeInactive]);
 
+  
   const handleLogin = (userData: User) => {
     setUser(userData);
     localStorage.setItem('bachestic_user', JSON.stringify(userData));
@@ -623,12 +639,57 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
 
       <div className="grid grid-cols-1 gap-10">
         <Card className="overflow-hidden" noPadding>
-          <div className="p-8 border-b border-border-custom flex items-center justify-between">
-            <h3 className="font-bold text-lg tracking-tight text-foreground-main">Órdenes Recientes</h3>
+
+          {/* HEADER */}
+          <div className="p-8 border-b border-border-custom flex items-center justify-between gap-4 flex-wrap">
+
+            <div>
+              <h3 className="font-bold text-lg tracking-tight text-foreground-main">
+                Órdenes Recientes
+              </h3>
+
+              <p className="text-[10px] uppercase tracking-widest text-foreground-muted font-black mt-1">
+                Últimas órdenes activas registradas
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent('navigate', {
+                    detail: {
+                      tab: 'orders',
+                    },
+                  })
+                );
+              }}
+              className="
+                flex items-center gap-2
+                px-5 py-3
+                rounded-2xl
+                bg-accent
+                text-white
+                text-[10px]
+                font-black
+                uppercase
+                tracking-widest
+                hover:scale-105
+                hover:shadow-xl
+                hover:shadow-accent/20
+                transition-all
+                whitespace-nowrap
+              "
+            >
+              Ver Todas
+              <ArrowRight size={16} />
+            </button>
+
           </div>
 
+          {/* TABLA */}
           <div className="overflow-x-auto">
             <table className="w-full text-left">
+
               <thead>
                 <tr className="bg-surface-hover text-[9px] uppercase tracking-[0.2em] font-bold text-foreground-muted">
                   <th className="px-8 py-5">Orden</th>
@@ -640,42 +701,72 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
               </thead>
 
               <tbody className="divide-y divide-border-custom">
-                {orders.filter(o => o.active).slice(0, 5).map(order => (
-                  <tr
-                    key={order.id}
-                    className="hover:bg-surface-hover transition-colors cursor-pointer group"
-                    onClick={() => onOrderClick(order.id)}
-                  >
-                    <td className="px-8 py-6 font-bold text-foreground-main tracking-tight">
-                      {order.order_number}
-                    </td>
-                    <td className="px-8 py-6 text-foreground-muted font-medium">
-                      {order.client_name}
-                    </td>
-                    <td className="px-8 py-6">
-                      <span className={cn(
-                        "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest",
-                        order.status === 'Entregado'
-                          ? "bg-green-500/10 text-green-500"
-                          : "bg-accent/10 text-accent"
-                      )}>
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="px-8 py-6 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
-                      {order.delivery_date ? format(new Date(order.delivery_date), 'dd MMM, yyyy') : 'N/A'}
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <button className="p-2.5 bg-surface-hover hover:bg-accent rounded-xl transition-all text-foreground-muted group-hover:text-foreground-main">
-                        <ChevronRight size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+
+                {orders
+                  .filter(o => o.active)
+                  .slice(0, 3)
+                  .map(order => (
+                    <tr
+                      key={order.id}
+                      className="hover:bg-surface-hover transition-colors cursor-pointer group"
+                      onClick={() => onOrderClick(order.id)}
+                    >
+
+                      <td className="px-8 py-6 font-bold text-foreground-main tracking-tight">
+                        {order.order_number}
+                      </td>
+
+                      <td className="px-8 py-6 text-foreground-muted font-medium">
+                        {order.client_name}
+                      </td>
+
+                      <td className="px-8 py-6">
+                        <span
+                          className={cn(
+                            "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest",
+                            order.status === 'Entregado'
+                              ? "bg-green-500/10 text-green-500"
+                              : "bg-accent/10 text-accent"
+                          )}
+                        >
+                          {order.status}
+                        </span>
+                      </td>
+
+                      <td className="px-8 py-6 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
+                        {order.delivery_date
+                          ? format(
+                              new Date(order.delivery_date),
+                              'dd MMM, yyyy'
+                            )
+                          : 'N/A'}
+                      </td>
+
+                      <td className="px-8 py-6 text-right">
+                        <button
+                          className="
+                            p-2.5
+                            bg-surface-hover
+                            hover:bg-accent
+                            rounded-xl
+                            transition-all
+                            text-foreground-muted
+                            hover:text-white
+                            group-hover:scale-110
+                          "
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                      </td>
+
+                    </tr>
+                  ))}
+
               </tbody>
 
             </table>
           </div>
+
         </Card>
       </div>
     </motion.div>
