@@ -7595,7 +7595,7 @@ function EmployeeManagement({}: { key?: string }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
           <div>
-            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Personal</h3>
+            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Empleados</h3>
           </div>
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button 
