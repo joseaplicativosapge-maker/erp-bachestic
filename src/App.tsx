@@ -6694,6 +6694,7 @@ function EmployeeManagement({}: { key?: string }) {
 
   return (
     <div className="space-y-8">
+      {/* Cabecera Principal */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
           <div>
@@ -6732,92 +6733,87 @@ function EmployeeManagement({}: { key?: string }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6 w-full justify-center">
-            {filteredEmployees.length === 0 ? (
-              <div className="col-span-full">
-                <Card className="py-20">
-                  <EmptyState 
-                    icon={Users} 
-                    title={activeTab === 'active' ? "No hay empleados activos" : "No hay empleados inactivos"} 
-                    message={activeTab === 'active' ? "Aún no has registrado ningún empleado activo." : "No tienes empleados desactivados en este momento."}
-                    actionLabel={activeTab === 'active' ? "Registrar Primer Empleado" : undefined}
-                    onAction={activeTab === 'active' ? () => { setEditingEmployee(null); setNewEmployee({ name: '', role: 'Confección', phone: '', pin: '' }); setShowAdd(true); } : undefined}
-                  />
-                </Card>
-              </div>
-            ) : filteredEmployees.map(emp => (
-              <Card 
-                key={emp.id} 
-                className={cn(
-                  "group hover:border-accent/30 transition-all relative overflow-hidden",
-                  !emp.active && "opacity-60 grayscale-[0.5]"
-                )}
-              >
-                {!emp.active && (
-                  <div className="absolute top-0 right-0 bg-accent text-white text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-bl-xl">
-                    Inactivo
-                  </div>
-                )}
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-surface-hover overflow-hidden flex items-center justify-center border border-border-custom shadow-inner">
-                      {emp.photo_path ? (
-                        <img src={`/uploads/${emp.photo_path}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      ) : (
-                        <Users size={24} className="text-foreground-muted/30" />
-                      )}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-lg text-foreground-main tracking-tight">{emp.name}</h4>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-accent bg-accent/5 px-2 py-1 rounded-md">
-                        {emp.role}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => handleEdit(emp)}
-                      className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
-                      title="Editar empleado"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                    <button 
-                      onClick={() => confirmToggleStatus(emp)}
-                      className={cn(
-                        "p-3 rounded-xl transition-all",
-                        emp.active ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent" : "bg-accent text-white"
-                      )}
-                      title={emp.active ? "Desactivar empleado" : "Activar empleado"}
-                    >
-                      {emp.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="space-y-3 pt-4 border-t border-border-custom">
-                  <div className="flex items-center gap-3 text-sm text-foreground-muted">
-                    <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
-                      <Clock size={14} />
-                    </div>
-                    <span className="font-bold tracking-tight">{emp.phone || 'Sin teléfono'}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-foreground-muted">
-                    <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
-                      <LayoutDashboard size={14} />
-                    </div>
-                    <span className="font-bold tracking-tight capitalize">{emp.active ? 'Estado: Activo' : 'Estado: Inactivo'}</span>
-                  </div>
-                </div>
-              </Card>
-            ))}
+      {/* Grid de Empleados Corregido (Eliminados los contenedores lg:grid-cols-3 y lg:col-span-2) */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6 w-full">
+        {filteredEmployees.length === 0 ? (
+          <div className="col-span-full">
+              <EmptyState 
+                icon={Users} 
+                title={activeTab === 'active' ? "No hay empleados activos" : "No hay empleados inactivos"} 
+                message={activeTab === 'active' ? "Aún no has registrado ningún empleado activo." : "No tienes empleados desactivados en este momento."}
+                actionLabel={activeTab === 'active' ? "Registrar Primer Empleado" : undefined}
+                onAction={activeTab === 'active' ? () => { setEditingEmployee(null); setNewEmployee({ name: '', role: 'Confección', phone: '', pin: '' }); setShowAdd(true); } : undefined}
+              />
           </div>
-        </div>
+        ) : filteredEmployees.map(emp => (
+          <Card 
+            key={emp.id} 
+            className={cn(
+              "group hover:border-accent/30 transition-all relative overflow-hidden",
+              !emp.active && "opacity-60 grayscale-[0.5]"
+            )}
+          >
+            {!emp.active && (
+              <div className="absolute top-0 right-0 bg-accent text-white text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-bl-xl">
+                Inactivo
+              </div>
+            )}
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-surface-hover overflow-hidden flex items-center justify-center border border-border-custom shadow-inner">
+                  {emp.photo_path ? (
+                    <img src={`/uploads/${emp.photo_path}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <Users size={24} className="text-foreground-muted/30" />
+                  )}
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg text-foreground-main tracking-tight">{emp.name}</h4>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-accent bg-accent/5 px-2 py-1 rounded-md">
+                    {emp.role}
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => handleEdit(emp)}
+                  className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
+                  title="Editar empleado"
+                >
+                  <Edit2 size={18} />
+                </button>
+                <button 
+                  onClick={() => confirmToggleStatus(emp)}
+                  className={cn(
+                    "p-3 rounded-xl transition-all",
+                    emp.active ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent" : "bg-accent text-white"
+                  )}
+                  title={emp.active ? "Desactivar empleado" : "Activar empleado"}
+                >
+                  {emp.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
+                </button>
+              </div>
+            </div>
+            
+            <div className="space-y-3 pt-4 border-t border-border-custom">
+              <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
+                  <Clock size={14} />
+                </div>
+                <span className="font-bold tracking-tight">{emp.phone || 'Sin teléfono'}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
+                  <LayoutDashboard size={14} />
+                </div>
+                <span className="font-bold tracking-tight capitalize">{emp.active ? 'Estado: Activo' : 'Estado: Inactivo'}</span>
+              </div>
+            </div>
+          </Card>
+        ))}
       </div>
 
+      {/* Modal Confirmar Estado */}
       <Modal 
         isOpen={showConfirmToggle} 
         onClose={() => setShowConfirmToggle(false)} 
@@ -6855,6 +6851,7 @@ function EmployeeManagement({}: { key?: string }) {
         </div>
       </Modal>
 
+      {/* Modal Formulario */}
       <Modal 
         isOpen={showAdd} 
         onClose={() => setShowAdd(false)} 
