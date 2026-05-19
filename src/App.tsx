@@ -3307,9 +3307,9 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 
               {['Diseño aprobado', 'En cuadro', 'En montaje'].includes(order.status) && (role === 'Admin' || role === 'Diseño') && (() => {
                 const stepMap: Partial<Record<OrderStatus, { label: string; next: OrderStatus; icon: any }>> = {
-                  'Diseño aprobado': { label: 'Liberar a Producción', next: 'En cuadro', icon: Printer },
-                  'En cuadro':       { label: 'Pasar a Montaje',      next: 'En montaje', icon: CheckCircle2 },
-                  'En montaje':      { label: 'Liberar a Impresión',  next: 'En impresión', icon: Printer },
+                  'Diseño aprobado': { label: 'Avanzar a: Producción', next: 'En cuadro', icon: Printer },
+                  'En cuadro':       { label: 'Avanzar a: Montaje',      next: 'En montaje', icon: CheckCircle2 },
+                  'En montaje':      { label: 'Avanzar a: Impresión',  next: 'En impresión', icon: Printer },
                 };
                 const step = stepMap[order.status as keyof typeof stepMap];
                 if (!step) return null;
