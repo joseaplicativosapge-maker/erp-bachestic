@@ -325,9 +325,9 @@ export default function App() {
     { id: 'orders', label: 'Órdenes', icon: ShoppingCart, roles: ['Admin', 'Ventas'] },
     { id: 'clients', label: 'Clientes', icon: Contact, roles: ['Admin', 'Ventas'] },
     { id: 'products', label: 'Productos', icon: Package, roles: ['Admin', 'Ventas'] },
-    { id: 'kds', label: 'KDS Producción', icon: Clock, roles: ['Admin', 'Diseño', 'Impresión', 'Sublimación', 'Corte', 'Confección', 'Empaque'] },
+    { id: 'kds', label: 'Producción', icon: Clock, roles: ['Admin', 'Diseño', 'Impresión', 'Sublimación', 'Corte', 'Confección', 'Empaque'] },
     { id: 'employees', label: 'Empleados', icon: Users, roles: ['Admin'] },
-    { id: 'client', label: 'Seguimiento Cliente', icon: Eye, roles: ['Admin', 'Ventas', 'Cliente'] },
+    { id: 'client', label: 'Seguimiento', icon: Eye, roles: ['Admin', 'Ventas', 'Cliente'] },
   ];
 
   const filteredSidebarItems = sidebarItems.filter(item => item.roles.includes(role));
@@ -724,7 +724,7 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h3 className="text-3xl font-black tracking-tighter text-foreground-main">Gestión de Pedidos</h3>
+          <h3 className="text-3xl font-black tracking-tighter text-foreground-main">&Oacute;rdenes</h3>
           {canCreate && (
             <button
               onClick={onCreateClick}
@@ -5865,7 +5865,7 @@ function ProductManagement({}: { key?: string }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
           <div>
-            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Catálogo de Productos</h3>
+            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Productos</h3>
           </div>
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button 
@@ -6302,7 +6302,7 @@ function ClientManagement({}: { key?: string }) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-8">
           <div>
-            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Directorio de Clientes</h3>
+            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Clientes</h3>
           </div>
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button 
@@ -6695,7 +6695,7 @@ function EmployeeManagement({}: { key?: string }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
           <div>
-            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Gestión de Personal</h3>
+            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Personal</h3>
           </div>
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button 
