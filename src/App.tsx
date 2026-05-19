@@ -3226,7 +3226,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                           : "bg-surface-hover text-foreground-muted/40 cursor-not-allowed border border-dashed border-border-custom"
                       )}
                     >
-                      <Palette size={18} /> Iniciar Diseño
+                      <Palette size={18} /> Avanzar a: Diseño
                     </button>
                     {!hasDesignReference && (
                       <p className="text-[9px] font-black uppercase tracking-widest text-accent/70 text-center flex items-center justify-center gap-1.5">
