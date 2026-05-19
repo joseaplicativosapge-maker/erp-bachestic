@@ -238,20 +238,6 @@ async function startServer() {
     db.prepare('ALTER TABLE orders ADD COLUMN reposition_from_status TEXT').run();
   } catch (e) {}
 
-  db.exec(`
-    PRAGMA foreign_keys = OFF;
-    DELETE FROM orders;
-    DELETE FROM teams;
-    DELETE FROM order_items;
-    DELETE FROM design_versions;
-    DELETE FROM design_references;
-    DELETE FROM order_history;
-    DELETE FROM production_assignments;
-    DELETE FROM sqlite_sequence;
-    PRAGMA foreign_keys = ON;
-    VACUUM;
-  `);
-
   const app = express();
   const PORT = 3000;
 

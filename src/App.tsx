@@ -1456,7 +1456,6 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                   </div>
 
                   <div className="space-y-6">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted mb-4">Presupuesto y Entrega</h4>
                     <div className="space-y-4">
                       <Input
                         label="Fecha Estimada Entrega"
@@ -1478,38 +1477,6 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                         </div>
                       </div>
                       
-                      <div className="bg-accent/10 p-6 rounded-[24px] border border-accent/20 space-y-3">
-                        <div className="flex justify-between items-center">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-accent">Abono Requerido</p>
-                          <p className="font-black text-xl text-foreground-main tracking-tighter">
-                            ${Math.round(formData.total_amount * (advancePercent / 100)).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="range"
-                            min={0}
-                            max={100}
-                            value={advancePercent}
-                            onChange={e => setAdvancePercent(Number(e.target.value))}
-                            className="flex-1 accent-accent cursor-pointer"
-                          />
-                          <div className="flex items-center gap-1 bg-background border border-border-custom rounded-xl px-3 py-2 w-20">
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={advancePercent}
-                              onChange={e => setAdvancePercent(Math.min(100, Math.max(0, Number(e.target.value))))}
-                              className="w-full bg-transparent outline-none text-foreground-main font-black text-sm text-right"
-                            />
-                            <span className="text-foreground-muted font-black text-sm">%</span>
-                          </div>
-                        </div>
-                        <p className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest italic">
-                          El pedido iniciará producción una vez confirmado el abono.
-                        </p>
-                      </div>
                       
                     </div>
                   </div>
@@ -7277,5 +7244,3 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
 </div>
   );
 }
-
-
