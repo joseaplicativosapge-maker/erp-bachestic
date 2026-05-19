@@ -641,65 +641,149 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
 }
 
 // --- Orders List Component ---
-function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, includeInactive, onToggleInactive, onUpdate, onShowRoadmap }: { orders: Order[], user: User, onOrderClick: (id: number) => void, onCreateClick: () => void, canCreate: boolean, includeInactive: boolean, onToggleInactive: () => void, onUpdate: () => void, onShowRoadmap: (orderNum: string) => void, key?: string }) {
+function OrdersList({
+  orders,
+  user,
+  onOrderClick,
+  onCreateClick,
+  canCreate,
+  includeInactive,
+  onToggleInactive,
+  onUpdate,
+  onShowRoadmap,
+}: {
+  orders: Order[];
+  user: User;
+  onOrderClick: (id: number) => void;
+  onCreateClick: () => void;
+  canCreate: boolean;
+  includeInactive: boolean;
+  onToggleInactive: () => void;
+  onUpdate: () => void;
+  onShowRoadmap: (orderNum: string) => void;
+  key?: string;
+}) {
   const [showConfirmToggle, setShowConfirmToggle] = useState(false);
   const [orderToToggle, setOrderToToggle] = useState<Order | null>(null);
+
   const [teamFilter, setTeamFilter] = useState<string>('Todos');
   const [dateField, setDateField] = useState<'created_at' | 'delivery_date'>('delivery_date');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('Todos');
   const [searchTerm, setSearchTerm] = useState('');
-  const availableTeams = ['Todos', ...Array.from(new Set(
-    orders.filter(o => o.team_name).map(o => o.team_name as string)
-  ))];
 
-  const filteredOrders = orders.filter(o => {
-    const matchesActive = includeInactive ? !o.active : o.active;
-    const matchesTeam = teamFilter === 'Todos' || o.team_name === teamFilter;
-    const matchesStatus = statusFilter === 'Todos' || o.status === statusFilter;
-    const matchesSearch = !searchTerm.trim() || 
-      o.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.order_number.toLowerCase().includes(searchTerm.toLowerCase()); // opcional
+  // ✅ PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1);
+  const ORDERS_PER_PAGE = 9;
 
-    let matchesDate = true;
-    if (dateFrom || dateTo) {
-      const raw = o[dateField];
-      if (!raw) {
-        matchesDate = false;
-      } else {
-        const orderDate = new Date(raw).toISOString().split('T')[0];
-        if (dateFrom && orderDate < dateFrom) matchesDate = false;
-        if (dateTo && orderDate > dateTo) matchesDate = false;
+  const availableTeams = [
+    'Todos',
+    ...Array.from(new Set(orders.filter(o => o.team_name).map(o => o.team_name as string))),
+  ];
+
+  const filteredOrders = orders
+    .filter(o => {
+      const matchesActive = includeInactive ? !o.active : o.active;
+      const matchesTeam = teamFilter === 'Todos' || o.team_name === teamFilter;
+      const matchesStatus = statusFilter === 'Todos' || o.status === statusFilter;
+
+      const matchesSearch =
+        !searchTerm.trim() ||
+        o.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        o.order_number.toLowerCase().includes(searchTerm.toLowerCase());
+
+      let matchesDate = true;
+
+      if (dateFrom || dateTo) {
+        const raw = o[dateField];
+
+        if (!raw) {
+          matchesDate = false;
+        } else {
+          const orderDate = new Date(raw).toISOString().split('T')[0];
+
+          if (dateFrom && orderDate < dateFrom) matchesDate = false;
+          if (dateTo && orderDate > dateTo) matchesDate = false;
+        }
       }
-    }
 
-    return matchesActive && matchesTeam && matchesDate && matchesStatus && matchesSearch;
-  }).sort((a, b) => {
-    // Reposiciones siempre primero
-    if (a.is_reposition && !b.is_reposition) return -1;
-    if (!a.is_reposition && b.is_reposition) return 1;
-    // Entregadas siempre al final
-    if (a.status === 'Entregado' && b.status !== 'Entregado') return 1;
-    if (a.status !== 'Entregado' && b.status === 'Entregado') return -1;
-    // El resto por fecha de creación
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-  });
+      return (
+        matchesActive &&
+        matchesTeam &&
+        matchesDate &&
+        matchesStatus &&
+        matchesSearch
+      );
+    })
+    .sort((a, b) => {
+      // Reposiciones primero
+      if (a.is_reposition && !b.is_reposition) return -1;
+      if (!a.is_reposition && b.is_reposition) return 1;
 
-  const copyPublicLink = (e: React.MouseEvent, orderNumber: string) => {
+      // Entregadas al final
+      if (a.status === 'Entregado' && b.status !== 'Entregado') return 1;
+      if (a.status !== 'Entregado' && b.status === 'Entregado') return -1;
+
+      return (
+        new Date(a.created_at).getTime() -
+        new Date(b.created_at).getTime()
+      );
+    });
+
+  // ✅ TOTAL DE PÁGINAS
+  const totalPages = Math.ceil(filteredOrders.length / ORDERS_PER_PAGE);
+
+  // ✅ ÓRDENES DE LA PÁGINA ACTUAL
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * ORDERS_PER_PAGE,
+    currentPage * ORDERS_PER_PAGE
+  );
+
+  // ✅ RESET PAGINACIÓN CUANDO CAMBIAN FILTROS
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    includeInactive,
+    teamFilter,
+    dateField,
+    dateFrom,
+    dateTo,
+    statusFilter,
+    searchTerm,
+  ]);
+
+  const copyPublicLink = (
+    e: React.MouseEvent,
+    orderNumber: string
+  ) => {
     e.stopPropagation();
+
     const url = `${window.location.origin}/?order=${orderNumber}`;
+
     navigator.clipboard.writeText(url);
+
     toast.success('Enlace copiado al portapapeles');
   };
 
   const handleToggleActive = async () => {
     if (!orderToToggle) return;
+
     try {
-      await api.updateOrder(orderToToggle.id, { active: !orderToToggle.active, user_name: user.name });
-      toast.success(`Pedido ${orderToToggle.active ? 'desactivado' : 'activado'} correctamente`);
+      await api.updateOrder(orderToToggle.id, {
+        active: !orderToToggle.active,
+        user_name: user.name,
+      });
+
+      toast.success(
+        `Pedido ${
+          orderToToggle.active ? 'desactivado' : 'activado'
+        } correctamente`
+      );
+
       setShowConfirmToggle(false);
       setOrderToToggle(null);
+
       onUpdate();
     } catch (error) {
       console.error(error);
@@ -707,17 +791,27 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
     }
   };
 
-  const confirmToggleActive = (e: React.MouseEvent, order: Order) => {
+  const confirmToggleActive = (
+    e: React.MouseEvent,
+    order: Order
+  ) => {
     e.stopPropagation();
     setOrderToToggle(order);
     setShowConfirmToggle(true);
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-10"
+    >
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h3 className="text-3xl font-black tracking-tighter text-foreground-main">&Oacute;rdenes</h3>
+          <h3 className="text-3xl font-black tracking-tighter text-foreground-main">
+            Órdenes
+          </h3>
+
           {canCreate && (
             <button
               onClick={onCreateClick}
@@ -729,33 +823,42 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
           )}
         </div>
 
-        {/* BARRA DE FILTROS */}
+        {/* FILTROS */}
         <div className="flex flex-wrap items-center gap-4">
-          {/* Toggle Activos/Desactivados */}
+          {/* Toggle */}
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button
               onClick={() => includeInactive && onToggleInactive()}
               className={cn(
-                "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                !includeInactive ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-foreground-muted hover:text-foreground-main"
+                'px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                !includeInactive
+                  ? 'bg-accent text-white shadow-lg shadow-accent/20'
+                  : 'text-foreground-muted hover:text-foreground-main'
               )}
             >
               Activos
             </button>
+
             <button
               onClick={() => !includeInactive && onToggleInactive()}
               className={cn(
-                "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                includeInactive ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-foreground-muted hover:text-foreground-main"
+                'px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                includeInactive
+                  ? 'bg-accent text-white shadow-lg shadow-accent/20'
+                  : 'text-foreground-muted hover:text-foreground-main'
               )}
             >
               Desactivados
             </button>
           </div>
-          
-          {/* Búsqueda por cliente */}
+
+          {/* BUSCADOR */}
           <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors" size={16} />
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors"
+              size={16}
+            />
+
             <input
               type="text"
               placeholder="Buscar cliente..."
@@ -763,14 +866,18 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
               onChange={e => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2.5 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main text-[10px] font-black uppercase tracking-widest placeholder:text-foreground-muted/30 transition-all w-56"
             />
+
             {searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors">
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
+              >
                 <X size={14} />
               </button>
             )}
           </div>
 
-          {/* Filtro por Estado */}
+          {/* ESTADO */}
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
@@ -792,11 +899,13 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
               'En despacho',
               'Entregado',
             ].map(s => (
-              <option key={s} value={s} className="bg-surface">{s}</option>
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
           </select>
 
-          {/* Filtro por Fechas */}
+          {/* FECHAS */}
           <div className="flex items-center gap-3 bg-surface border border-border-custom rounded-2xl px-5 py-2.5">
             <select
               value={dateField}
@@ -806,57 +915,70 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
               <option value="delivery_date">Entrega</option>
               <option value="created_at">Creación</option>
             </select>
+
             <div className="w-[1px] h-4 bg-border-custom" />
+
             <input
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
-              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:dark] w-32"
+              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:light] w-32"
             />
-            <span className="text-[10px] font-black text-foreground-muted">—</span>
+
+            <span className="text-[10px] font-black text-foreground-muted">
+              —
+            </span>
+
             <input
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
-              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:dark] w-32"
+              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:light] w-32"
             />
-            {(dateFrom || dateTo) && (
-              <button
-                onClick={() => { setDateFrom(''); setDateTo(''); }}
-                className="text-foreground-muted hover:text-accent transition-colors"
-              >
-                <X size={14} />
-              </button>
-            )}
           </div>
 
-          {/* Contador de resultados */}
+          {/* CONTADOR */}
           <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
-            {filteredOrders.length} {filteredOrders.length === 1 ? 'orden' : 'órdenes'}
+            {filteredOrders.length}{' '}
+            {filteredOrders.length === 1 ? 'orden' : 'órdenes'}
           </span>
         </div>
       </div>
 
+      {/* GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {filteredOrders.length === 0 ? (
+        {paginatedOrders.length === 0 ? (
           <div className="md:col-span-2 lg:col-span-3">
             <EmptyState
               icon={ShoppingCart}
-              title={includeInactive ? "No hay órdenes inactivas" : "No hay órdenes activas"}
-              message={includeInactive ? "No se han encontrado pedidos en el archivo." : "Aún no se han registrado pedidos. Comienza creando uno nuevo para iniciar el proceso de producción."}
-              actionLabel={!includeInactive && canCreate ? "Crear Nueva Orden" : undefined}
+              title={
+                includeInactive
+                  ? 'No hay órdenes inactivas'
+                  : 'No hay órdenes activas'
+              }
+              message={
+                includeInactive
+                  ? 'No se han encontrado pedidos en el archivo.'
+                  : 'Aún no se han registrado pedidos.'
+              }
+              actionLabel={
+                !includeInactive && canCreate
+                  ? 'Crear Nueva Orden'
+                  : undefined
+              }
               onAction={onCreateClick}
             />
           </div>
         ) : (
-          filteredOrders.map(order => (
+          paginatedOrders.map(order => (
             <Card
               key={order.id}
               onClick={() => onOrderClick(order.id)}
               noPadding
               className={cn(
-                "p-8 transition-all cursor-pointer group relative overflow-hidden",
-                !order.active && "border-accent/20 opacity-40 grayscale-[0.8]"
+                'p-8 transition-all cursor-pointer group relative overflow-hidden',
+                !order.active &&
+                  'border-accent/20 opacity-40 grayscale-[0.8]'
               )}
             >
               {!order.active && (
@@ -864,52 +986,74 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
                   Inactivo
                 </div>
               )}
+
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.2em] font-black text-foreground-muted mb-1">{order.order_number}</p>
-                  <h4 className="font-black text-xl text-foreground-main tracking-tight group-hover:text-accent transition-colors">{order.client_name}</h4>
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-black text-foreground-muted mb-1">
+                    {order.order_number}
+                  </p>
+
+                  <h4 className="font-black text-xl text-foreground-main tracking-tight group-hover:text-accent transition-colors">
+                    {order.client_name}
+                  </h4>
                 </div>
               </div>
 
               <div className="space-y-4 mb-8">
                 <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
                   <Clock size={16} className="text-accent" />
-                  <span>Entrega: <span className="text-foreground-main">{order.delivery_date ? format(new Date(order.delivery_date), 'dd/MM/yyyy') : 'N/A'}</span></span>
+
+                  <span>
+                    Entrega:{' '}
+                    <span className="text-foreground-main">
+                      {order.delivery_date
+                        ? format(
+                            new Date(order.delivery_date),
+                            'dd/MM/yyyy'
+                          )
+                        : 'N/A'}
+                    </span>
+                  </span>
                 </div>
+
                 <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
-                  <LayoutDashboard size={16} className="text-accent" />
-                  <span>Estado: <span className="font-black text-foreground-main">{order.status}</span></span>
+                  <LayoutDashboard
+                    size={16}
+                    className="text-accent"
+                  />
+
+                  <span>
+                    Estado:{' '}
+                    <span className="font-black text-foreground-main">
+                      {order.status}
+                    </span>
+                  </span>
                 </div>
-                {order.team_name ? (
-                  <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
-                    <Users size={16} className="text-accent" />
-                    <span>Equipo: <span className="font-black text-foreground-main">{order.team_name}</span></span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
-                    <Users size={16} className="text-foreground-muted/30" />
-                    <span className="text-foreground-muted/30">Sin equipo asignado</span>
-                  </div>
-                )}
               </div>
 
               <div className="pt-6 border-t border-border-custom flex justify-between items-center">
-                <p className="font-black text-2xl text-foreground-main tracking-tighter"></p>
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={(e) => confirmToggleActive(e, order)}
+                    onClick={e => confirmToggleActive(e, order)}
                     className={cn(
-                      "p-3 rounded-xl transition-all",
-                      order.active ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent" : "bg-accent text-white"
+                      'p-3 rounded-xl transition-all',
+                      order.active
+                        ? 'bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent'
+                        : 'bg-accent text-white'
                     )}
-                    title={order.active ? "Desactivar orden" : "Activar orden"}
                   >
-                    {order.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
+                    {order.active ? (
+                      <Trash2 size={18} />
+                    ) : (
+                      <RefreshCw size={18} />
+                    )}
                   </button>
+
                   <button
-                    onClick={(e) => copyPublicLink(e, order.order_number)}
+                    onClick={e =>
+                      copyPublicLink(e, order.order_number)
+                    }
                     className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
-                    title="Copiar enlace público"
                   >
                     <Copy size={18} />
                   </button>
@@ -920,6 +1064,53 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
         )}
       </div>
 
+      {/* PAGINACIÓN */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-4 flex-wrap">
+          <button
+            onClick={() =>
+              setCurrentPage(prev => Math.max(prev - 1, 1))
+            }
+            disabled={currentPage === 1}
+            className="px-5 py-3 rounded-2xl bg-surface border border-border-custom text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+          >
+            Anterior
+          </button>
+
+          {Array.from({ length: totalPages }).map((_, index) => {
+            const page = index + 1;
+
+            return (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={cn(
+                  'w-12 h-12 rounded-2xl text-[10px] font-black transition-all',
+                  currentPage === page
+                    ? 'bg-accent text-white shadow-lg shadow-accent/20'
+                    : 'bg-surface border border-border-custom text-foreground-muted hover:text-foreground-main'
+                )}
+              >
+                {page}
+              </button>
+            );
+          })}
+
+          <button
+            onClick={() =>
+              setCurrentPage(prev =>
+                Math.min(prev + 1, totalPages)
+              )
+            }
+            disabled={currentPage === totalPages}
+            className="px-5 py-3 rounded-2xl bg-surface border border-border-custom text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
+
+      {/* MODAL */}
       <Modal
         isOpen={showConfirmToggle}
         onClose={() => setShowConfirmToggle(false)}
@@ -928,18 +1119,29 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
       >
         <div className="space-y-6 text-center">
           <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center text-accent mx-auto">
-            {orderToToggle?.active ? <Archive size={40} /> : <RotateCcw size={40} />}
+            {orderToToggle?.active ? (
+              <Archive size={40} />
+            ) : (
+              <RotateCcw size={40} />
+            )}
           </div>
+
           <div>
             <h4 className="text-xl font-black text-foreground-main uppercase tracking-tight">
-              ¿Estás seguro de {orderToToggle?.active ? 'desactivar' : 'activar'} este pedido?
+              ¿Estás seguro de{' '}
+              {orderToToggle?.active
+                ? 'desactivar'
+                : 'activar'}{' '}
+              este pedido?
             </h4>
+
             <p className="text-foreground-muted text-sm mt-2">
               {orderToToggle?.active
-                ? 'El pedido se moverá a la pestaña de inactivos y no será visible en la lista principal.'
-                : 'El pedido volverá a la lista principal de pedidos activos.'}
+                ? 'El pedido se moverá a inactivos.'
+                : 'El pedido volverá a activos.'}
             </p>
           </div>
+
           <div className="flex gap-4 pt-4">
             <button
               onClick={() => setShowConfirmToggle(false)}
@@ -947,6 +1149,7 @@ function OrdersList({ orders, user, onOrderClick, onCreateClick, canCreate, incl
             >
               Cancelar
             </button>
+
             <button
               onClick={handleToggleActive}
               className="flex-1 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] bg-accent text-white hover:scale-105 transition-all shadow-xl shadow-accent/20"
@@ -6199,6 +6402,11 @@ function ClientManagement({}: { key?: string }) {
   const [clientToToggle, setClientToToggle] = useState<Client | null>(null);
   const [showTeamManagement, setShowTeamManagement] = useState(false);
   const [selectedClientForTeams, setSelectedClientForTeams] = useState<Client | null>(null);
+
+  // ✅ PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1);
+  const CLIENTS_PER_PAGE = 9;
+
   const [formData, setFormData] = useState({
     name: '',
     doc: '',
@@ -6214,6 +6422,11 @@ function ClientManagement({}: { key?: string }) {
     fetchClients();
   }, []);
 
+  // ✅ RESET PAGINACIÓN AL FILTRAR
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, includeInactive]);
+
   const fetchClients = async () => {
     try {
       setLoading(true);
@@ -6228,6 +6441,7 @@ function ClientManagement({}: { key?: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
       if (editingClient) {
         await api.updateClient(editingClient.id, formData);
@@ -6236,9 +6450,21 @@ function ClientManagement({}: { key?: string }) {
         await api.createClient(formData);
         toast.success('Cliente registrado correctamente');
       }
+
       setIsAdding(false);
       setEditingClient(null);
-      setFormData({ name: '', doc: '', doc_type: 'CC', phone: '', address: '', city: '', email: '' });
+
+      setFormData({
+        name: '',
+        doc: '',
+        doc_type: 'CC',
+        phone: '',
+        address: '',
+        city: '',
+        email: '',
+        active: true
+      });
+
       fetchClients();
     } catch (error) {
       console.error(error);
@@ -6247,6 +6473,7 @@ function ClientManagement({}: { key?: string }) {
 
   const handleEdit = (client: Client) => {
     setEditingClient(client);
+
     setFormData({
       name: client.name,
       doc: client.doc,
@@ -6257,20 +6484,35 @@ function ClientManagement({}: { key?: string }) {
       email: client.email || '',
       active: client.active
     });
+
     setIsAdding(true);
   };
 
   const handleToggleActive = async () => {
     if (!clientToToggle) return;
+
     try {
       const newStatus = !clientToToggle.active;
-      await api.updateClient(clientToToggle.id, { active: newStatus });
-      toast.success(`Cliente ${clientToToggle.active ? 'desactivado' : 'activado'} correctamente`);
+
+      await api.updateClient(clientToToggle.id, {
+        active: newStatus
+      });
+
+      toast.success(
+        `Cliente ${
+          clientToToggle.active
+            ? 'desactivado'
+            : 'activado'
+        } correctamente`
+      );
+
       setShowConfirmToggle(false);
       setClientToToggle(null);
+
       if (!newStatus) {
         setIncludeInactive(true);
       }
+
       fetchClients();
     } catch (error) {
       console.error(error);
@@ -6286,95 +6528,146 @@ function ClientManagement({}: { key?: string }) {
   if (loading) return <LoadingState message="Cargando Clientes" />;
 
   const filteredClients = clients.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         c.doc.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = includeInactive ? !c.active : c.active;
+    const matchesSearch =
+      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.doc.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = includeInactive
+      ? !c.active
+      : c.active;
+
     return matchesSearch && matchesStatus;
   });
+
+  // ✅ TOTAL DE PÁGINAS
+  const totalPages = Math.ceil(
+    filteredClients.length / CLIENTS_PER_PAGE
+  );
+
+  // ✅ CLIENTES PAGINADOS
+  const paginatedClients = filteredClients.slice(
+    (currentPage - 1) * CLIENTS_PER_PAGE,
+    currentPage * CLIENTS_PER_PAGE
+  );
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-8">
           <div>
-            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">Clientes</h3>
+            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">
+              Clientes
+            </h3>
           </div>
+
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
-            <button 
+            <button
               onClick={() => setIncludeInactive(false)}
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                !includeInactive ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-foreground-muted hover:text-foreground-main"
+                !includeInactive
+                  ? "bg-accent text-white shadow-lg shadow-accent/20"
+                  : "text-foreground-muted hover:text-foreground-main"
               )}
             >
               Activos
             </button>
-            <button 
+
+            <button
               onClick={() => setIncludeInactive(true)}
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                includeInactive ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-foreground-muted hover:text-foreground-main"
+                includeInactive
+                  ? "bg-accent text-white shadow-lg shadow-accent/20"
+                  : "text-foreground-muted hover:text-foreground-main"
               )}
             >
               Desactivados
             </button>
           </div>
         </div>
+
         <div className="flex items-center gap-4">
           <div className="relative w-full md:w-96 group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors" size={18} />
-            <input 
-              type="text" 
-              placeholder="Buscar clientes..." 
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors"
+              size={18}
+            />
+
+            <input
+              type="text"
+              placeholder="Buscar clientes..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full bg-surface-hover border border-border-custom rounded-2xl pl-12 pr-4 py-3 outline-none focus:ring-2 focus:ring-accent/20 transition-all text-foreground-main font-bold text-sm"
             />
           </div>
 
-          <button 
+          <button
             onClick={() => {
               setIsAdding(true);
               setEditingClient(null);
-              setFormData({ name: '', doc: '', doc_type: 'CC', phone: '', address: '', city: '', email: '', active: true });
+
+              setFormData({
+                name: '',
+                doc: '',
+                doc_type: 'CC',
+                phone: '',
+                address: '',
+                city: '',
+                email: '',
+                active: true
+              });
             }}
             className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
           >
-            <Plus size={20} /> Nuevo Cliente
+            <Plus size={20} />
+            Nuevo Cliente
           </button>
-
         </div>
       </div>
-      
-     
-      <Modal 
-        isOpen={showConfirmToggle} 
-        onClose={() => setShowConfirmToggle(false)} 
+
+      {/* MODAL CAMBIO ESTADO */}
+      <Modal
+        isOpen={showConfirmToggle}
+        onClose={() => setShowConfirmToggle(false)}
         title="Confirmar Cambio de Estado"
         maxWidth="max-w-md"
       >
         <div className="space-y-6 text-center">
           <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center text-accent mx-auto">
-            {clientToToggle?.active ? <UserMinus size={40} /> : <UserPlus size={40} />}
+            {clientToToggle?.active ? (
+              <UserMinus size={40} />
+            ) : (
+              <UserPlus size={40} />
+            )}
           </div>
+
           <div>
             <h4 className="text-xl font-black text-foreground-main uppercase tracking-tight">
-              ¿Estás seguro de {clientToToggle?.active ? 'desactivar' : 'activar'} a este cliente?
+              ¿Estás seguro de{' '}
+              {clientToToggle?.active
+                ? 'desactivar'
+                : 'activar'}{' '}
+              a este cliente?
             </h4>
+
             <p className="text-foreground-muted text-sm mt-2">
-              {clientToToggle?.active 
-                ? 'El cliente se moverá a la pestaña de inactivos y no será visible en la lista principal.' 
+              {clientToToggle?.active
+                ? 'El cliente se moverá a la pestaña de inactivos y no será visible en la lista principal.'
                 : 'El cliente volverá a la lista principal de clientes activos.'}
             </p>
           </div>
+
           <div className="flex gap-4 pt-4">
-            <button 
+            <button
               onClick={() => setShowConfirmToggle(false)}
               className="flex-1 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
             >
               Cancelar
             </button>
-            <button 
+
+            <button
               onClick={handleToggleActive}
               className="flex-1 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] bg-accent text-white hover:scale-105 transition-all shadow-xl shadow-accent/20"
             >
@@ -6384,179 +6677,351 @@ function ClientManagement({}: { key?: string }) {
         </div>
       </Modal>
 
-      <Modal 
-        isOpen={isAdding} 
-        onClose={() => setIsAdding(false)} 
+      {/* MODAL FORMULARIO */}
+      <Modal
+        isOpen={isAdding}
+        onClose={() => setIsAdding(false)}
         title={editingClient ? 'Editar Cliente' : 'Nuevo Cliente'}
       >
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Input 
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 md:grid-cols-2 gap-6"
+        >
+          <Input
             label="Nombre Completo"
             required
             value={formData.name}
-            onChange={e => setFormData({...formData, name: e.target.value})}
+            onChange={e =>
+              setFormData({
+                ...formData,
+                name: e.target.value
+              })
+            }
             placeholder="Ej. Juan Pérez"
           />
+
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-1">
               <Select
                 label="Tipo"
                 value={formData.doc_type}
-                onChange={e => setFormData({...formData, doc_type: e.target.value})}
+                onChange={e =>
+                  setFormData({
+                    ...formData,
+                    doc_type: e.target.value
+                  })
+                }
                 options={[
                   { value: 'CC', label: 'CC' },
                   { value: 'NIT', label: 'NIT' },
                   { value: 'CE', label: 'CE' },
                   { value: 'TI', label: 'TI' },
-                  { value: 'Pasaporte', label: 'Pasaporte' }
+                  {
+                    value: 'Pasaporte',
+                    label: 'Pasaporte'
+                  }
                 ]}
               />
             </div>
+
             <div className="col-span-2">
-              <Input 
+              <Input
                 label="Documento"
                 required
                 value={formData.doc}
-                onChange={e => setFormData({...formData, doc: e.target.value})}
+                onChange={e =>
+                  setFormData({
+                    ...formData,
+                    doc: e.target.value
+                  })
+                }
                 placeholder="Ej. 123456789"
               />
             </div>
           </div>
-          <Input 
+
+          <Input
             label="Teléfono"
             value={formData.phone}
-            onChange={e => setFormData({...formData, phone: e.target.value})}
+            onChange={e =>
+              setFormData({
+                ...formData,
+                phone: e.target.value
+              })
+            }
             placeholder="Ej. 3001234567"
           />
-          <Input 
+
+          <Input
             label="Email"
             type="email"
             value={formData.email}
-            onChange={e => setFormData({...formData, email: e.target.value})}
+            onChange={e =>
+              setFormData({
+                ...formData,
+                email: e.target.value
+              })
+            }
             placeholder="juan@ejemplo.com"
           />
-          <Input 
+
+          <Input
             label="Ciudad"
             value={formData.city}
-            onChange={e => setFormData({...formData, city: e.target.value})}
+            onChange={e =>
+              setFormData({
+                ...formData,
+                city: e.target.value
+              })
+            }
             placeholder="Ej. Medellín"
           />
-          <Input 
+
+          <Input
             label="Dirección"
             value={formData.address}
-            onChange={e => setFormData({...formData, address: e.target.value})}
+            onChange={e =>
+              setFormData({
+                ...formData,
+                address: e.target.value
+              })
+            }
             placeholder="Ej. Calle 10 # 20-30"
           />
+
           <div className="md:col-span-2 flex justify-end gap-3 mt-4">
-            <button 
+            <button
               type="button"
               onClick={() => setIsAdding(false)}
               className="px-6 py-3 rounded-xl font-bold text-foreground-muted hover:text-foreground-main transition-colors"
             >
               Cancelar
             </button>
-            <button 
+
+            <button
               type="submit"
               className="bg-accent text-white px-8 py-3 rounded-xl font-bold hover:bg-accent/90 transition-all"
             >
-              {editingClient ? 'Actualizar Cliente' : 'Guardar Cliente'}
+              {editingClient
+                ? 'Actualizar Cliente'
+                : 'Guardar Cliente'}
             </button>
           </div>
         </form>
       </Modal>
 
+      {/* GRID CLIENTES */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredClients.length === 0 ? (
+        {paginatedClients.length === 0 ? (
           <div className="col-span-full">
-            <EmptyState 
-              icon={Contact} 
-              title={includeInactive ? "No hay clientes desactivados" : "No se encontraron clientes"} 
-              message={searchTerm 
-                ? `No hay resultados para "${searchTerm}" en esta sección.` 
-                : includeInactive 
+            <EmptyState
+              icon={Contact}
+              title={
+                includeInactive
+                  ? "No hay clientes desactivados"
+                  : "No se encontraron clientes"
+              }
+              message={
+                searchTerm
+                  ? `No hay resultados para "${searchTerm}" en esta sección.`
+                  : includeInactive
                   ? "No tienes clientes en la lista de desactivados."
                   : "Aún no tienes clientes registrados. Los clientes se crean automáticamente al generar una orden o puedes agregarlos manualmente aquí."
               }
-              actionLabel={(!searchTerm && !includeInactive) ? "Registrar Nuevo Cliente" : undefined}
-              onAction={() => { setEditingClient(null); setFormData({ name: '', doc: '', doc_type: 'CC', phone: '', address: '', city: '', email: '', active: true }); setIsAdding(true); }}
+              actionLabel={
+                !searchTerm && !includeInactive
+                  ? "Registrar Nuevo Cliente"
+                  : undefined
+              }
+              onAction={() => {
+                setEditingClient(null);
+
+                setFormData({
+                  name: '',
+                  doc: '',
+                  doc_type: 'CC',
+                  phone: '',
+                  address: '',
+                  city: '',
+                  email: '',
+                  active: true
+                });
+
+                setIsAdding(true);
+              }}
             />
           </div>
-        ) : filteredClients.map(client => (
-          <Card 
-            key={client.id} 
-            className={cn(
-              "group hover:border-accent/30 transition-all relative overflow-hidden",
-              !client.active && "opacity-60 grayscale-[0.5]"
-            )}
-          >
-            {!client.active && (
-              <div className="absolute top-0 right-0 bg-accent text-white text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-bl-xl">
-                Inactivo
-              </div>
-            )}
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
-                <Contact size={24} />
-              </div>
-              <div className="flex gap-3">
-               <button 
-                  onClick={() => { setSelectedClientForTeams(client); setShowTeamManagement(true); }}
-                  className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
-                  title="Gestionar equipos"
-                >
-                  <Users size={18} />
-                </button>
-                <button 
-                  onClick={() => handleEdit(client)}
-                  className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
-                  title="Editar cliente"
-                >
-                  <Edit2 size={18} />
-                </button>
-                <button 
-                  onClick={() => confirmToggleActive(client)}
-                  className={cn(
-                    "p-3 rounded-xl transition-all",
-                    client.active ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent" : "bg-accent text-white"
-                  )}
-                  title={client.active ? "Desactivar cliente" : "Activar cliente"}
-                >
-                  {client.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
-                </button>
-              </div>
-            </div>
-            <h4 className="font-bold text-lg mb-1 text-foreground-main tracking-tight">{client.name}</h4>
-            <p className="text-foreground-muted text-[10px] mb-4 font-black uppercase tracking-widest">{client.doc_type || 'CC'} {client.doc}</p>
-            <div className="space-y-3 pt-4 border-t border-border-custom">
-              <div className="flex items-center gap-3 text-sm text-foreground-muted">
-                <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
-                  <Clock size={14} />
+        ) : (
+          paginatedClients.map(client => (
+            <Card
+              key={client.id}
+              className={cn(
+                "group hover:border-accent/30 transition-all relative overflow-hidden",
+                !client.active &&
+                  "opacity-60 grayscale-[0.5]"
+              )}
+            >
+              {!client.active && (
+                <div className="absolute top-0 right-0 bg-accent text-white text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-bl-xl">
+                  Inactivo
                 </div>
-                <span className="font-bold tracking-tight">{client.phone || 'Sin teléfono'}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-foreground-muted">
-                <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
-                  <Mail size={14} />
+              )}
+
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
+                  <Contact size={24} />
                 </div>
-                <span className="font-bold tracking-tight">{client.email || 'Sin email'}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-foreground-muted">
-                <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
-                  <LayoutDashboard size={14} />
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setSelectedClientForTeams(client);
+                      setShowTeamManagement(true);
+                    }}
+                    className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
+                    title="Gestionar equipos"
+                  >
+                    <Users size={18} />
+                  </button>
+
+                  <button
+                    onClick={() => handleEdit(client)}
+                    className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
+                    title="Editar cliente"
+                  >
+                    <Edit2 size={18} />
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      confirmToggleActive(client)
+                    }
+                    className={cn(
+                      "p-3 rounded-xl transition-all",
+                      client.active
+                        ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent"
+                        : "bg-accent text-white"
+                    )}
+                    title={
+                      client.active
+                        ? "Desactivar cliente"
+                        : "Activar cliente"
+                    }
+                  >
+                    {client.active ? (
+                      <Trash2 size={18} />
+                    ) : (
+                      <RefreshCw size={18} />
+                    )}
+                  </button>
                 </div>
-                <span className="font-bold tracking-tight">{client.city || 'Sin ciudad'}</span>
               </div>
-              <div className="flex items-center gap-3 text-sm text-foreground-muted">
-                <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
-                  <Locate size={14} />
+
+              <h4 className="font-bold text-lg mb-1 text-foreground-main tracking-tight">
+                {client.name}
+              </h4>
+
+              <p className="text-foreground-muted text-[10px] mb-4 font-black uppercase tracking-widest">
+                {client.doc_type || 'CC'} {client.doc}
+              </p>
+
+              <div className="space-y-3 pt-4 border-t border-border-custom">
+                <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                  <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
+                    <Clock size={14} />
+                  </div>
+
+                  <span className="font-bold tracking-tight">
+                    {client.phone || 'Sin teléfono'}
+                  </span>
                 </div>
-                <span className="font-bold tracking-tight">{client.address || 'Sin email'}</span>
+
+                <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                  <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
+                    <Mail size={14} />
+                  </div>
+
+                  <span className="font-bold tracking-tight">
+                    {client.email || 'Sin email'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                  <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
+                    <LayoutDashboard size={14} />
+                  </div>
+
+                  <span className="font-bold tracking-tight">
+                    {client.city || 'Sin ciudad'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                  <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
+                    <Locate size={14} />
+                  </div>
+
+                  <span className="font-bold tracking-tight">
+                    {client.address || 'Sin email'}
+                  </span>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          ))
+        )}
       </div>
 
+      {/* ✅ PAGINACIÓN */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-6 flex-wrap">
+          <button
+            onClick={() =>
+              setCurrentPage(prev =>
+                Math.max(prev - 1, 1)
+              )
+            }
+            disabled={currentPage === 1}
+            className="px-5 py-3 rounded-2xl bg-surface border border-border-custom text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+          >
+            Anterior
+          </button>
+
+          {Array.from({ length: totalPages }).map(
+            (_, index) => {
+              const page = index + 1;
+
+              return (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={cn(
+                    'w-12 h-12 rounded-2xl text-[10px] font-black transition-all',
+                    currentPage === page
+                      ? 'bg-accent text-white shadow-lg shadow-accent/20'
+                      : 'bg-surface border border-border-custom text-foreground-muted hover:text-foreground-main'
+                  )}
+                >
+                  {page}
+                </button>
+              );
+            }
+          )}
+
+          <button
+            onClick={() =>
+              setCurrentPage(prev =>
+                Math.min(prev + 1, totalPages)
+              )
+            }
+            disabled={currentPage === totalPages}
+            className="px-5 py-3 rounded-2xl bg-surface border border-border-custom text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
+
+      {/* MODAL EQUIPOS */}
       <Modal
         isOpen={showTeamManagement}
         onClose={() => setShowTeamManagement(false)}
@@ -6564,9 +7029,11 @@ function ClientManagement({}: { key?: string }) {
         maxWidth="max-w-2xl"
       >
         {selectedClientForTeams && (
-          <TeamManagement 
-            client={selectedClientForTeams} 
-            onClose={() => setShowTeamManagement(false)} 
+          <TeamManagement
+            client={selectedClientForTeams}
+            onClose={() =>
+              setShowTeamManagement(false)
+            }
           />
         )}
       </Modal>
