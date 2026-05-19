@@ -1336,7 +1336,10 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
 
 </div>
         </div>
+        
       </div>
+
+      
     ) : (
               <div className="space-y-8">
                 <div className="flex justify-between items-center bg-accent/5 p-6 rounded-[24px] border border-accent/20">
@@ -6504,13 +6507,13 @@ function ClientManagement({}: { key?: string }) {
                 <Contact size={24} />
               </div>
               <div className="flex gap-3">
-               {/* <button 
+               <button 
                   onClick={() => { setSelectedClientForTeams(client); setShowTeamManagement(true); }}
                   className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
                   title="Gestionar equipos"
                 >
                   <Users size={18} />
-                </button>               */}
+                </button>
                 <button 
                   onClick={() => handleEdit(client)}
                   className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
@@ -6562,7 +6565,7 @@ function ClientManagement({}: { key?: string }) {
         ))}
       </div>
 
-      {/*<Modal
+      <Modal
         isOpen={showTeamManagement}
         onClose={() => setShowTeamManagement(false)}
         title="Gestión de Equipos"
@@ -6574,7 +6577,7 @@ function ClientManagement({}: { key?: string }) {
             onClose={() => setShowTeamManagement(false)} 
           />
         )}
-      </Modal>*/}
+      </Modal>
     </div>
   );
 }
