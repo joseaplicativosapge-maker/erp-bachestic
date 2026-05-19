@@ -1514,12 +1514,8 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
     contact_method: 'WhatsApp',
     delivery_date: getBusinessDaysFromNow(15),
     total_amount: 0,
-    payment_method: 'Transferencia',
-    payment_reference: '',
-    payment_notes: '',
-    cash_received: 0,
-    payment_document: null as File | null
   });
+
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -1571,17 +1567,24 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
   }, [quantities, products, step]);
 
   useEffect(() => {
-    if (step === 2) {
-      const total = groupedList.reduce((sum, g) => sum + g.quantity * g.sale_price, 0);
-      setFormData(prev => ({ ...prev, total_amount: total }));
-    } else {
-      const total = Object.entries(quantities).reduce((sum, [name, qty]) => {
-          const product = products.find(p => p.name === name);
-          return sum + ((qty as number) * (product?.sale_price || 0));
-        }, 0);
-        setFormData(prev => ({ ...prev, total_amount: total }));
-    }
-  }, [items, quantities, products, step]);
+  const camisetaKeys = [
+    'price_filetes', 'price_despuntes', 'price_collarin', 'price_dobladillo_remate'
+  ];
+  const pantalonetaKeys = [
+    'price_filete_p', 'price_despuntes_p', 'price_caucho',
+    'price_sentar_caucho', 'price_collarin_p', 'price_remate'
+  ];
+  const allKeys = [...camisetaKeys, ...pantalonetaKeys];
+
+  const total = Object.entries(quantities).reduce((sum, [name, qty]) => {
+    const product = products.find(p => p.name === name) as any;
+    if (!product || !(qty as number)) return sum;
+    const costoProducto = allKeys.reduce((s, key) => s + (product[key] || 0), 0);
+    return sum + costoProducto * (qty as number);
+  }, 0);
+
+  setFormData(prev => ({ ...prev, total_amount: total }));
+}, [quantities, products]);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
@@ -1668,46 +1671,15 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
         finalClientId = newClient.id;
       }
 
-      const finalTotalAmount = items.reduce((sum, item) => sum + (item.sale_price || 0), 0);
-
       const { id } = await api.createOrder({
         ...formData,
         status: 'Abono confirmado',
-        total_amount: finalTotalAmount,
         client_id: finalClientId,
         user_name: user.name
       });
 
-      // Add items
       await api.addItems(id, items);
-      
-      // Record the initial 50% payment
-      const advanceAmount = Math.round(finalTotalAmount * (advancePercent / 100));
-      const paymentFormData = new FormData();
-      paymentFormData.append('amount', advanceAmount.toString());
-      paymentFormData.append('payment_method', formData.payment_method);
-      paymentFormData.append('reference', formData.payment_reference);
-      
-      let notes = formData.payment_notes || 'Abono inicial del 50% al crear la orden';
-      if (formData.payment_method === 'Efectivo') {
-        const change = Math.max(0, formData.cash_received - advanceAmount);
-        notes += ` (Efectivo Recibido: $${formData.cash_received.toLocaleString()}, Cambio: $${change.toLocaleString()})`;
-      }
-      paymentFormData.append('notes', notes);
-      paymentFormData.append('user_name', user.name);
-      if (formData.payment_document) {
-        paymentFormData.append('document', formData.payment_document);
-      }
-      
-      // Fetch the created order and payment for the receipt
-      const [orderData] = await Promise.all([
-        api.getOrder(id)
-      ]);
-      
-      setCreatedOrder(orderData);
       toast.success('Orden creada correctamente');
-      setShowReceipt(true);
-
       onSuccess();
     } catch (error) {
       console.error(error);
@@ -1950,27 +1922,158 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                   <div className="space-y-6">
                     <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted mb-4">Cantidades por Prenda</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {Object.keys(quantities).map(type => (
-                        <div key={type} className="bg-surface-hover p-4 rounded-2xl border border-border-custom flex items-center justify-between">
-                          <span className="text-xs font-bold text-foreground-main">{type}</span>
-                          <div className="flex items-center gap-3">
-                            <button 
-                              onClick={() => setQuantities(prev => ({ ...prev, [type]: Math.max(0, prev[type] - 1) }))}
-                              className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-foreground-muted hover:text-accent transition-colors"
-                            >
-                              -
-                            </button>
-                            <span className="w-8 text-center font-black text-foreground-main">{quantities[type]}</span>
-                            <button 
-                              onClick={() => setQuantities(prev => ({ ...prev, [type]: prev[type] + 1 }))}
-                              className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-foreground-muted hover:text-accent transition-colors"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+  {Object.keys(quantities).map(type => (
+    <div key={type} className="bg-surface-hover p-4 rounded-2xl border border-border-custom flex items-center justify-between">
+      <span className="text-xs font-bold text-foreground-main">{type}</span>
+      <div className="flex items-center gap-3">
+        <button 
+          onClick={() => setQuantities(prev => ({ ...prev, [type]: Math.max(0, prev[type] - 1) }))}
+          className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-foreground-muted hover:text-accent transition-colors"
+        >
+          -
+        </button>
+        <span className="w-8 text-center font-black text-foreground-main">{quantities[type]}</span>
+        <button 
+          onClick={() => setQuantities(prev => ({ ...prev, [type]: prev[type] + 1 }))}
+          className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-foreground-muted hover:text-accent transition-colors"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  ))}
+</div>
+
+{/* COSTOS DE CONFECCIÓN EN TIEMPO REAL */}
+{Object.values(quantities).some(q => (q as number) > 0) && (() => {
+  const camisetaTasks = [
+    { label: 'Filetes',             key: 'price_filetes' },
+    { label: 'Despuntes',           key: 'price_despuntes' },
+    { label: 'Collarín',            key: 'price_collarin' },
+    { label: 'Dobladillo y Remate', key: 'price_dobladillo_remate' },
+  ];
+  const pantalonetaTasks = [
+    { label: 'Filete',        key: 'price_filete_p' },
+    { label: 'Despuntes',     key: 'price_despuntes_p' },
+    { label: 'Caucho',        key: 'price_caucho' },
+    { label: 'Sentar Caucho', key: 'price_sentar_caucho' },
+    { label: 'Collarín',      key: 'price_collarin_p' },
+    { label: 'Remate',        key: 'price_remate' },
+  ];
+
+  const bloques = Object.entries(quantities)
+    .filter(([_, qty]) => (qty as number) > 0)
+    .map(([productName, qty]) => {
+      const product = products.find(p => p.name === productName) as any;
+      if (!product) return null;
+
+      const camActivas = camisetaTasks.filter(t => (product[t.key] || 0) > 0);
+      const pantActivas = pantalonetaTasks.filter(t => (product[t.key] || 0) > 0);
+
+      // Si no tiene ninguna tarea configurada, omitir
+      if (camActivas.length === 0 && pantActivas.length === 0) return null;
+
+      return {
+        label: productName,
+        qty: qty as number,
+        product,
+        camActivas,
+        pantActivas,
+        totalCam: camActivas.reduce((s, t) => s + (product[t.key] || 0) * (qty as number), 0),
+        totalPant: pantActivas.reduce((s, t) => s + (product[t.key] || 0) * (qty as number), 0),
+      };
+    })
+    .filter(Boolean) as any[];
+
+  if (bloques.length === 0) return null;
+
+  const grandTotal = bloques.reduce((t, b) => t + b.totalCam + b.totalPant, 0);
+
+  return (
+    <div className="mt-2 border border-border-custom rounded-[24px] overflow-hidden">
+      {/* HEADER */}
+      <div className="px-6 py-4 bg-surface-hover border-b border-border-custom flex items-center justify-between">
+        <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted flex items-center gap-2">
+          <Calculator size={13} className="text-accent" /> Costos de Confección
+        </p>
+        <p className="text-[10px] font-black text-accent">
+          Total: ${grandTotal.toLocaleString()}
+        </p>
+      </div>
+
+      {bloques.map((bloque: any) => (
+        <div key={bloque.label} className="border-b border-border-custom last:border-0">
+
+          {/* NOMBRE DEL PRODUCTO */}
+          <div className="px-6 py-3 bg-foreground-main/[0.03] flex items-center justify-between">
+            <p className="text-[10px] font-black uppercase tracking-widest text-foreground-main flex items-center gap-2">
+              <Shirt size={12} className="text-accent" />
+              {bloque.label} — {bloque.qty} uds
+            </p>
+            <p className="text-[10px] font-black text-foreground-muted">
+              ${(bloque.totalCam + bloque.totalPant).toLocaleString()}
+            </p>
+          </div>
+
+          {/* SECCIÓN CAMISETA */}
+          {bloque.camActivas.length > 0 && (
+            <>
+              <div className="px-6 py-2 bg-blue-500/5 border-t border-border-custom/60 flex items-center gap-2">
+                <Shirt size={10} className="text-blue-400" />
+                <p className="text-[9px] font-black uppercase tracking-widest text-blue-400">
+                  Camiseta — ${bloque.totalCam.toLocaleString()}
+                </p>
+              </div>
+              {bloque.camActivas.map(({ label, key }: any) => {
+                const unitPrice = bloque.product[key] || 0;
+                const subtotal = unitPrice * bloque.qty;
+                return (
+                  <div key={key} className="flex items-center justify-between px-6 py-2 border-t border-border-custom/30 hover:bg-surface-hover/50 transition-colors">
+                    <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest pl-4">
+                      {label}
+                    </span>
+                    <div className="flex items-center gap-6 text-[10px]">
+                      <span className="text-foreground-muted/60">${unitPrice.toLocaleString()} × {bloque.qty}</span>
+                      <span className="font-black w-20 text-right text-foreground-main">${subtotal.toLocaleString()}</span>
                     </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          {/* SECCIÓN PANTALONETA */}
+          {bloque.pantActivas.length > 0 && (
+            <>
+              <div className="px-6 py-2 bg-purple-500/5 border-t border-border-custom/60 flex items-center gap-2">
+                <Shirt size={10} className="text-purple-400" />
+                <p className="text-[9px] font-black uppercase tracking-widest text-purple-400">
+                  Pantaloneta — ${bloque.totalPant.toLocaleString()}
+                </p>
+              </div>
+              {bloque.pantActivas.map(({ label, key }: any) => {
+                const unitPrice = bloque.product[key] || 0;
+                const subtotal = unitPrice * bloque.qty;
+                return (
+                  <div key={key} className="flex items-center justify-between px-6 py-2 border-t border-border-custom/30 hover:bg-surface-hover/50 transition-colors">
+                    <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest pl-4">
+                      {label}
+                    </span>
+                    <div className="flex items-center gap-6 text-[10px]">
+                      <span className="text-foreground-muted/60">${unitPrice.toLocaleString()} × {bloque.qty}</span>
+                      <span className="font-black w-20 text-right text-foreground-main">${subtotal.toLocaleString()}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+        </div>
+      ))}
+    </div>
+  );
+})()}
                   </div>
 
                   <div className="space-y-6">
@@ -1985,7 +2088,7 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                       <div className="flex items-end gap-4">
                         <div className="flex-1">
                           <Input
-                            label="Valor Total Pedido"
+                            label="Costo de Confección"
                             type="number"
                             value={formData.total_amount}
                             onChange={e => setFormData({...formData, total_amount: Number(e.target.value)})}
@@ -2097,7 +2200,12 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
           </button>
           <button 
             onClick={step === 1 ? generateItems : handleSubmit}
-            disabled={step === 1 && !selectedClient && !isCreatingClient}
+            disabled={
+              step === 1 && (
+                (!selectedClient && !isCreatingClient) ||
+                Object.values(quantities).every(q => (q as number) === 0)
+              )
+            }
             className="bg-accent text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-accent/20 disabled:opacity-50 disabled:hover:scale-100 active:scale-95"
           >
             {step === 2 ? 'Finalizar' : 'Siguiente'}
@@ -2447,23 +2555,31 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   useEffect(() => {
     if (showAssignmentModal) {
       api.getProducts().then(prods => {
-        // Toma el primer producto activo como referencia de precios
-        // (o puedes buscar por el tipo de prenda de la orden)
-        if (prods.length > 0) {
-          const p = prods[0] as any;
-          setProductPrices({
-            filetes: p.price_filetes || 0,
-            despuntes: p.price_despuntes || 0,
-            collarin: p.price_collarin || 0,
-            dobladillo_remate: p.price_dobladillo_remate || 0,
-            filete_p: p.price_filete_p || 0,
-            despuntes_p: p.price_despuntes_p || 0,
-            caucho: p.price_caucho || 0,
-            sentar_caucho: p.price_sentar_caucho || 0,
-            collarin_p: p.price_collarin_p || 0,
-            remate: p.price_remate || 0,
-          });
-        }
+        // Buscar producto camiseta y pantaloneta por separado
+        const camiseta = (prods.find(p => 
+          p.category?.toLowerCase().includes('camiseta') || 
+          p.name.toLowerCase().includes('camiseta')
+        ) || prods[0]) as any;
+
+        const pantaloneta = (prods.find(p => 
+          p.category?.toLowerCase().includes('pantaloneta') || 
+          p.name.toLowerCase().includes('pantaloneta')
+        ) || prods[0]) as any;
+
+        setProductPrices({
+          // Precios camiseta
+          filetes:           camiseta.price_filetes           || 0,
+          despuntes:         camiseta.price_despuntes         || 0,
+          collarin:          camiseta.price_collarin          || 0,
+          dobladillo_remate: camiseta.price_dobladillo_remate || 0,
+          // Precios pantaloneta
+          filete_p:          pantaloneta.price_filete_p       || 0,
+          despuntes_p:       pantaloneta.price_despuntes_p    || 0,
+          caucho:            pantaloneta.price_caucho         || 0,
+          sentar_caucho:     pantaloneta.price_sentar_caucho  || 0,
+          collarin_p:        pantaloneta.price_collarin_p     || 0,
+          remate:            pantaloneta.price_remate         || 0,
+        });
       }).catch(console.error);
     }
   }, [showAssignmentModal]);
