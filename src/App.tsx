@@ -8761,10 +8761,12 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (pin.length !== 4) return;
-    
+
     setLoading(true);
     setError('');
+
     try {
       const user = await api.login(pin);
       onLogin(user);
@@ -8789,124 +8791,296 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
   useEffect(() => {
     if (pin.length === 4) {
       const timer = setTimeout(() => {
-        const form = document.getElementById('login-form') as HTMLFormElement;
+        const form = document.getElementById(
+          'login-form'
+        ) as HTMLFormElement;
+
         form?.requestSubmit();
       }, 300);
+
       return () => clearTimeout(timer);
     }
   }, [pin]);
 
   return (
-    <div className="min-h-screen grid md:grid-cols-[65%_35%] font-sans">
+    <div className="min-h-screen grid md:grid-cols-[65%_35%] bg-black overflow-hidden">
 
-  {/* IZQUIERDA — IMAGEN GRANDE */}
-  <div className="hidden md:block h-screen">
-    <img
-      src="/login.jpg"
-      alt="Login"
-      className="w-full h-full object-cover"
-    />
-  </div>
+      {/* IZQUIERDA */}
+      <div className="hidden md:block relative overflow-hidden">
 
-  {/* DERECHA — LOGIN MÁS COMPACTO */}
-  <div className="flex items-center justify-center bg-background px-6">
+        {/* VIDEO */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover scale-105"
+        >
+          <source src="/login.mp4" type="video/mp4" />
+        </video>
 
-    <motion.div
-      initial={{ opacity: 0, x: 40 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="w-full max-w-sm"
-    >
+        {/* OVERLAY */}
+        <div className="absolute inset-0 bg-black/80" />
 
-      {/* HEADER */}
-      <div className="text-center">
-        <img
-          src="/logo-bachestic.png"
-          alt="Bachestic Logo"
-          className="h-40 mx-auto object-contain mb-4"
-        />
+        {/* GLOW */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,0,90,0.18),transparent_60%)]" />
+
+        {/* LOGO */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-10">
+
+          <img
+            src="/logo-bachestic.png"
+            alt="Logo"
+            className="
+              w-[70%]
+              max-w-[500px]
+              object-contain
+              drop-shadow-[0_0_60px_rgba(255,255,255,0.12)]
+            "
+          />
+
+          <div className="mt-8 flex items-center gap-3">
+            <div className="w-16 h-[1px] bg-white/20" />
+
+            <p className="text-white/60 text-[10px] uppercase tracking-[0.45em] font-black">
+              ERP • BACHESTIC SPORT
+            </p>
+
+            <div className="w-16 h-[1px] bg-white/20" />
+          </div>
+        </div>
       </div>
 
-      {/* CARD */}
-      <div className="bg-surface rounded-3xl p-8 border border-border-custom shadow-xl">
-        <h2 className="text-lg font-bold mb-6 text-center">
-          Ingresa tu PIN
-        </h2>
+      {/* DERECHA */}
+      <div className="relative flex items-center justify-center px-6 py-10 bg-background overflow-hidden">
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* FONDO */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,0,90,0.10),transparent_45%)]" />
 
-          {/* PIN */}
-          <div className="flex justify-center gap-3">
-            {[0,1,2,3].map(i => (
-              <div
-                key={i}
-                className={cn(
-                  "w-10 h-14 rounded-xl border-2 flex items-center justify-center transition-all",
-                  pin[i]
-                    ? "border-accent bg-accent/10"
-                    : "border-border-custom bg-surface-hover"
-                )}
-              >
-                {pin[i] && (
-                  <div className="w-2.5 h-2.5 rounded-full bg-accent" />
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* NUMPAD */}
-          <div className="grid grid-cols-3 gap-3">
-            {['1','2','3','4','5','6','7','8','9'].map(num => (
-              <button
-                key={num}
-                type="button"
-                onClick={() => handleNumberClick(num)}
-                disabled={loading}
-                className="h-14 rounded-xl bg-surface-hover border border-border-custom text-xl font-bold active:scale-95 transition-all"
-              >
-                {num}
-              </button>
-            ))}
-
-            <div />
-
-            <button
-              type="button"
-              onClick={() => handleNumberClick('0')}
-              disabled={loading}
-              className="h-14 rounded-xl bg-surface-hover border border-border-custom text-xl font-bold active:scale-95 transition-all"
-            >
-              0
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={loading}
-              className="h-14 rounded-xl bg-surface-hover border border-border-custom flex items-center justify-center active:scale-95 transition-all"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* BOTÓN */}
-          <button
-            type="submit"
-            disabled={loading || pin.length !== 4}
-            className="w-full py-3 bg-accent disabled:opacity-50 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2"
+        {/* CARD */}
+        <motion.div
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative z-10 w-full max-w-[380px]"
+        >
+          <div
+            className="
+              relative
+              rounded-[32px]
+              border border-white/5
+              bg-white/[0.03]
+              backdrop-blur-2xl
+              p-6
+              shadow-[0_0_60px_rgba(0,0,0,0.45)]
+              overflow-hidden
+            "
           >
-            {loading
-              ? <Clock className="animate-spin" size={18} />
-              : <><Lock size={18} /> Entrar</>
-            }
-          </button>
 
-        </form>
+            {/* BRILLO */}
+            <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent pointer-events-none" />
+
+            {/* HEADER */}
+            <div className="relative text-center mb-6">
+
+              <div
+                className="
+                  w-16 h-16 mx-auto mb-4
+                  rounded-[24px]
+                  bg-accent/10
+                  border border-accent/20
+                  flex items-center justify-center
+                  shadow-[0_0_30px_rgba(255,0,90,0.25)]
+                "
+              >
+                <Lock className="text-accent" size={28} />
+              </div>
+
+              <h1 className="text-2xl font-black tracking-tight text-white">
+                Bienvenido
+              </h1>
+
+              <p className="text-[11px] text-foreground-muted mt-2 uppercase tracking-[0.25em] font-bold">
+                Ingresa tu PIN de acceso
+              </p>
+            </div>
+
+            <form
+              id="login-form"
+              onSubmit={handleSubmit}
+              className="space-y-6 relative"
+            >
+
+              {/* PIN */}
+              <div className="flex justify-center gap-3">
+                {[0, 1, 2, 3].map(i => (
+                  <div
+                    key={i}
+                    className={cn(
+                      `
+                        w-12 h-14
+                        rounded-2xl
+                        border
+                        flex items-center justify-center
+                        transition-all duration-300
+                        backdrop-blur-xl
+                      `,
+                      pin[i]
+                        ? `
+                          border-accent
+                          bg-accent/10
+                          shadow-[0_0_20px_rgba(255,0,90,0.18)]
+                          scale-105
+                        `
+                        : `
+                          border-border-custom
+                          bg-surface-hover/50
+                        `
+                    )}
+                  >
+                    {pin[i] && (
+                      <div className="w-3 h-3 rounded-full bg-accent" />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* ERROR */}
+              {error && (
+                <div
+                  className="
+                    text-center
+                    text-red-400
+                    text-[10px]
+                    font-bold
+                    uppercase
+                    tracking-widest
+                    bg-red-500/10
+                    border border-red-500/20
+                    rounded-2xl
+                    py-3
+                  "
+                >
+                  {error}
+                </div>
+              )}
+
+              {/* NUMPAD */}
+              <div className="grid grid-cols-3 gap-3">
+                {['1','2','3','4','5','6','7','8','9'].map(num => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => handleNumberClick(num)}
+                    disabled={loading}
+                    className="
+                      h-14
+                      rounded-2xl
+                      bg-white/[0.03]
+                      border border-white/5
+                      backdrop-blur-xl
+                      text-xl
+                      font-black
+                      text-white
+                      hover:bg-accent/10
+                      hover:border-accent/20
+                      hover:scale-[1.03]
+                      active:scale-95
+                      transition-all duration-200
+                    "
+                  >
+                    {num}
+                  </button>
+                ))}
+
+                <div />
+
+                <button
+                  type="button"
+                  onClick={() => handleNumberClick('0')}
+                  disabled={loading}
+                  className="
+                    h-14
+                    rounded-2xl
+                    bg-white/[0.03]
+                    border border-white/5
+                    backdrop-blur-xl
+                    text-xl
+                    font-black
+                    text-white
+                    hover:bg-accent/10
+                    hover:border-accent/20
+                    hover:scale-[1.03]
+                    active:scale-95
+                    transition-all duration-200
+                  "
+                >
+                  0
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={loading}
+                  className="
+                    h-14
+                    rounded-2xl
+                    bg-white/[0.03]
+                    border border-white/5
+                    backdrop-blur-xl
+                    flex items-center justify-center
+                    text-white
+                    hover:bg-red-500/10
+                    hover:border-red-500/20
+                    hover:scale-[1.03]
+                    active:scale-95
+                    transition-all duration-200
+                  "
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* BOTÓN */}
+              <button
+                type="submit"
+                disabled={loading || pin.length !== 4}
+                className="
+                  w-full
+                  h-13
+                  py-3
+                  rounded-2xl
+                  bg-accent
+                  disabled:opacity-40
+                  text-white
+                  font-black
+                  uppercase
+                  tracking-[0.25em]
+                  shadow-[0_0_30px_rgba(255,0,90,0.35)]
+                  hover:scale-[1.02]
+                  active:scale-[0.98]
+                  transition-all
+                  flex items-center justify-center gap-3
+                  text-sm
+                "
+              >
+                {loading ? (
+                  <>
+                    <Clock className="animate-spin" size={18} />
+                    Validando
+                  </>
+                ) : (
+                  <>
+                    <Lock size={16} />
+                    Entrar
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </motion.div>
       </div>
-
-    </motion.div>
-
-  </div>
-</div>
+    </div>
   );
 }
 
