@@ -866,16 +866,17 @@ function OrdersList({
         </div>
 
         {/* FILTROS */}
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Toggle */}
-          <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
+        <div className="flex flex-wrap items-center gap-4 p-4 rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
+
+          {/* TOGGLE */}
+          <div className="flex items-center bg-surface-hover/80 p-1.5 rounded-2xl border border-border-custom shadow-sm">
             <button
               onClick={() => includeInactive && onToggleInactive()}
               className={cn(
-                'px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                'px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300',
                 !includeInactive
-                  ? 'bg-accent text-white shadow-lg shadow-accent/20'
-                  : 'text-foreground-muted hover:text-foreground-main'
+                  ? 'bg-accent text-white shadow-xl shadow-accent/20 scale-[1.02]'
+                  : 'text-foreground-muted hover:text-foreground-main hover:bg-surface'
               )}
             >
               Activos
@@ -884,10 +885,10 @@ function OrdersList({
             <button
               onClick={() => !includeInactive && onToggleInactive()}
               className={cn(
-                'px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                'px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300',
                 includeInactive
-                  ? 'bg-accent text-white shadow-lg shadow-accent/20'
-                  : 'text-foreground-muted hover:text-foreground-main'
+                  ? 'bg-accent text-white shadow-xl shadow-accent/20 scale-[1.02]'
+                  : 'text-foreground-muted hover:text-foreground-main hover:bg-surface'
               )}
             >
               Desactivados
@@ -895,24 +896,52 @@ function OrdersList({
           </div>
 
           {/* BUSCADOR */}
-          <div className="relative group">
+          <div className="relative group flex-1 min-w-[260px]">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors"
-              size={16}
+              className="
+                absolute left-4 top-1/2 -translate-y-1/2
+                text-foreground-muted
+                group-focus-within:text-accent
+                transition-colors duration-300
+              "
+              size={17}
             />
 
             <input
               type="text"
-              placeholder="Buscar cliente..."
+              placeholder="Buscar cliente u orden..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2.5 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main text-[10px] font-black uppercase tracking-widest placeholder:text-foreground-muted/30 transition-all w-56"
+              className="
+                w-full
+                pl-11 pr-10 py-3
+                rounded-2xl
+                bg-surface
+                border border-border-custom
+                focus:border-accent
+                focus:ring-4
+                focus:ring-accent/10
+                outline-none
+                text-foreground-main
+                text-[10px]
+                font-black
+                uppercase
+                tracking-[0.18em]
+                placeholder:text-foreground-muted/40
+                transition-all duration-300
+                shadow-sm
+              "
             />
 
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
+                className="
+                  absolute right-3 top-1/2 -translate-y-1/2
+                  text-foreground-muted
+                  hover:text-accent
+                  transition-colors
+                "
               >
                 <X size={14} />
               </button>
@@ -920,51 +949,155 @@ function OrdersList({
           </div>
 
           {/* ESTADO */}
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main transition-all appearance-none cursor-pointer"
-          >
-            {[
-              'Todos',
-              'Abono pendiente',
-              'Abono confirmado',
-              'En diseño',
-              'Versión enviada',
-              'Corrección solicitada',
-              'Diseño aprobado',
-              'En impresión',
-              'En sublimación',
-              'En corte',
-              'En confección',
-              'En empaque',
-              'En despacho',
-              'Entregado',
-            ].map(s => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="
+                appearance-none
+                bg-surface
+                border border-border-custom
+                rounded-2xl
+                pl-5 pr-12 py-3
+                text-[10px]
+                font-black
+                uppercase
+                tracking-[0.18em]
+                text-foreground-main
+                outline-none
+                transition-all duration-300
+                cursor-pointer
+                hover:border-accent/40
+                focus:border-accent
+                focus:ring-4
+                focus:ring-accent/10
+                min-w-[220px]
+                shadow-sm
+              "
+            >
+              {[
+                'Todos',
+                'Abono pendiente',
+                'Abono confirmado',
+                'En diseño',
+                'Versión enviada',
+                'Corrección solicitada',
+                'Diseño aprobado',
+                'En impresión',
+                'En sublimación',
+                'En corte',
+                'En confección',
+                'En empaque',
+                'En despacho',
+                'Entregado',
+              ].map(s => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+
+            <ChevronDown
+              size={16}
+              className="
+                absolute right-4 top-1/2 -translate-y-1/2
+                text-foreground-muted
+                pointer-events-none
+              "
+            />
+          </div>
+
+          {/* EQUIPOS */}
+          <div className="relative">
+            <select
+              value={teamFilter}
+              onChange={e => setTeamFilter(e.target.value)}
+              className="
+                appearance-none
+                bg-surface
+                border border-border-custom
+                rounded-2xl
+                pl-5 pr-12 py-3
+                text-[10px]
+                font-black
+                uppercase
+                tracking-[0.18em]
+                text-foreground-main
+                outline-none
+                transition-all duration-300
+                cursor-pointer
+                hover:border-accent/40
+                focus:border-accent
+                focus:ring-4
+                focus:ring-accent/10
+                min-w-[200px]
+                shadow-sm
+              "
+            >
+              {availableTeams.map(team => (
+                <option key={team} value={team}>
+                  {team}
+                </option>
+              ))}
+            </select>
+
+            <ChevronDown
+              size={16}
+              className="
+                absolute right-4 top-1/2 -translate-y-1/2
+                text-foreground-muted
+                pointer-events-none
+              "
+            />
+          </div>
 
           {/* FECHAS */}
-          <div className="flex items-center gap-3 bg-surface border border-border-custom rounded-2xl px-5 py-2.5">
+          <div
+            className="
+              flex items-center gap-4
+              bg-surface
+              border border-border-custom
+              rounded-2xl
+              px-5 py-3
+              shadow-sm
+              flex-wrap
+            "
+          >
             <select
               value={dateField}
               onChange={e => setDateField(e.target.value as any)}
-              className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none text-foreground-muted cursor-pointer appearance-none"
+              className="
+                bg-transparent
+                text-[10px]
+                font-black
+                uppercase
+                tracking-[0.18em]
+                outline-none
+                text-foreground-muted
+                cursor-pointer
+                appearance-none
+              "
             >
               <option value="delivery_date">Entrega</option>
               <option value="created_at">Creación</option>
             </select>
 
-            <div className="w-[1px] h-4 bg-border-custom" />
+            <div className="w-[1px] h-5 bg-border-custom" />
 
             <input
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
-              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:light] w-32"
+              className="
+                bg-transparent
+                text-[10px]
+                font-black
+                text-foreground-main
+                outline-none
+                cursor-pointer
+                [color-scheme:light]
+                w-32
+              "
             />
 
             <span className="text-[10px] font-black text-foreground-muted">
@@ -975,15 +1108,38 @@ function OrdersList({
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
-              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:light] w-32"
+              className="
+                bg-transparent
+                text-[10px]
+                font-black
+                text-foreground-main
+                outline-none
+                cursor-pointer
+                [color-scheme:light]
+                w-32
+              "
             />
           </div>
 
           {/* CONTADOR */}
-          <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+          <div
+            className="
+              ml-auto
+              px-5 py-3
+              rounded-2xl
+              bg-accent/10
+              border border-accent/10
+              text-accent
+              text-[10px]
+              font-black
+              uppercase
+              tracking-[0.18em]
+              whitespace-nowrap
+            "
+          >
             {filteredOrders.length}{' '}
             {filteredOrders.length === 1 ? 'orden' : 'órdenes'}
-          </span>
+          </div>
         </div>
       </div>
 
