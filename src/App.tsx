@@ -4454,28 +4454,65 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
         </div>
 
         {/* FILTROS */}
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4 p-4 rounded-3xl border border-border-custom bg-surface/60 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
 
+          {/* ESTADO */}
           {role === 'Admin' && !showDelivered && (
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="bg-surface border border-border-custom rounded-2xl px-5 py-2.5 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-accent/20 text-foreground-main appearance-none cursor-pointer"
-            >
-              <option value="Todos">Todos los estados</option>
+            <div className="relative group">
+              <div className="absolute inset-0 rounded-2xl bg-accent/5 opacity-0 group-hover:opacity-100 transition-all" />
 
-              {allStatuses.map(s => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="
+                  appearance-none
+                  relative
+                  bg-surface
+                  border border-border-custom
+                  hover:border-accent/40
+                  focus:border-accent
+                  focus:ring-4
+                  focus:ring-accent/10
+                  rounded-2xl
+                  pl-5 pr-12 py-3
+                  text-[10px]
+                  font-black
+                  uppercase
+                  tracking-[0.18em]
+                  text-foreground-main
+                  outline-none
+                  transition-all
+                  cursor-pointer
+                  min-w-[220px]
+                "
+              >
+                <option value="Todos">Todos los estados</option>
+
+                {allStatuses.map(s => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+
+              <ChevronDown
+                size={16}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none"
+              />
+            </div>
           )}
 
-          {/* BÚSQUEDA */}
+          {/* BUSCADOR */}
           <div className="relative group">
+            <div className="absolute inset-0 rounded-2xl bg-accent/5 opacity-0 group-focus-within:opacity-100 transition-all" />
+
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors"
+              className="
+                absolute left-4 top-1/2 -translate-y-1/2
+                text-foreground-muted
+                group-focus-within:text-accent
+                transition-colors
+              "
               size={16}
             />
 
@@ -4484,37 +4521,133 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               placeholder="Buscar cliente..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2.5 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main text-[10px] font-black uppercase tracking-widest placeholder:text-foreground-muted/30 transition-all w-56"
+              className="
+                relative
+                pl-11 pr-11 py-3
+                rounded-2xl
+                bg-surface
+                border border-border-custom
+                hover:border-accent/40
+                focus:border-accent
+                focus:ring-4
+                focus:ring-accent/10
+                outline-none
+                text-foreground-main
+                text-[10px]
+                font-black
+                uppercase
+                tracking-[0.18em]
+                placeholder:text-foreground-muted/40
+                transition-all
+                w-[260px]
+              "
             />
 
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
+                className="
+                  absolute right-3 top-1/2 -translate-y-1/2
+                  w-6 h-6 rounded-full
+                  flex items-center justify-center
+                  text-foreground-muted
+                  hover:text-white
+                  hover:bg-accent
+                  transition-all
+                "
               >
-                <X size={14} />
+                <X size={12} />
               </button>
             )}
           </div>
 
+          {/* FILTRO EQUIPO */}
+          <div className="relative group">
+            <div className="absolute inset-0 rounded-2xl bg-accent/5 opacity-0 group-hover:opacity-100 transition-all" />
+
+            <select
+              value={teamFilter}
+              onChange={e => setTeamFilter(e.target.value)}
+              className="
+                appearance-none
+                relative
+                bg-surface
+                border border-border-custom
+                hover:border-accent/40
+                focus:border-accent
+                focus:ring-4
+                focus:ring-accent/10
+                rounded-2xl
+                pl-5 pr-12 py-3
+                text-[10px]
+                font-black
+                uppercase
+                tracking-[0.18em]
+                text-foreground-main
+                outline-none
+                transition-all
+                cursor-pointer
+                min-w-[190px]
+              "
+            >
+              {availableTeams.map(team => (
+                <option key={team} value={team}>
+                  {team}
+                </option>
+              ))}
+            </select>
+
+            <ChevronDown
+              size={16}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none"
+            />
+          </div>
+
           {/* FECHAS */}
-          <div className="flex items-center gap-3 bg-surface border border-border-custom rounded-2xl px-5 py-2.5">
+          <div className="
+            flex items-center gap-4
+            bg-surface
+            border border-border-custom
+            hover:border-accent/30
+            rounded-2xl
+            px-5 py-3
+            transition-all
+          ">
+
             <select
               value={dateField}
               onChange={e => setDateField(e.target.value as any)}
-              className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none text-foreground-muted appearance-none cursor-pointer"
+              className="
+                bg-transparent
+                text-[10px]
+                font-black
+                uppercase
+                tracking-[0.18em]
+                outline-none
+                text-foreground-muted
+                appearance-none
+                cursor-pointer
+              "
             >
               <option value="delivery_date">Entrega</option>
               <option value="created_at">Creación</option>
             </select>
 
-            <div className="w-[1px] h-4 bg-border-custom" />
+            <div className="w-px h-5 bg-border-custom" />
 
             <input
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
-              className="bg-transparent text-[10px] font-black text-foreground-main outline-none [color-scheme:dark]"
+              className="
+                bg-transparent
+                text-[10px]
+                font-black
+                text-foreground-main
+                outline-none
+                [color-scheme:light]
+                cursor-pointer
+              "
             />
 
             <span className="text-[10px] font-black text-foreground-muted">
@@ -4525,23 +4658,62 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
-              className="bg-transparent text-[10px] font-black text-foreground-main outline-none [color-scheme:dark]"
+              className="
+                bg-transparent
+                text-[10px]
+                font-black
+                text-foreground-main
+                outline-none
+                [color-scheme:light]
+                cursor-pointer
+              "
             />
 
             {(dateFrom || dateTo) && (
-              <button onClick={() => {
-                setDateFrom('');
-                setDateTo('');
-              }}>
-                <X size={14} />
+              <button
+                onClick={() => {
+                  setDateFrom('');
+                  setDateTo('');
+                }}
+                className="
+                  w-7 h-7
+                  rounded-full
+                  flex items-center justify-center
+                  text-foreground-muted
+                  hover:bg-accent
+                  hover:text-white
+                  transition-all
+                "
+              >
+                <X size={13} />
               </button>
             )}
           </div>
 
           {/* CONTADOR */}
-          <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
-            {filteredOrders.length} {filteredOrders.length === 1 ? 'orden' : 'órdenes'}
-          </span>
+          <div className="
+            ml-auto
+            flex items-center gap-2
+            px-5 py-3
+            rounded-2xl
+            bg-accent/10
+            border border-accent/10
+          ">
+            <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+
+            <span className="
+              text-[10px]
+              font-black
+              uppercase
+              tracking-[0.18em]
+              text-accent
+              whitespace-nowrap
+            ">
+              {filteredOrders.length}{' '}
+              {filteredOrders.length === 1 ? 'orden' : 'órdenes'}
+            </span>
+          </div>
+
         </div>
       </div>
 
