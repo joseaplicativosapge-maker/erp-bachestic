@@ -8833,7 +8833,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
             alt="Logo"
             className="
               w-[70%]
-              max-w-[500px]
+              max-w-[450px]
               object-contain
               drop-shadow-[0_0_60px_rgba(255,255,255,0.12)]
             "
