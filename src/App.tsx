@@ -9021,7 +9021,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
                     disabled:opacity-30
                   "
                 >
-                  Clear
+                  Limpiar
                 </button>
 
                 <button
