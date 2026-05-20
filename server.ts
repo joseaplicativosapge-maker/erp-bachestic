@@ -618,12 +618,72 @@ async function startServer() {
   // ─── Client Routes ─────────────────────────────────────────────────────────
 
   app.get('/api/clients', (req, res) => {
-    const includeInactive = req.query.includeInactive === 'true';
-    const query = includeInactive
-      ? 'SELECT * FROM clients ORDER BY name ASC'
-      : 'SELECT * FROM clients WHERE active = 1 ORDER BY name ASC';
-    const clients = db.prepare(query).all();
-    res.json(clients);
+    try {
+      const includeInactive =
+        req.query.includeInactive === 'true';
+
+      const query = includeInactive
+        ? `
+          SELECT
+            c.*,
+            t.id as team_id,
+            t.name as team_name
+          FROM clients c
+          LEFT JOIN teams t
+            ON t.client_id = c.id
+          ORDER BY c.name ASC
+        `
+        : `
+          SELECT
+            c.*,
+            t.id as team_id,
+            t.name as team_name
+          FROM clients c
+          LEFT JOIN teams t
+            ON t.client_id = c.id
+          WHERE c.active = 1
+          ORDER BY c.name ASC
+        `;
+
+      const rows = db.prepare(query).all();
+
+      // ✅ AGRUPAR CLIENTES Y EQUIPOS
+      const clientsMap = {};
+
+      rows.forEach(row => {
+        if (!clientsMap[row.id]) {
+          clientsMap[row.id] = {
+            id: row.id,
+            name: row.name,
+            doc: row.doc,
+            doc_type: row.doc_type,
+            phone: row.phone,
+            address: row.address,
+            city: row.city,
+            email: row.email,
+            active: row.active,
+            teams: []
+          };
+        }
+
+        // ✅ AGREGAR EQUIPOS
+        if (row.team_id) {
+          clientsMap[row.id].teams.push({
+            id: row.team_id,
+            name: row.team_name
+          });
+        }
+      });
+
+      res.json(Object.values(clientsMap));
+
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: 'Error obteniendo clientes'
+      });
+    }
   });
 
   app.get('/api/clients/search', (req, res) => {

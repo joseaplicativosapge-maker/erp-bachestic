@@ -7970,6 +7970,35 @@ function ClientManagement({}: { key?: string }) {
               <p className="text-foreground-muted text-[10px] mb-4 font-black uppercase tracking-widest">
                 {client.doc_type || 'CC'} {client.doc}
               </p>
+              
+              <div className="flex flex-wrap gap-2 mb-5">
+                {client.teams && client.teams.length > 0 ? (
+                  client.teams.map((team: any) => (
+                    <div
+                      key={team.id}
+                      className="
+                        px-3 py-1.5
+                        rounded-xl
+                        bg-accent/10
+                        border border-accent/20
+                        text-accent
+                        text-[10px]
+                        font-black
+                        uppercase
+                        tracking-widest
+                        flex items-center gap-2
+                      "
+                    >
+                      <Users size={12} />
+                      {team.name}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-[10px] text-foreground-muted uppercase tracking-widest font-black">
+                    Sin equipos
+                  </div>
+                )}
+              </div>
 
               <div className="space-y-3 pt-4 border-t border-border-custom">
                 <div className="flex items-center gap-3 text-sm text-foreground-muted">
