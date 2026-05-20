@@ -8788,6 +8788,11 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
     setPin(prev => prev.slice(0, -1));
   };
 
+  // ✅ NUEVO BOTÓN PARA BORRAR TODO
+  const handleClear = () => {
+    setPin('');
+  };
+
   useEffect(() => {
     if (pin.length === 4) {
       const timer = setTimeout(() => {
@@ -8993,7 +8998,31 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
                   </button>
                 ))}
 
-                <div />
+                {/* BOTÓN LIMPIAR */}
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  disabled={loading || pin.length === 0}
+                  className="
+                    h-14
+                    rounded-2xl
+                    bg-red-500/10
+                    border border-red-500/20
+                    backdrop-blur-xl
+                    text-[10px]
+                    font-black
+                    uppercase
+                    tracking-widest
+                    text-red-400
+                    hover:bg-red-500/20
+                    hover:scale-[1.03]
+                    active:scale-95
+                    transition-all duration-200
+                    disabled:opacity-30
+                  "
+                >
+                  Clear
+                </button>
 
                 <button
                   type="button"
@@ -9047,7 +9076,6 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
                 disabled={loading || pin.length !== 4}
                 className="
                   w-full
-                  h-13
                   py-3
                   rounded-2xl
                   bg-accent
