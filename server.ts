@@ -395,28 +395,7 @@ async function startServer() {
     res.json({ id: info.lastInsertRowid });
   });
 
-  // ─── Production Assignment Routes ─────────────────────────────────────────
-
-  app.post('/api/assignments', (req, res) => {
-    const { order_id, employee_id, department, garment_count, price_per_unit } = req.body;
-    const total_pay = (garment_count || 0) * (price_per_unit || 0);
-
-    db.transaction(() => {
-      db.prepare(`
-        INSERT INTO production_assignments (order_id, employee_id, department, status, garment_count, price_per_unit, total_pay)
-        VALUES (?, ?, ?, 'Iniciado', ?, ?, ?)
-      `).run(order_id, employee_id, department, garment_count, price_per_unit, total_pay);
-
-      db.prepare(`
-        UPDATE orders SET assigned_employee_id = ? WHERE id = ?
-      `).run(employee_id, order_id);
-    })();
-
-    res.json({ success: true });
-  });
-
   // ─── Reports Routes ────────────────────────────────────────────────────────
-
   app.get('/api/reports/employees', (req, res) => {
   try {
     const report = db.prepare(`
