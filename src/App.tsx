@@ -2521,17 +2521,14 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const [assignments, setAssignments] = useState<ProductionAssignment[]>([]);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [payments, setPayments] = useState([]);
-  // Reemplaza el estado assignmentForm por:
   const [assignmentForm, setAssignmentForm] = useState({
     employee_id: '',
-    garment_type: 'Camiseta', // 'Camiseta' | 'Pantaloneta'
+    garment_type: 'Camiseta',
     tasks: {
-      // Camiseta
       filetes: { enabled: false, quantity: 0, price: 0 },
       despuntes: { enabled: false, quantity: 0, price: 0 },
       collarin: { enabled: false, quantity: 0, price: 0 },
       dobladillo_remate: { enabled: false, quantity: 0, price: 0 },
-      // Pantaloneta
       filete_p: { enabled: false, quantity: 0, price: 0 },
       despuntes_p: { enabled: false, quantity: 0, price: 0 },
       caucho: { enabled: false, quantity: 0, price: 0 },
@@ -2576,7 +2573,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   useEffect(() => {
     if (showAssignmentModal) {
       api.getProducts().then(prods => {
-        // Buscar producto camiseta y pantaloneta por separado
         const camiseta = (prods.find(p => 
           p.category?.toLowerCase().includes('camiseta') || 
           p.name.toLowerCase().includes('camiseta')
@@ -2588,12 +2584,10 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
         ) || prods[0]) as any;
 
         setProductPrices({
-          // Precios camiseta
           filetes:           camiseta.price_filetes           || 0,
           despuntes:         camiseta.price_despuntes         || 0,
           collarin:          camiseta.price_collarin          || 0,
           dobladillo_remate: camiseta.price_dobladillo_remate || 0,
-          // Precios pantaloneta
           filete_p:          pantaloneta.price_filete_p       || 0,
           despuntes_p:       pantaloneta.price_despuntes_p    || 0,
           caucho:            pantaloneta.price_caucho         || 0,
@@ -2627,6 +2621,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   };
 
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
+
   const handleSaveEdit = async () => {
     try {
       setLoading(true);
@@ -2671,7 +2666,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     };
 
   const handleStatusUpdate = async (newStatus: OrderStatus) => {
-    // Si no hay confirmación pendiente, pedir confirmación primero
     if (!pendingStatus) {
       setPendingStatus(newStatus);
       setPendingStatusLabel(newStatus);
@@ -2690,7 +2684,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       }
       await api.updateStatus(orderId, newStatus, user.name);
 
-      // ✅ Resetear reposición al avanzar de En cuadro
       if (order?.is_reposition && order?.reposition_from_status) {
         const statusOrder: OrderStatus[] = [
           'En sublimación', 'En corte', 'En confección', 
@@ -2785,7 +2778,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     e.preventDefault();
     setIsSubmittingReposition(true);
     try {
-      // Primero actualiza los campos de reposición
       await api.updateOrder(orderId, {
         is_reposition: true,
         reposition_reason: repositionReason,
@@ -2793,14 +2785,12 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
         user_name: user.name
       });
 
-      // Luego cambia el estado a "En cuadro" con prioridad
       await api.updateStatus(
         orderId, 
         'En cuadro' as OrderStatus, 
         user.name
       );
 
-      // Registra en historial con nota especial
       await fetch(`/api/orders/${orderId}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2849,39 +2839,24 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const exportToExcel = () => {
     if (!order) return;
 
-    // 🔹 1. Información general
     const orderInfo = [
       ["ORDEN", order.order_number],
       ["CLIENTE", order.client_name || "-"],
-      [
-        "DOCUMENTO",
-        `${order.client_doc_type || ""} ${order.client_doc || ""}`.trim() || "-"
-      ],
+      ["DOCUMENTO", `${order.client_doc_type || ""} ${order.client_doc || ""}`.trim() || "-"],
       ["ESTADO", order.status || "-"],
       ["FECHA", order.created_at || "-"],
       ["FECHA DE ENTREGA",
         order.delivery_date
           ? new Date(new Date(order.delivery_date).setDate(new Date(order.delivery_date).getDate() - 1))
-              .toISOString()
-              .split("T")[0]
+              .toISOString().split("T")[0]
           : "-"
       ],
       [],
       ["DETALLE DE UNIFORMES"],
     ];
 
-    // 🔹 2. Headers
-    const headers = [[
-      "Nombre / Jugador",
-      "Número",
-      "Talla",
-      "Manga",
-      "Tipo",
-      "Horma",
-      "Observaciones"
-    ]];
+    const headers = [["Nombre / Jugador", "Número", "Talla", "Manga", "Tipo", "Horma", "Observaciones"]];
 
-    // 🔹 3. Items
     const itemsData = order.items?.map(item => ([
       item.player_name || "-",
       item.number || "-",
@@ -2893,10 +2868,8 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     ])) || [];
 
     const finalData = [...orderInfo, ...headers, ...itemsData];
-
     const worksheet = XLSX.utils.aoa_to_sheet(finalData);
 
-    // 🎨 ESTILOS
     const headerStyle = {
       fill: { fgColor: { rgb: "D9EAF7" } },
       font: { bold: true },
@@ -2938,47 +2911,31 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       }
     };
 
-    // 🔹 4. Header index
     const headerRowIndex = orderInfo.length;
 
-    // 🔹 5. Headers tabla
     headers[0].forEach((_, colIndex) => {
       const cell = XLSX.utils.encode_cell({ r: headerRowIndex, c: colIndex });
       if (worksheet[cell]) worksheet[cell].s = headerStyle;
     });
 
-    // 🔹 6. Bordes en items
     itemsData.forEach((row, rowIndex) => {
       row.forEach((_, colIndex) => {
-        const cell = XLSX.utils.encode_cell({
-          r: headerRowIndex + 1 + rowIndex,
-          c: colIndex
-        });
+        const cell = XLSX.utils.encode_cell({ r: headerRowIndex + 1 + rowIndex, c: colIndex });
         if (worksheet[cell]) worksheet[cell].s = cellBorder;
       });
     });
 
-    // 🔹 7. Labels + valores
     for (let i = 0; i <= 5; i++) {
       const labelCell = XLSX.utils.encode_cell({ r: i, c: 0 });
       if (worksheet[labelCell]) worksheet[labelCell].s = labelStyle;
-
       const valueCell = XLSX.utils.encode_cell({ r: i, c: 1 });
       if (worksheet[valueCell]) worksheet[valueCell].s = valueStyle;
     }
 
-    // 🔹 8. Merge DETALLE
     const detalleRowIndex = 7;
-
-    worksheet["!merges"] = [
-      {
-        s: { r: detalleRowIndex, c: 0 },
-        e: { r: detalleRowIndex, c: 6 }
-      }
-    ];
+    worksheet["!merges"] = [{ s: { r: detalleRowIndex, c: 0 }, e: { r: detalleRowIndex, c: 6 } }];
 
     const detalleCell = XLSX.utils.encode_cell({ r: detalleRowIndex, c: 0 });
-
     if (worksheet[detalleCell]) {
       worksheet[detalleCell].s = {
         font: { bold: true, sz: 14 },
@@ -2987,12 +2944,9 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       };
     }
 
-    // 🔥 9. AUTO WIDTH INTELIGENTE (TODO)
     const colWidths = [];
-
     for (let col = 0; col < finalData[0].length; col++) {
       let maxLength = 8;
-
       finalData.forEach(row => {
         const value = row[col];
         if (value) {
@@ -3000,23 +2954,15 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           if (length > maxLength) maxLength = length;
         }
       });
-
-      // límites para que no quede feo
-      colWidths.push({
-        wch: Math.min(Math.max(maxLength + 2, 10), 40)
-      });
+      colWidths.push({ wch: Math.min(Math.max(maxLength + 2, 10), 40) });
     }
 
     worksheet["!cols"] = colWidths;
-
-    // 🔹 10. Exportar
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Pedido");
-
     XLSX.writeFile(workbook, `Pedido_${order.order_number}.xlsx`);
   };
 
-  // Reemplaza handleCreateAssignment:
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!assignmentForm.employee_id) {
@@ -3040,7 +2986,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     }
 
     try {
-      // Crear una asignación por cada tarea activa
       for (const [key, task] of activeTasks) {
         const priceKeyMap: Record<string, string> = {
           filetes: 'filetes', despuntes: 'despuntes', collarin: 'collarin',
@@ -3055,7 +3000,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           employee_id: parseInt(assignmentForm.employee_id),
           department: 'Confección',
           garment_count: task.quantity,
-          price_per_unit: unitPrice,  // ← del catálogo, no del form
+          price_per_unit: unitPrice,
           notes: `[${assignmentForm.garment_type}] ${taskLabels[key]}${assignmentForm.notes ? ' — ' + assignmentForm.notes : ''}`
         });
       }
@@ -3124,1712 +3069,1244 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     ? addBusinessDays(new Date(), 15)
     : order.delivery_date;
 
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 pb-20">
-        {isEditModalOpen && (
-          <EditOrderModal 
-            order={order}
-            items={order.items || []}
-            onCancel={() => setIsEditModalOpen(false)}
-            onSuccess={() => {
-              setIsEditModalOpen(false);
-              loadOrder();
-              onUpdate();
-            }}
-            user={user}
-          />
-        )}
-        <div className="flex items-center justify-between">
-          <button onClick={onBack} className="flex items-center gap-3 hover:text-foreground-main font-black uppercase tracking-widest text-[10px] transition-colors">
-            <ArrowLeft size={20} className="text-accent" />
-            Volver a Órdenes
-          </button>
-          <div className="flex items-center gap-4">
-            {error && (
-              <div className="bg-accent/10 text-accent px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-accent/20">
-                <AlertCircle size={14} />
-                {error}
-              </div>
-            )}
-            {canEdit && (
-              <button 
-                onClick={() => setIsEditModalOpen(true)}
-                className="bg-surface-hover text-foreground-main px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-surface-hover/80 transition-all border border-border-custom"
-              >
-                Editar Orden
-              </button>
-            )}
-            <span className={cn(
-              "px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all duration-500",
-              order.status === 'Entregado' ? "bg-green-500/10 text-green-500 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.1)]" : 
-              order.status === 'Abono confirmado' ? "bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]" :
-              "bg-accent text-white border-accent shadow-xl shadow-accent/20"
-            )}>
-              {order.status}
-            </span>
-            <button 
-              onClick={exportToExcel}
-              className="bg-surface-hover text-foreground-main px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-surface-hover/80 transition-all border border-border-custom flex items-center gap-2"
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 pb-20">
+      {isEditModalOpen && (
+        <EditOrderModal 
+          order={order}
+          items={order.items || []}
+          onCancel={() => setIsEditModalOpen(false)}
+          onSuccess={() => {
+            setIsEditModalOpen(false);
+            loadOrder();
+            onUpdate();
+          }}
+          user={user}
+        />
+      )}
+
+      {/* ── ENCABEZADO ── */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <button onClick={onBack} className="flex items-center gap-3 hover:text-foreground-main font-black uppercase tracking-widest text-[10px] transition-colors">
+          <ArrowLeft size={20} className="text-accent" />
+          Volver a Órdenes
+        </button>
+
+        <div className="flex items-center gap-4 flex-wrap">
+          {error && (
+            <div className="bg-accent/10 text-accent px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-accent/20">
+              <AlertCircle size={14} />
+              {error}
+            </div>
+          )}
+
+          {/* BADGE PRIORIDAD — visible para TODOS cuando está activa */}
+          {!!order.is_priority && (
+            <div className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-500">
+              <Star size={14} className="fill-yellow-500" />
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                Orden Prioritaria
+              </span>
+            </div>
+          )}
+
+          {/* BOTÓN PRIORIDAD — solo Admin */}
+          {canEdit && user.role === 'Admin' && (
+            <button
+              onClick={async () => {
+                try {
+                  await api.updateOrder(orderId, {
+                    is_priority: !order.is_priority,
+                    user_name: user.name,
+                  });
+                  toast.success(
+                    order.is_priority ? 'Prioridad eliminada' : 'Orden marcada como prioritaria'
+                  );
+                  await loadOrder();
+                  onUpdate();
+                } catch (err) {
+                  toast.error('Error al cambiar prioridad');
+                }
+              }}
+              className={cn(
+                'px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center gap-2',
+                order.is_priority
+                  ? 'bg-yellow-500 text-black border-yellow-500 shadow-lg shadow-yellow-500/20 hover:bg-yellow-400'
+                  : 'bg-surface-hover text-foreground-muted border-border-custom hover:border-yellow-500/40 hover:text-yellow-500'
+              )}
             >
-              <Download size={14} /> Exportar Excel
+              <Star size={14} />
+              {order.is_priority ? 'Quitar Prioridad' : 'Marcar Prioridad'}
             </button>
-          </div>
+          )}
+
+          {canEdit && (
+            <button 
+              onClick={() => setIsEditModalOpen(true)}
+              className="bg-surface-hover text-foreground-main px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-surface-hover/80 transition-all border border-border-custom"
+            >
+              Editar Orden
+            </button>
+          )}
+
+          <span className={cn(
+            "px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all duration-500",
+            order.status === 'Entregado' ? "bg-green-500/10 text-green-500 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.1)]" : 
+            order.status === 'Abono confirmado' ? "bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]" :
+            "bg-accent text-white border-accent shadow-xl shadow-accent/20"
+          )}>
+            {order.status}
+          </span>
+
+          <button 
+            onClick={exportToExcel}
+            className="bg-surface-hover text-foreground-main px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-surface-hover/80 transition-all border border-border-custom flex items-center gap-2"
+          >
+            <Download size={14} /> Exportar Excel
+          </button>
         </div>
+      </div>
 
-        {showReceiptModal && lastPayment && (
-          <ReceiptModal 
-            order={order}
-            payment={lastPayment}
-            onClose={() => setShowReceiptModal(false)}
-          />
-        )}
+      {showReceiptModal && lastPayment && (
+        <ReceiptModal 
+          order={order}
+          payment={lastPayment}
+          onClose={() => setShowReceiptModal(false)}
+        />
+      )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          <div className="lg:col-span-2 space-y-10">
-            <div className="bg-surface p-12 rounded-[48px] border border-border-custom shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 blur-[100px] -mr-32 -mt-32"></div>
-              <div className="flex justify-between items-start mb-12 relative z-10">
-                <div className="flex-1">
-                    <div className="group">
-                      <div className="flex items-center gap-4 mb-4">
-                        <span className="text-accent text-[11px] font-black uppercase tracking-[0.5em] bg-accent/10 px-4 py-1.5 rounded-xl border border-accent/20 shadow-[0_0_20px_rgba(225,29,72,0.1)]">
-                          {order.order_number}
-                        </span>
-                        <div className="h-[1px] w-8 bg-border-custom"></div>
-                        <span className="text-[11px] font-black uppercase tracking-[0.5em]">{order.client_city}</span>
-                      </div>
-                      <h3 className="text-5xl font-black tracking-tighter text-foreground-main uppercase leading-none drop-shadow-2xl group-hover:text-accent transition-colors duration-700">
-                        {order.client_name}
-                      </h3>
-                    </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="lg:col-span-2 space-y-10">
+          <div className="bg-surface p-12 rounded-[48px] border border-border-custom shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 blur-[100px] -mr-32 -mt-32"></div>
+            <div className="flex justify-between items-start mb-12 relative z-10">
+              <div className="flex-1">
+                <div className="group">
+                  <div className="flex items-center gap-4 mb-4">
+                    <span className="text-accent text-[11px] font-black uppercase tracking-[0.5em] bg-accent/10 px-4 py-1.5 rounded-xl border border-accent/20 shadow-[0_0_20px_rgba(225,29,72,0.1)]">
+                      {order.order_number}
+                    </span>
+                    <div className="h-[1px] w-8 bg-border-custom"></div>
+                    <span className="text-[11px] font-black uppercase tracking-[0.5em]">{order.client_city}</span>
+                  </div>
+                  <h3 className="text-5xl font-black tracking-tighter text-foreground-main uppercase leading-none drop-shadow-2xl group-hover:text-accent transition-colors duration-700">
+                    {order.client_name}
+                  </h3>
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="flex flex-wrap gap-10 py-12 border-y border-border-custom relative z-10">
-
-              {/* DOCUMENTO */}
-              <div className="min-w-[150px] flex-1 space-y-3">
-                <p className="font-black text-foreground-main">Documento</p>
-                  <p className="font-black text-foreground-main tracking-tight">
-                    {order.client_doc_type} - {order.client_doc}
-                  </p>
-              </div>
-
-              {/* TELÉFONO */}
-              <div className="min-w-[150px] flex-1 space-y-3">
-                <p className="font-black text-foreground-main">Teléfono</p>
-                  <p className="font-black text-foreground-main tracking-tight">
-                    {order.client_phone}
-                  </p>
-              </div>
-
-              {/* ENTREGA */}
-              <div className="min-w-[150px] flex-1 space-y-3">
-                <p className="font-black text-foreground-main">Entrega</p>
-                  <p className="font-black text-foreground-main tracking-tight">
-                    {displayDeliveryDate ? format(new Date(displayDeliveryDate), 'dd/MM/yyyy') : 'N/A'}
-                    {isPreProduction && (
-                      <span className="text-foreground-muted text-[9px] font-bold uppercase tracking-widest ml-2">
-                        (estimado)
-                      </span>
-                    )}
-                  </p>
-              </div>
-
-              <div className="min-w-[150px] flex-1 space-y-3">
-                <p className="font-black text-foreground-main">Equipo</p>
-                {order.team_name ? (
-                  <p className="font-black text-accent tracking-tight flex items-center gap-2">
-                    <Users size={16} />
-                    {order.team_name}
-                  </p>
-                ) : (
-                  <p className="font-black text-foreground-muted/30 tracking-tight flex items-center gap-2">
-                    <Users size={16} />
-                    Sin equipo
-                  </p>
+          <div className="flex flex-wrap gap-10 py-12 border-y border-border-custom relative z-10">
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Documento</p>
+              <p className="font-black text-foreground-main tracking-tight">
+                {order.client_doc_type} - {order.client_doc}
+              </p>
+            </div>
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Teléfono</p>
+              <p className="font-black text-foreground-main tracking-tight">
+                {order.client_phone}
+              </p>
+            </div>
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Entrega</p>
+              <p className="font-black text-foreground-main tracking-tight">
+                {displayDeliveryDate ? format(new Date(displayDeliveryDate), 'dd/MM/yyyy') : 'N/A'}
+                {isPreProduction && (
+                  <span className="text-foreground-muted text-[9px] font-bold uppercase tracking-widest ml-2">
+                    (estimado)
+                  </span>
                 )}
-              </div>
+              </p>
+            </div>
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Equipo</p>
+              {order.team_name ? (
+                <p className="font-black text-accent tracking-tight flex items-center gap-2">
+                  <Users size={16} />
+                  {order.team_name}
+                </p>
+              ) : (
+                <p className="font-black text-foreground-muted/30 tracking-tight flex items-center gap-2">
+                  <Users size={16} />
+                  Sin equipo
+                </p>
+              )}
+            </div>
+          </div>
 
+          <div className="bg-surface rounded-[48px] border border-border-custom shadow-2xl overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 blur-[100px] -mr-32 -mt-32"></div>
+            <div className="p-12 border-b border-border-custom flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-6">
+                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                  <Shirt className="text-accent" size={24} />
+                </div>
+                <div>
+                  <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px]">Listado de Uniformes</h4>
+                  <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-1">Especificaciones por jugador</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-black text-foreground-muted uppercase tracking-[0.2em] bg-surface-hover px-5 py-2.5 rounded-2xl border border-border-custom shadow-inner">
+                  {order.items?.length || 0} Unidades
+                </span>
+              </div>
+            </div>
+            <div className="overflow-x-auto relative z-10">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-foreground-main/[0.02]">
+                    <th className="py-10 px-10 border-b border-border-custom">Nombre / Jugador</th>
+                    <th className="py-10 px-6 border-b border-border-custom text-center">N°</th>
+                    <th className="py-10 px-6 border-b border-border-custom text-center">Talla</th>
+                    <th className="py-10 px-6 border-b border-border-custom text-center">Manga</th>
+                    <th className="py-10 px-6 border-b border-border-custom text-center">Tipo</th>
+                    <th className="py-10 px-6 border-b border-border-custom text-center">Horma</th>
+                    <th className="py-10 px-10 border-b border-border-custom">Observaciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-custom">
+                  {order.items?.map((item, idx) => (
+                    <tr key={item.id || idx} className="hover:bg-gradient-to-r hover:from-accent/[0.03] hover:to-transparent transition-all duration-700 group border-b border-border-custom/50 last:border-0">
+                      <td className="py-12 px-10">
+                        <div className="flex flex-col group/name">
+                          <span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500 uppercase drop-shadow-lg">{item.player_name || '-'}</span>
+                          <div className="h-[1px] w-0 group-hover:w-12 bg-accent/50 transition-all duration-700 mt-1"></div>
+                        </div>
+                      </td>
+                      <td className="py-12 px-6 text-center">
+                        <span className="font-black text-foreground-main tracking-tighter group-hover:text-foreground-main transition-all duration-700">{item.number || '-'}</span>
+                      </td>
+                      <td className="py-12 px-6 text-center">
+                        <span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500">{item.size || '-'}</span>
+                      </td>
+                      <td className="py-12 px-6 text-center">
+                        <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.sleeve || '-'}</span>
+                      </td>
+                      <td className="py-12 px-6 text-center">
+                        <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.design_type || '-'}</span>
+                      </td>
+                      <td className="py-12 px-6 text-center">
+                        <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.fit || '-'}</span>
+                      </td>
+                      <td className="py-10 px-10">
+                        <span className="text-foreground-main italic text-[11px] font-bold leading-relaxed">{item.observations || '-'}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-10">
+          <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                <FileText className="text-accent" size={24} />
+              </div>
+              <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+                Recibo de Orden
+              </h4>
             </div>
 
-            <div className="bg-surface rounded-[48px] border border-border-custom shadow-2xl overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 blur-[100px] -mr-32 -mt-32"></div>
-              <div className="p-12 border-b border-border-custom flex items-center justify-between relative z-10">
-                <div className="flex items-center gap-6">
+            <div className="bg-background rounded-[28px] border border-border-custom p-6 space-y-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-foreground-muted mb-4">
+                Resumen de Prendas
+              </p>
+              {(() => {
+                const camisetas = order.items?.filter(i => i.garment_type?.toLowerCase().includes('camiseta')).length || 0;
+                const pantalonetas = order.items?.filter(i => i.garment_type?.toLowerCase().includes('pantaloneta')).length || 0;
+                const otros = (order.items?.length || 0) - camisetas - pantalonetas;
+                return (
+                  <div className="space-y-3">
+                    {camisetas > 0 && (
+                      <div className="flex items-center justify-between py-3 border-b border-border-custom last:border-0">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center">
+                            <Shirt className="text-accent" size={14} />
+                          </div>
+                          <span className="text-[11px] font-black uppercase tracking-widest text-foreground-main">Camisetas</span>
+                        </div>
+                        <span className="font-black text-xl text-foreground-main tracking-tighter">{camisetas}</span>
+                      </div>
+                    )}
+                    {pantalonetas > 0 && (
+                      <div className="flex items-center justify-between py-3 border-b border-border-custom last:border-0">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center">
+                            <Shirt className="text-accent" size={14} />
+                          </div>
+                          <span className="text-[11px] font-black uppercase tracking-widest text-foreground-main">Pantalonetas</span>
+                        </div>
+                        <span className="font-black text-xl text-foreground-main tracking-tighter">{pantalonetas}</span>
+                      </div>
+                    )}
+                    {otros > 0 && (
+                      <div className="flex items-center justify-between py-3 border-b border-border-custom last:border-0">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center">
+                            <Shirt className="text-accent" size={14} />
+                          </div>
+                          <span className="text-[11px] font-black uppercase tracking-widest text-foreground-main">Uniformes</span>
+                        </div>
+                        <span className="font-black text-xl text-foreground-main tracking-tighter">{otros}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between pt-3">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-accent">Total Prendas</span>
+                      <span className="font-black text-2xl text-foreground-main tracking-tighter">{order.items?.length || 0}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="flex flex-col items-center gap-4 pt-2">
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-foreground-muted">Escanea para seguimiento</p>
+              <div className="p-4 bg-white rounded-[24px] shadow-xl shadow-black/20 border border-border-custom">
+                <QRCode
+                  value={`${window.location.origin}/seguimiento/${order.order_number}`}
+                  size={140}
+                  bgColor="#ffffff"
+                  fgColor="#0f0f0f"
+                  level="M"
+                  includeMargin={false}
+                />
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-[10px] font-black text-foreground-main uppercase tracking-widest">{order.order_number}</p>
+                <p className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest">{order.client_name}</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                const camisetas = order.items?.filter(i => i.garment_type?.toLowerCase().includes('camiseta')).length || 0;
+                const pantalonetas = order.items?.filter(i => i.garment_type?.toLowerCase().includes('pantaloneta')).length || 0;
+                const otros = (order.items?.length || 0) - camisetas - pantalonetas;
+                const qrUrl = `${window.location.origin}/seguimiento/${order.order_number}`;
+                const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrUrl)}`;
+                const printWindow = window.open('', '_blank', 'width=400,height=600');
+                if (!printWindow) return;
+                printWindow.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Recibo ${order.order_number}</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Arial',sans-serif;background:#fff;color:#111;padding:32px 24px;max-width:360px;margin:0 auto;}.header{text-align:center;border-bottom:2px solid #111;padding-bottom:16px;margin-bottom:20px;}.brand{font-size:22px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;}.brand span{color:#e11d48;}.order-number{display:inline-block;margin-top:8px;font-size:11px;font-weight:800;letter-spacing:0.3em;text-transform:uppercase;background:#fef2f2;color:#e11d48;padding:4px 12px;border-radius:20px;border:1px solid #fecdd3;}.client-name{font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;margin-top:12px;}.client-info{font-size:11px;color:#555;margin-top:4px;font-weight:600;}.item-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f0f0f0;}.item-label{font-size:13px;font-weight:800;text-transform:uppercase;}.item-qty{font-size:22px;font-weight:900;}.total-row{display:flex;justify-content:space-between;align-items:center;background:#111;color:#fff;padding:12px 16px;border-radius:12px;margin-bottom:24px;}.total-label{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.3em;}.total-qty{font-size:26px;font-weight:900;}.qr-section{text-align:center;padding-top:16px;border-top:1px dashed #ddd;}.qr-section img{width:160px;height:160px;border-radius:12px;border:1px solid #eee;}.qr-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.3em;color:#999;margin-top:10px;}.delivery{display:flex;justify-content:space-between;font-size:11px;margin-bottom:20px;padding:10px 14px;background:#f9f9f9;border-radius:10px;border:1px solid #eee;}.delivery-label{color:#999;font-weight:700;text-transform:uppercase;}.delivery-value{font-weight:900;text-transform:uppercase;}.footer{text-align:center;font-size:9px;color:#bbb;margin-top:20px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;}.section-title{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:0.3em;color:#999;margin-bottom:12px;}</style></head><body><div class="header"><div class="brand">Bachestic <span>Sport</span></div><div class="order-number">${order.order_number}</div><div class="client-name">${order.client_name}</div><div class="client-info">${order.client_doc_type||''} ${order.client_doc||''} · ${order.client_phone||''}</div></div><div class="delivery"><span class="delivery-label">Entrega estimada</span><span class="delivery-value">${order.delivery_date?new Date(new Date(order.delivery_date).setDate(new Date(order.delivery_date).getDate()-1)).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}):'Por confirmar'}</span></div><div class="items-section"><div class="section-title">Resumen de Prendas</div>${camisetas>0?`<div class="item-row"><span class="item-label">Camisetas</span><span class="item-qty">${camisetas}</span></div>`:''}${pantalonetas>0?`<div class="item-row"><span class="item-label">Pantalonetas</span><span class="item-qty">${pantalonetas}</span></div>`:''}${otros>0?`<div class="item-row"><span class="item-label">Uniformes</span><span class="item-qty">${otros}</span></div>`:''}</div><div class="total-row"><span class="total-label">Total Prendas</span><span class="total-qty">${order.items?.length||0}</span></div><div class="qr-section"><img src="${qrImageUrl}" alt="QR"/><div class="qr-label">Escanea para seguimiento en línea</div></div><div class="footer">Bachestic Sport · ${new Date().toLocaleDateString('es-CO')}</div><script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();};</script></body></html>`);
+                printWindow.document.close();
+              }}
+              className="w-full bg-surface-hover text-foreground-main py-4 rounded-[24px] font-black uppercase tracking-[0.3em] text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main hover:text-background transition-all border border-border-custom"
+            >
+              <Download size={14} /> Imprimir Recibo
+            </button>
+          </div>
+
+          {(role === 'Admin' || role === 'Diseño') && (
+            <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                  <Palette className="text-accent" size={24} />
+                </div>
+                <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+                  Diseño del Cliente
+                </h4>
+              </div>
+              <p className="text-foreground-muted text-[9px] font-black uppercase tracking-widest leading-relaxed">
+                Carga el diseño para cada producto o uniforme. Estos se visualizarán en el seguimiento del cliente.
+              </p>
+              <div className="grid grid-cols-1 gap-8">
+                {(Array.from(new Set(order.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[]).map((cat) => {
+                  const design = [...(order.references || [])].reverse().find(r => r.comments === cat);
+                  return (
+                    <div key={cat} className="space-y-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted ml-1">{cat}</p>
+                      {design ? (
+                        <div
+                          className="aspect-video rounded-3xl overflow-hidden border border-border-custom relative group shadow-lg cursor-pointer"
+                          onClick={() => { setSelectedImageUrl(design.file_path); setShowImageModal(true); }}
+                        >
+                          <img src={design.file_path} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <a href={design.file_path} download onClick={(e) => e.stopPropagation()} className="p-4 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-accent transition-all" target="_blank" rel="noreferrer">
+                              <Download size={20} />
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <form onSubmit={(e) => {
+                          e.preventDefault();
+                          const formData = new FormData();
+                          const input = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
+                          if (input.files?.[0]) {
+                            formData.append('references', input.files[0]);
+                            formData.append('comments', cat as string);
+                            api.uploadReferences(orderId, formData, user.name).then(() => loadOrder());
+                          }
+                        }}>
+                          <label className="aspect-video border-2 border-dashed border-border-custom rounded-[32px] flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-all group relative overflow-hidden">
+                            <div className="w-12 h-12 bg-foreground-main/[0.02] rounded-2xl flex items-center justify-center text-foreground-muted/20 group-hover:text-accent group-hover:scale-110 transition-all">
+                              <Upload size={24} />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-[9px] font-black text-foreground-muted/50 uppercase tracking-[0.2em] group-hover:text-foreground-main transition-colors">Subir Diseño Final</p>
+                              <p className="text-[8px] font-bold text-foreground-muted/30 uppercase tracking-widest mt-1">{cat}</p>
+                            </div>
+                            <input type="file" className="hidden" onChange={e => e.currentTarget.form?.requestSubmit()} />
+                          </label>
+                        </form>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                <CheckCircle2 className="text-accent" size={24} />
+              </div>
+              <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+                Acciones de Flujo
+              </h4>
+            </div>
+            
+            <div className="space-y-4">
+              {order.status === 'Abono confirmado' && (role === 'Admin' || role === 'Ventas') && (() => {
+                const orderCategories = Array.from(new Set(order.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[];
+                const uploadedCategories = (order.references || []).filter(r => orderCategories.includes(r.comments || ''));
+                const hasDesignReference = uploadedCategories.length > 0;
+                return (
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => hasDesignReference && handleStatusUpdate('En diseño')}
+                      disabled={!hasDesignReference}
+                      className={cn(
+                        "w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all",
+                        hasDesignReference
+                          ? "bg-foreground-main text-background hover:bg-foreground-main/90"
+                          : "bg-surface-hover text-foreground-muted/40 cursor-not-allowed border border-dashed border-border-custom"
+                      )}
+                    >
+                      <Palette size={18} /> Avanzar a: Diseño
+                    </button>
+                    {!hasDesignReference && (
+                      <p className="text-[9px] font-black uppercase tracking-widest text-accent/70 text-center flex items-center justify-center gap-1.5">
+                        <AlertCircle size={12} />
+                        Sube el diseño ejemplo antes de continuar
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {(order.status === 'En diseño' || order.status === 'Corrección solicitada') && (role === 'Admin' || role === 'Diseño') && (
+                <form onSubmit={handleDesignUpload} className="space-y-6">
+                  <div className="relative group">
+                    <div className="border-2 border-dashed border-border-custom rounded-[32px] p-10 text-center hover:border-accent/40 transition-all cursor-pointer relative bg-background overflow-hidden">
+                      <input
+                        type="file"
+                        name="design"
+                        className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                        required
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const url = URL.createObjectURL(file as File);
+                            setSelectedFilePreview(url);
+                          }
+                        }}
+                      />
+                      {selectedFilePreview ? (
+                        <div className="relative z-10">
+                          <img src={selectedFilePreview} className="max-h-48 mx-auto rounded-2xl shadow-2xl border border-border-custom" />
+                          <p className="text-[9px] font-black text-accent uppercase tracking-widest mt-4">Imagen seleccionada - Click para cambiar</p>
+                        </div>
+                      ) : (
+                        <div className="relative z-10">
+                          <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                            <Upload className="text-accent" size={24} />
+                          </div>
+                          <p className="text-[10px] font-black text-foreground-main uppercase tracking-[0.2em] mb-1">Subir Versión de Diseño</p>
+                          <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">JPG, PNG o PDF (Máx. 10MB)</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <textarea
+                    name="comments"
+                    placeholder="Añadir comentarios o especificaciones para esta versión..."
+                    className="w-full p-6 rounded-[24px] bg-background border border-border-custom text-foreground-main font-bold text-xs outline-none focus:border-accent/30 transition-all resize-none leading-relaxed"
+                    rows={3}
+                  ></textarea>
+                  <button
+                    type="submit"
+                    disabled={isUploading}
+                    className="w-full bg-accent text-white py-5 rounded-[24px] font-black uppercase tracking-[0.3em] text-[10px] flex items-center justify-center gap-3 disabled:opacity-50 hover:bg-accent/90 transition-all shadow-[0_10px_30px_rgba(220,38,38,0.3)] active:scale-[0.98]"
+                  >
+                    {isUploading ? <Clock className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
+                    Enviar Versión a Revisión
+                  </button>
+                </form>
+              )}
+
+              {order.status === 'Versión enviada' && (role === 'Admin' || role === 'Cliente') && (
+                <div className="grid grid-cols-2 gap-4">
+                  <button onClick={handleApproveDesign} className="bg-green-600 hover:bg-green-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-[0_0_20px_rgba(22,163,74,0.2)]">
+                    Aprobar
+                  </button>
+                  <button onClick={() => setShowRejectModal(true)} className="bg-accent hover:bg-accent/90 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-[0_0_20px_rgba(220,38,38,0.2)]">
+                    Corregir
+                  </button>
+                </div>
+              )}
+
+              {['Diseño aprobado', 'En cuadro', 'En montaje'].includes(order.status) && (role === 'Admin' || role === 'Diseño') && (() => {
+                const stepMap: Partial<Record<OrderStatus, { label: string; next: OrderStatus; icon: any }>> = {
+                  'Diseño aprobado': { label: 'Avanzar a: Producción', next: 'En cuadro', icon: Printer },
+                  'En cuadro':       { label: 'Avanzar a: Montaje',    next: 'En montaje', icon: CheckCircle2 },
+                  'En montaje':      { label: 'Avanzar a: Impresión',  next: 'En impresión', icon: Printer },
+                };
+                const step = stepMap[order.status as keyof typeof stepMap];
+                if (!step) return null;
+                const Icon = step.icon;
+                return (
+                  <button
+                    onClick={() => handleStatusUpdate(step.next)}
+                    className="w-full bg-foreground-main text-background py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main/90 transition-all"
+                  >
+                    <Icon size={18} /> {step.label}
+                  </button>
+                );
+              })()}
+
+              {(['En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En despacho'] as OrderStatus[]).includes(order.status) && (role === 'Admin' || role === 'Ventas' || role === 'Impresión' || role === 'En Sublimación' || role === 'Corte' || role === 'Confección' || role === 'Empaque') && (() => {
+                const nextMap: Partial<Record<OrderStatus, OrderStatus>> = {
+                  'En impresión': 'En sublimación',
+                  'En sublimación': 'En corte',
+                  'En corte': 'En confección',
+                  'En confección': 'En empaque',
+                  'En empaque': 'En despacho',
+                  'En despacho': 'Entregado',
+                };
+                const next = nextMap[order.status];
+                if (!next) return null;
+
+                let confeccionCompleta = true;
+                let confeccionMensaje = '';
+
+                if (order.status === 'En confección') {
+                  const totalCamisetas = order.items?.filter(i => i.garment_type === 'Camiseta').length || 0;
+                  const totalPantalonetas = order.items?.filter(i => i.garment_type === 'Pantaloneta').length || 0;
+                  const CAM_TASKS = ['filetes', 'despuntes', 'collarin', 'dobladillo_remate'];
+                  const PANT_TASKS = ['filete_p', 'despuntes_p', 'caucho', 'sentar_caucho', 'collarin_p', 'remate'];
+                  const taskTotals: Record<string, number> = {};
+
+                  assignments.forEach(a => {
+                    const notesRaw = a.notes || '';
+                    const typeMatch = notesRaw.match(/^\[(.+?)\]/);
+                    const garmentType = typeMatch ? typeMatch[1] : 'Camiseta';
+                    const rest = notesRaw.replace(/^\[.+?\]\s*/, '').split(' — ')[0].trim();
+                    const labelToKey: Record<string, string> = {
+                      'Filetes': 'filetes', 'Despuntes': 'despuntes', 'Collarín': 'collarin',
+                      'Dobladillo y Remate': 'dobladillo_remate',
+                      'Filete': 'filete_p', 'Caucho': 'caucho', 'Sentar Caucho': 'sentar_caucho',
+                      'Remate': 'remate',
+                    };
+                    let key = labelToKey[rest];
+                    if (rest === 'Despuntes' && garmentType === 'Pantaloneta') key = 'despuntes_p';
+                    if (rest === 'Collarín' && garmentType === 'Pantaloneta') key = 'collarin_p';
+                    if (key) taskTotals[key] = (taskTotals[key] || 0) + (a.garment_count || 0);
+                  });
+
+                  if (totalCamisetas > 0) {
+                    for (const tk of CAM_TASKS) {
+                      if ((taskTotals[tk] || 0) < totalCamisetas) {
+                        confeccionCompleta = false;
+                        confeccionMensaje = `Faltan tareas de camiseta: se necesitan ${totalCamisetas} en cada tarea`;
+                        break;
+                      }
+                    }
+                  }
+                  if (confeccionCompleta && totalPantalonetas > 0) {
+                    for (const tk of PANT_TASKS) {
+                      if ((taskTotals[tk] || 0) < totalPantalonetas) {
+                        confeccionCompleta = false;
+                        confeccionMensaje = `Faltan tareas de pantaloneta: se necesitan ${totalPantalonetas} en cada tarea`;
+                        break;
+                      }
+                    }
+                  }
+                }
+
+                return (
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => confeccionCompleta && handleStatusUpdate(next)}
+                      disabled={!confeccionCompleta}
+                      className={cn(
+                        "w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all",
+                        confeccionCompleta
+                          ? "bg-foreground-main text-background hover:bg-foreground-main/90"
+                          : "bg-surface-hover text-foreground-muted/40 cursor-not-allowed border border-dashed border-border-custom"
+                      )}
+                    >
+                      <CheckCircle2 size={18} /> Avanzar a: {next}
+                    </button>
+                    {order.status === 'En confección' && !confeccionCompleta && (
+                      <p className="text-[9px] font-black uppercase tracking-widest text-accent/70 text-center flex items-center justify-center gap-1.5">
+                        <AlertCircle size={12} />
+                        {confeccionMensaje}
+                      </p>
+                    )}
+                    {order.status === 'En impresión' && (role === 'Admin' || role === 'Ventas' || role === 'Impresión') && (
+                      <button
+                        onClick={() => setShowQualityRejectModal(true)}
+                        className="w-full bg-amber-500/10 border border-amber-500/30 text-amber-500 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-amber-500/20 transition-all"
+                      >
+                        <AlertTriangle size={18} /> Rechazar calidad → En cuadro
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {(['En sublimación', 'En corte', 'En confección', 'En empaque'] as OrderStatus[]).includes(order.status) &&
+                (role === 'Admin' || role === 'Ventas') && (
+                <div className="pt-4 border-t border-border-custom">
+                  {!order.is_reposition ? (
+                    <button
+                      onClick={() => setShowRepositionModal(true)}
+                      className="w-full bg-orange-500/10 border border-orange-500/30 text-orange-500 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-orange-500/20 transition-all"
+                    >
+                      <AlertTriangle size={18} /> Marcar como Reposición
+                    </button>
+                  ) : (
+                    <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl flex items-center gap-3">
+                      <AlertTriangle size={18} className="text-orange-500 shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">⚡ Orden en Reposición</p>
+                        {order.reposition_reason && (
+                          <p className="text-xs text-foreground-muted mt-1">{order.reposition_reason}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {order.status === 'Entregado' && (
+                <div className="p-4 bg-green-500/10 rounded-2xl border border-green-500/20 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-green-500">✓ Orden completada y entregada</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {(order.status === 'En confección' || order.status === 'En empaque' ||
+            order.status === 'En despacho' || order.status === 'Entregado') &&
+            (role === 'Admin' || role === 'Ventas' || role === 'Confección') && (
+            <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
                     <Shirt className="text-accent" size={24} />
                   </div>
                   <div>
-                    <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px]">Listado de Uniformes</h4>
-                    <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-1">Especificaciones por jugador</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black text-foreground-muted uppercase tracking-[0.2em] bg-surface-hover px-5 py-2.5 rounded-2xl border border-border-custom shadow-inner">
-                    {order.items?.length || 0} Unidades
-                  </span>
-                </div>
-              </div>
-              <div className="overflow-x-auto relative z-10">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-foreground-main/[0.02]">
-                      <th className="py-10 px-10 border-b border-border-custom">Nombre / Jugador</th>
-                      <th className="py-10 px-6 border-b border-border-custom text-center">N°</th>
-                      <th className="py-10 px-6 border-b border-border-custom text-center">Talla</th>
-                      <th className="py-10 px-6 border-b border-border-custom text-center">Manga</th>
-                      <th className="py-10 px-6 border-b border-border-custom text-center">Tipo</th>
-                      <th className="py-10 px-6 border-b border-border-custom text-center">Horma</th>
-                      <th className="py-10 px-10 border-b border-border-custom">Observaciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border-custom">
-                    {order.items?.map((item, idx) => (
-                      <tr key={item.id || idx} className="hover:bg-gradient-to-r hover:from-accent/[0.03] hover:to-transparent transition-all duration-700 group border-b border-border-custom/50 last:border-0">
-                        <td className="py-12 px-10">
-                            <div className="flex flex-col group/name">
-                              <span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500 uppercase drop-shadow-lg">{item.player_name || '-'}</span>
-                              <div className="h-[1px] w-0 group-hover:w-12 bg-accent/50 transition-all duration-700 mt-1"></div>
-                            </div>
-                        </td>
-                        <td className="py-12 px-6 text-center">
-                          <span className="font-black text-foreground-main tracking-tighter group-hover:text-foreground-main transition-all duration-700">{item.number || '-'}</span>
-                        </td>
-                        <td className="py-12 px-6 text-center">
-                          <span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500">{item.size || '-'}</span>
-                        </td>
-                        <td className="py-12 px-6 text-center">
-                          <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.sleeve || '-'}</span>
-                        </td>
-                        <td className="py-12 px-6 text-center">
-                          <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.design_type || '-'}</span>
-                        </td>
-                        <td className="py-12 px-6 text-center">
-                          <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.fit || '-'}</span>
-                        </td>
-                        <td className="py-10 px-10">
-                          <span className="text-foreground-main italic text-[11px] font-bold leading-relaxed">{item.observations || '-'}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          </div>
-          <div className="space-y-10">
-            
-            <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
-  
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
-                  <FileText className="text-accent" size={24} />
-                </div>
-                <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
-                  Recibo de Orden
-                </h4>
-              </div>
-
-              {/* Resumen de uniformes */}
-              <div className="bg-background rounded-[28px] border border-border-custom p-6 space-y-3">
-                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-foreground-muted mb-4">
-                  Resumen de Prendas
-                </p>
-
-                {(() => {
-                  const camisetas = order.items?.filter(i => 
-                    i.garment_type?.toLowerCase().includes('camiseta')
-                  ).length || 0;
-                  
-                  const pantalonetas = order.items?.filter(i => 
-                    i.garment_type?.toLowerCase().includes('pantaloneta')
-                  ).length || 0;
-
-                  const otros = (order.items?.length || 0) - camisetas - pantalonetas;
-
-                  return (
-                    <div className="space-y-3">
-                      {camisetas > 0 && (
-                        <div className="flex items-center justify-between py-3 border-b border-border-custom last:border-0">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center">
-                              <Shirt className="text-accent" size={14} />
-                            </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-foreground-main">
-                              Camisetas
-                            </span>
-                          </div>
-                          <span className="font-black text-xl text-foreground-main tracking-tighter">
-                            {camisetas}
-                          </span>
-                        </div>
-                      )}
-
-                      {pantalonetas > 0 && (
-                        <div className="flex items-center justify-between py-3 border-b border-border-custom last:border-0">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center">
-                              <Shirt className="text-accent" size={14} />
-                            </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-foreground-main">
-                              Pantalonetas
-                            </span>
-                          </div>
-                          <span className="font-black text-xl text-foreground-main tracking-tighter">
-                            {pantalonetas}
-                          </span>
-                        </div>
-                      )}
-
-                      {otros > 0 && (
-                        <div className="flex items-center justify-between py-3 border-b border-border-custom last:border-0">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center">
-                              <Shirt className="text-accent" size={14} />
-                            </div>
-                            <span className="text-[11px] font-black uppercase tracking-widest text-foreground-main">
-                              Uniformes
-                            </span>
-                          </div>
-                          <span className="font-black text-xl text-foreground-main tracking-tighter">
-                            {otros}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Total */}
-                      <div className="flex items-center justify-between pt-3">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-accent">
-                          Total Prendas
-                        </span>
-                        <span className="font-black text-2xl text-foreground-main tracking-tighter">
-                          {order.items?.length || 0}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Código QR */}
-              <div className="flex flex-col items-center gap-4 pt-2">
-                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-foreground-muted">
-                  Escanea para seguimiento
-                </p>
-                <div className="p-4 bg-white rounded-[24px] shadow-xl shadow-black/20 border border-border-custom">
-                  <QRCode
-                    value={`${window.location.origin}/seguimiento/${order.order_number}`}
-                    size={140}
-                    bgColor="#ffffff"
-                    fgColor="#0f0f0f"
-                    level="M"
-                    includeMargin={false}
-                  />
-                </div>
-                <div className="text-center space-y-1">
-                  <p className="text-[10px] font-black text-foreground-main uppercase tracking-widest">
-                    {order.order_number}
-                  </p>
-                  <p className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest">
-                    {order.client_name}
-                  </p>
-                </div>
-              </div>
-
-              {/* Botón imprimir recibo */}
-              <button
-                  onClick={() => {
-                    const camisetas = order.items?.filter(i => 
-                      i.garment_type?.toLowerCase().includes('camiseta')
-                    ).length || 0;
-                    
-                    const pantalonetas = order.items?.filter(i => 
-                      i.garment_type?.toLowerCase().includes('pantaloneta')
-                    ).length || 0;
-
-                    const otros = (order.items?.length || 0) - camisetas - pantalonetas;
-
-                    const qrUrl = `${window.location.origin}/seguimiento/${order.order_number}`;
-
-                    // Generamos la URL de QR usando una API pública (no requiere librería)
-                    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrUrl)}`;
-
-                    const printWindow = window.open('', '_blank', 'width=400,height=600');
-                    if (!printWindow) return;
-
-                    printWindow.document.write(`
-                      <!DOCTYPE html>
-                      <html lang="es">
-                      <head>
-                        <meta charset="UTF-8" />
-                        <title>Recibo ${order.order_number}</title>
-                        <style>
-                          * { margin: 0; padding: 0; box-sizing: border-box; }
-                          body {
-                            font-family: 'Arial', sans-serif;
-                            background: #fff;
-                            color: #111;
-                            padding: 32px 24px;
-                            max-width: 360px;
-                            margin: 0 auto;
-                          }
-                          .header {
-                            text-align: center;
-                            border-bottom: 2px solid #111;
-                            padding-bottom: 16px;
-                            margin-bottom: 20px;
-                          }
-                          .brand {
-                            font-size: 22px;
-                            font-weight: 900;
-                            letter-spacing: 0.2em;
-                            text-transform: uppercase;
-                          }
-                          .brand span { color: #e11d48; }
-                          .order-number {
-                            display: inline-block;
-                            margin-top: 8px;
-                            font-size: 11px;
-                            font-weight: 800;
-                            letter-spacing: 0.3em;
-                            text-transform: uppercase;
-                            background: #fef2f2;
-                            color: #e11d48;
-                            padding: 4px 12px;
-                            border-radius: 20px;
-                            border: 1px solid #fecdd3;
-                          }
-                          .client-name {
-                            font-size: 16px;
-                            font-weight: 900;
-                            text-transform: uppercase;
-                            letter-spacing: 0.05em;
-                            margin-top: 12px;
-                          }
-                          .client-info {
-                            font-size: 11px;
-                            color: #555;
-                            margin-top: 4px;
-                            font-weight: 600;
-                            letter-spacing: 0.05em;
-                          }
-                          .section-title {
-                            font-size: 9px;
-                            font-weight: 900;
-                            text-transform: uppercase;
-                            letter-spacing: 0.3em;
-                            color: #999;
-                            margin-bottom: 12px;
-                          }
-                          .items-section {
-                            margin-bottom: 20px;
-                          }
-                          .item-row {
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;
-                            padding: 10px 0;
-                            border-bottom: 1px solid #f0f0f0;
-                          }
-                          .item-row:last-child { border-bottom: none; }
-                          .item-label {
-                            font-size: 13px;
-                            font-weight: 800;
-                            text-transform: uppercase;
-                            letter-spacing: 0.1em;
-                          }
-                          .item-qty {
-                            font-size: 22px;
-                            font-weight: 900;
-                            letter-spacing: -0.02em;
-                          }
-                          .total-row {
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;
-                            background: #111;
-                            color: #fff;
-                            padding: 12px 16px;
-                            border-radius: 12px;
-                            margin-bottom: 24px;
-                          }
-                          .total-label {
-                            font-size: 10px;
-                            font-weight: 900;
-                            text-transform: uppercase;
-                            letter-spacing: 0.3em;
-                          }
-                          .total-qty {
-                            font-size: 26px;
-                            font-weight: 900;
-                            letter-spacing: -0.02em;
-                          }
-                          .qr-section {
-                            text-align: center;
-                            padding-top: 16px;
-                            border-top: 1px dashed #ddd;
-                          }
-                          .qr-section img {
-                            width: 160px;
-                            height: 160px;
-                            border-radius: 12px;
-                            border: 1px solid #eee;
-                          }
-                          .qr-label {
-                            font-size: 9px;
-                            font-weight: 800;
-                            text-transform: uppercase;
-                            letter-spacing: 0.3em;
-                            color: #999;
-                            margin-top: 10px;
-                          }
-                          .delivery {
-                            display: flex;
-                            justify-content: space-between;
-                            font-size: 11px;
-                            margin-bottom: 20px;
-                            padding: 10px 14px;
-                            background: #f9f9f9;
-                            border-radius: 10px;
-                            border: 1px solid #eee;
-                          }
-                          .delivery-label { color: #999; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
-                          .delivery-value { font-weight: 900; text-transform: uppercase; }
-                          .footer {
-                            text-align: center;
-                            font-size: 9px;
-                            color: #bbb;
-                            margin-top: 20px;
-                            font-weight: 700;
-                            letter-spacing: 0.2em;
-                            text-transform: uppercase;
-                          }
-                        </style>
-                      </head>
-                      <body>
-                        <div class="header">
-                          <div class="brand">Bachestic <span>Sport</span></div>
-                          <div class="order-number">${order.order_number}</div>
-                          <div class="client-name">${order.client_name}</div>
-                          <div class="client-info">${order.client_doc_type || ''} ${order.client_doc || ''} · ${order.client_phone || ''}</div>
-                        </div>
-
-                        <div class="delivery">
-                          <span class="delivery-label">Entrega estimada</span>
-                          <span class="delivery-value">${
-                            order.delivery_date 
-                              ? new Date(new Date(order.delivery_date).setDate(new Date(order.delivery_date).getDate() - 1))
-                                  .toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                              : 'Por confirmar'
-                          }</span>
-                        </div>
-
-                        <div class="items-section">
-                          <div class="section-title">Resumen de Prendas</div>
-                          ${camisetas > 0 ? `
-                            <div class="item-row">
-                              <span class="item-label">Camisetas</span>
-                              <span class="item-qty">${camisetas}</span>
-                            </div>
-                          ` : ''}
-                          ${pantalonetas > 0 ? `
-                            <div class="item-row">
-                              <span class="item-label">Pantalonetas</span>
-                              <span class="item-qty">${pantalonetas}</span>
-                            </div>
-                          ` : ''}
-                          ${otros > 0 ? `
-                            <div class="item-row">
-                              <span class="item-label">Uniformes</span>
-                              <span class="item-qty">${otros}</span>
-                            </div>
-                          ` : ''}
-                        </div>
-
-                        <div class="total-row">
-                          <span class="total-label">Total Prendas</span>
-                          <span class="total-qty">${order.items?.length || 0}</span>
-                        </div>
-
-                        <div class="qr-section">
-                          <img src="${qrImageUrl}" alt="QR Seguimiento" />
-                          <div class="qr-label">Escanea para seguimiento en línea</div>
-                        </div>
-
-                        <div class="footer">Bachestic Sport · ${new Date().toLocaleDateString('es-CO')}</div>
-
-                        <script>
-                          window.onload = () => {
-                            window.print();
-                            window.onafterprint = () => window.close();
-                          };
-                        </script>
-                      </body>
-                      </html>
-                    `);
-                    printWindow.document.close();
-                  }}
-                  className="w-full bg-surface-hover text-foreground-main py-4 rounded-[24px] font-black uppercase tracking-[0.3em] text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main hover:text-background transition-all border border-border-custom"
-                >
-                  <Download size={14} /> Imprimir Recibo
-                </button>
-
-            </div>
-
-            {(role === 'Admin' || role === 'Diseño') && (
-              <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
-                
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
-                    <Palette className="text-accent" size={24} />
-                  </div>
-                  <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
-                    Diseño del Cliente
-                  </h4>
-                </div>
-
-                <p className="text-foreground-muted text-[9px] font-black uppercase tracking-widest leading-relaxed">
-                  Carga el diseño para cada producto o uniforme. Estos se visualizarán en el seguimiento del cliente.
-                </p>
-                
-                <div className="grid grid-cols-1 gap-8">
-                  {(Array.from(new Set(order.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[]).map((cat) => {
-                    const design = [...(order.references || [])].reverse().find(r => r.comments === cat);
-
-                    return (
-                      <div key={cat} className="space-y-3">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted ml-1">
-                          {cat}
-                        </p>
-
-                        {design ? (
-                          <div 
-                            className="aspect-video rounded-3xl overflow-hidden border border-border-custom relative group shadow-lg cursor-pointer"
-                            onClick={() => {
-                              setSelectedImageUrl(design.file_path);
-                              setShowImageModal(true);
-                            }}
-                          >
-                            <img 
-                              src={design.file_path} 
-                              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                              referrerPolicy="no-referrer" 
-                            />
-
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <a 
-                                href={design.file_path} 
-                                download 
-                                onClick={(e) => e.stopPropagation()}
-                                className="p-4 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-accent transition-all"
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                <Download size={20} />
-                              </a>
-                            </div>
-                          </div>
-                        ) : (
-                          <form onSubmit={(e) => {
-                            e.preventDefault();
-                            const formData = new FormData();
-                            const input = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
-                            if (input.files?.[0]) {
-                              formData.append('references', input.files[0]);
-                              formData.append('comments', cat as string);
-                              api.uploadReferences(orderId, formData, user.name).then(() => loadOrder());
-                            }
-                          }}>
-                            <label className="aspect-video border-2 border-dashed border-border-custom rounded-[32px] flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-all group relative overflow-hidden">
-                              <div className="w-12 h-12 bg-foreground-main/[0.02] rounded-2xl flex items-center justify-center text-foreground-muted/20 group-hover:text-accent group-hover:scale-110 transition-all">
-                                <Upload size={24} />
-                              </div>
-
-                              <div className="text-center">
-                                <p className="text-[9px] font-black text-foreground-muted/50 uppercase tracking-[0.2em] group-hover:text-foreground-main transition-colors">
-                                  Subir Diseño Final
-                                </p>
-                                <p className="text-[8px] font-bold text-foreground-muted/30 uppercase tracking-widest mt-1">
-                                  {cat}
-                                </p>
-                              </div>
-
-                              <input 
-                                type="file" 
-                                className="hidden" 
-                                onChange={e => e.currentTarget.form?.requestSubmit()} 
-                              />
-                            </label>
-                          </form>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
-
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
-                  <CheckCircle2 className="text-accent" size={24} />
-                </div>
-
-                <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
-                  Acciones de Flujo
-                </h4>
-              </div>
-              
-              <div className="space-y-4">
-
-                {order.status === 'Abono confirmado' && (role === 'Admin' || role === 'Ventas') && (() => {
-                  const orderCategories = Array.from(new Set(order.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[];
-                  const uploadedCategories = (order.references || []).filter(r => orderCategories.includes(r.comments || ''));
-                  const hasDesignReference = uploadedCategories.length > 0;
-                  return (
-                    <div className="space-y-3">
-                      <button 
-                        onClick={() => hasDesignReference && handleStatusUpdate('En diseño')}
-                        disabled={!hasDesignReference}
-                        className={cn(
-                          "w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all",
-                          hasDesignReference
-                            ? "bg-foreground-main text-background hover:bg-foreground-main/90"
-                            : "bg-surface-hover text-foreground-muted/40 cursor-not-allowed border border-dashed border-border-custom"
-                        )}
-                      >
-                        <Palette size={18} /> Avanzar a: Diseño
-                      </button>
-                      {!hasDesignReference && (
-                        <p className="text-[9px] font-black uppercase tracking-widest text-accent/70 text-center flex items-center justify-center gap-1.5">
-                          <AlertCircle size={12} />
-                          Sube el diseño ejemplo antes de continuar
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {(order.status === 'En diseño' || order.status === 'Corrección solicitada') && (role === 'Admin' || role === 'Diseño') && (
-                  <form onSubmit={handleDesignUpload} className="space-y-6">
-                    <div className="relative group">
-                      <div className="border-2 border-dashed border-border-custom rounded-[32px] p-10 text-center hover:border-accent/40 transition-all cursor-pointer relative bg-background overflow-hidden">
-                        <input 
-                          type="file" 
-                          name="design" 
-                          className="absolute inset-0 opacity-0 cursor-pointer z-20" 
-                          required 
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const url = URL.createObjectURL(file as File);
-                              setSelectedFilePreview(url);
-                            }
-                          }}
-                        />
-                        {selectedFilePreview ? (
-                          <div className="relative z-10">
-                            <img src={selectedFilePreview} className="max-h-48 mx-auto rounded-2xl shadow-2xl border border-border-custom" />
-                            <p className="text-[9px] font-black text-accent uppercase tracking-widest mt-4">Imagen seleccionada - Click para cambiar</p>
-                          </div>
-                        ) : (
-                          <div className="relative z-10">
-                            <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                              <Upload className="text-accent" size={24} />
-                            </div>
-                            <p className="text-[10px] font-black text-foreground-main uppercase tracking-[0.2em] mb-1">Subir Versión de Diseño</p>
-                            <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">JPG, PNG o PDF (Máx. 10MB)</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <textarea 
-                      name="comments" 
-                      placeholder="Añadir comentarios o especificaciones para esta versión..." 
-                      className="w-full p-6 rounded-[24px] bg-background border border-border-custom text-foreground-main font-bold text-xs outline-none focus:border-accent/30 transition-all resize-none leading-relaxed" 
-                      rows={3}
-                    ></textarea>
-                    <button 
-                      type="submit"
-                      disabled={isUploading}
-                      className="w-full bg-accent text-white py-5 rounded-[24px] font-black uppercase tracking-[0.3em] text-[10px] flex items-center justify-center gap-3 disabled:opacity-50 hover:bg-accent/90 transition-all shadow-[0_10px_30px_rgba(220,38,38,0.3)] active:scale-[0.98]"
-                    >
-                      {isUploading ? <Clock className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
-                      Enviar Versión a Revisión
-                    </button>
-                  </form>
-                )}
-
-                {order.status === 'Versión enviada' && (role === 'Admin' || role === 'Cliente') && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <button 
-                    onClick={handleApproveDesign}
-                    className="bg-green-600 hover:bg-green-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-[0_0_20px_rgba(22,163,74,0.2)]"
-                  >
-                    Aprobar
-                  </button>
-                    <button 
-                      onClick={() => setShowRejectModal(true)}
-                      className="bg-accent hover:bg-accent/90 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-[0_0_20px_rgba(220,38,38,0.2)]"
-                    >
-                      Corregir
-                    </button>
-                  </div>
-                )}
-
-                {['Diseño aprobado', 'En cuadro', 'En montaje'].includes(order.status) && (role === 'Admin' || role === 'Diseño') && (() => {
-                  const stepMap: Partial<Record<OrderStatus, { label: string; next: OrderStatus; icon: any }>> = {
-                    'Diseño aprobado': { label: 'Avanzar a: Producción', next: 'En cuadro', icon: Printer },
-                    'En cuadro':       { label: 'Avanzar a: Montaje',      next: 'En montaje', icon: CheckCircle2 },
-                    'En montaje':      { label: 'Avanzar a: Impresión',  next: 'En impresión', icon: Printer },
-                  };
-                  const step = stepMap[order.status as keyof typeof stepMap];
-                  if (!step) return null;
-                  const Icon = step.icon;
-                  return (
-                    <button 
-                      onClick={() => handleStatusUpdate(step.next)}
-                      className="w-full bg-foreground-main text-background py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main/90 transition-all"
-                    >
-                      <Icon size={18} /> {step.label}
-                    </button>
-                  );
-                })()}
-
-                {/* Botones de avance para estados de producción */}
-                {(['En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En despacho'] as OrderStatus[]).includes(order.status) && (role === 'Admin' || role === 'Ventas' || role === 'Impresión' || role === 'En Sublimación' || role === 'Corte' || role === 'Confección' || role === 'Empaque') && (() => {
-                  const nextMap: Partial<Record<OrderStatus, OrderStatus>> = {
-                    'En impresión': 'En sublimación',
-                    'En sublimación': 'En corte',
-                    'En corte': 'En confección',
-                    'En confección': 'En empaque',
-                    'En empaque': 'En despacho',
-                    'En despacho': 'Entregado', 
-                  };
-                  const next = nextMap[order.status];
-                  if (!next) return null;
-
-                  let confeccionCompleta = true;
-                  let confeccionMensaje = '';
-
-                  if (order.status === 'En confección') {
-                    const totalCamisetas = order.items?.filter(i => i.garment_type === 'Camiseta').length || 0;
-                    const totalPantalonetas = order.items?.filter(i => i.garment_type === 'Pantaloneta').length || 0;
-
-                    const CAM_TASKS = ['filetes', 'despuntes', 'collarin', 'dobladillo_remate'];
-                    const PANT_TASKS = ['filete_p', 'despuntes_p', 'caucho', 'sentar_caucho', 'collarin_p', 'remate'];
-
-                    // Acumular cantidades por task_key desde assignments
-                    const taskTotals: Record<string, number> = {};
-                    assignments.forEach(a => {
-                      const notesRaw = a.notes || '';
-                      const typeMatch = notesRaw.match(/^\[(.+?)\]/);
-                      const garmentType = typeMatch ? typeMatch[1] : 'Camiseta';
-                      const rest = notesRaw.replace(/^\[.+?\]\s*/, '').split(' — ')[0].trim();
-
-                      // Mapear label → key
-                      const labelToKey: Record<string, string> = {
-                        'Filetes': 'filetes', 'Despuntes': 'despuntes', 'Collarín': 'collarin',
-                        'Dobladillo y Remate': 'dobladillo_remate',
-                        'Filete': 'filete_p', 'Caucho': 'caucho', 'Sentar Caucho': 'sentar_caucho',
-                        'Remate': 'remate',
-                      };
-                      // Despuntes de pantaloneta tiene mismo label que camiseta → distinguir por tipo
-                      let key = labelToKey[rest];
-                      if (rest === 'Despuntes' && garmentType === 'Pantaloneta') key = 'despuntes_p';
-                      if (rest === 'Collarín' && garmentType === 'Pantaloneta') key = 'collarin_p';
-
-                      if (key) {
-                        taskTotals[key] = (taskTotals[key] || 0) + (a.garment_count || 0);
-                      }
-                    });
-
-                    // Validar camisetas
-                    if (totalCamisetas > 0) {
-                      for (const tk of CAM_TASKS) {
-                        if ((taskTotals[tk] || 0) < totalCamisetas) {
-                          confeccionCompleta = false;
-                          confeccionMensaje = `Faltan tareas de camiseta: se necesitan ${totalCamisetas} en cada tarea`;
-                          break;
-                        }
-                      }
-                    }
-
-                    // Validar pantalonetas
-                    if (confeccionCompleta && totalPantalonetas > 0) {
-                      for (const tk of PANT_TASKS) {
-                        if ((taskTotals[tk] || 0) < totalPantalonetas) {
-                          confeccionCompleta = false;
-                          confeccionMensaje = `Faltan tareas de pantaloneta: se necesitan ${totalPantalonetas} en cada tarea`;
-                          break;
-                        }
-                      }
-                    }
-                  }
-
-                  return (
-                    <div className="space-y-3">
-                      <button
-                        onClick={() => confeccionCompleta && handleStatusUpdate(next)}
-                        disabled={!confeccionCompleta}
-                        className={cn(
-                          "w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all",
-                          confeccionCompleta
-                            ? "bg-foreground-main text-background hover:bg-foreground-main/90"
-                            : "bg-surface-hover text-foreground-muted/40 cursor-not-allowed border border-dashed border-border-custom"
-                        )}
-                      >
-                        <CheckCircle2 size={18} /> Avanzar a: {next}
-                      </button>
-                      {/* Mensaje de validación cuando está incompleto */}
-                      {order.status === 'En confección' && !confeccionCompleta && (
-                        <p className="text-[9px] font-black uppercase tracking-widest text-accent/70 text-center flex items-center justify-center gap-1.5">
-                          <AlertCircle size={12} />
-                          {confeccionMensaje}
-                        </p>
-                      )}
-
-                      {order.status === 'En impresión' && (role === 'Admin' || role === 'Ventas' || role === 'Impresión') && (
-                        <button
-                          onClick={() => setShowQualityRejectModal(true)}
-                          className="w-full bg-amber-500/10 border border-amber-500/30 text-amber-500 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-amber-500/20 transition-all"
-                        >
-                          <AlertTriangle size={18} /> Rechazar calidad → En cuadro
-                        </button>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {/* Botón de Reposición — visible desde En sublimación en adelante */}
-                {(['En sublimación', 'En corte', 'En confección', 'En empaque'] as OrderStatus[]).includes(order.status) && 
-                  (role === 'Admin' || role === 'Ventas') && (
-                  <div className="pt-4 border-t border-border-custom">
-                    {!order.is_reposition ? (
-                      <button
-                        onClick={() => setShowRepositionModal(true)}
-                        className="w-full bg-orange-500/10 border border-orange-500/30 text-orange-500 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-orange-500/20 transition-all"
-                      >
-                        <AlertTriangle size={18} /> Marcar como Reposición
-                      </button>
-                    ) : (
-                      <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl flex items-center gap-3">
-                        <AlertTriangle size={18} className="text-orange-500 shrink-0" />
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">⚡ Orden en Reposición</p>
-                          {order.reposition_reason && (
-                            <p className="text-xs text-foreground-muted mt-1">{order.reposition_reason}</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {order.status === 'Entregado' && (
-                  <div className="p-4 bg-green-500/10 rounded-2xl border border-green-500/20 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-green-500">✓ Orden completada y entregada</p>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* SECCIÓN ASIGNACIONES DE CONFECCIÓN */}
-  {(order.status === 'En confección' || order.status === 'En empaque' || 
-    order.status === 'En despacho' || order.status === 'Entregado') && 
-    (role === 'Admin' || role === 'Ventas' || role === 'Confección') && (
-
-    <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
-      
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
-            <Shirt className="text-accent" size={24} />
-          </div>
-          <div>
-            <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px]">Confección</h4>
-            <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
-              {assignments.reduce((sum, a) => sum + (a.garment_count || 0), 0)} uds registradas
-            </p>
-          </div>
-        </div>
-        {order.status === 'En confección' && (role === 'Admin' || role === 'Ventas') && (
-          <button
-            onClick={() => {
-              api.getEmployees().then(setEmployees).catch(console.error);
-              setShowAssignmentModal(true);
-            }}
-            className="bg-accent text-white px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 hover:scale-105 transition-all"
-          >
-            <Plus size={14} /> Registrar
-          </button>
-        )}
-      </div>
-
-      {assignments.length === 0 ? (
-        <div className="text-center py-8 bg-surface-hover rounded-2xl border border-dashed border-border-custom">
-          <Shirt size={32} className="mx-auto text-foreground-muted/20 mb-3" />
-          <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted/40">
-            Sin asignaciones registradas
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {/* Resumen por empleado */}
-          {Object.values(
-            assignments.reduce((acc, a) => {
-              const key = a.employee_id;
-              if (!acc[key]) {
-                acc[key] = {
-                  employee_name: a.employee_name || `Empleado #${a.employee_id}`,
-                  total_garments: 0,
-                  total_earned: 0,
-                  items: []
-                };
-              }
-              acc[key].total_garments += a.garment_count || 0;
-              acc[key].total_earned += (a.garment_count || 0) * (a.price_per_unit || 0);
-              acc[key].items.push(a);
-              return acc;
-            }, {} as Record<number, any>)
-          ).map((emp: any, i) => (
-            <div key={i} className="bg-surface-hover p-5 rounded-2xl border border-border-custom">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
-                    <Users size={14} />
-                  </div>
-                  <div>
-                    <p className="font-black text-sm text-foreground-main">{emp.employee_name}</p>
-                    <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">Confección</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-black text-lg text-accent">{emp.total_garments} UDS</p>
-                  <p className="text-[9px] font-bold text-foreground-muted">${emp.total_earned.toLocaleString()}</p>
-                </div>
-              </div>
-              {/* Detalle de cada registro */}
-              {emp.items.map((item: any, j: number) => (
-                <div key={j} className="flex items-center justify-between py-2 border-t border-border-custom text-[10px]">
-                  <span className="text-foreground-muted font-bold uppercase tracking-widest">
-                    {format(new Date(item.created_at), 'dd/MM HH:mm')}
-                  </span>
-                  <div className="flex items-center gap-4">
-                    <span className="text-foreground-main font-bold">{item.garment_count} uds × ${(item.price_per_unit || 0).toLocaleString()}</span>
-                    {item.notes && (
-                      <span className="text-foreground-muted italic max-w-[120px] truncate">{item.notes}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-
-          {/* Total general */}
-          <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
-            <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total Confeccionado</p>
-            <div className="text-right">
-              <p className="font-black text-foreground-main">
-                {assignments.reduce((sum, a) => sum + (a.garment_count || 0), 0)} / {order.items?.length || 0} uniformes
-              </p>
-              <p className="text-[9px] text-foreground-muted font-bold">
-                ${assignments.reduce((sum, a) => sum + (a.garment_count || 0) * (a.price_per_unit || 0), 0).toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )}
-
-            {/* MODAL REGISTRAR ASIGNACIÓN */}
-            {showAssignmentModal && (
-              <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  className="w-full max-w-2xl bg-surface rounded-[40px] border border-border-custom p-10 shadow-2xl relative overflow-y-auto max-h-[90vh]"
-                >
-                  <div className="absolute top-0 left-0 w-full h-1 bg-accent" />
-
-                  <div className="flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
-                      <Shirt size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-black text-foreground-main uppercase tracking-tight">Registrar Confección</h3>
-                      <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
-                        Orden {order.order_number} · {order.items?.length || 0} uniformes totales
-                      </p>
-                    </div>
-                  </div>
-
-                  <form onSubmit={handleCreateAssignment} className="space-y-6">
-
-                    {/* EMPLEADO */}
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Empleado</label>
-                      <div className="relative">
-                        <select
-                          value={assignmentForm.employee_id}
-                          onChange={e => setAssignmentForm({...assignmentForm, employee_id: e.target.value})}
-                          required
-                          className="w-full px-6 py-4 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main appearance-none cursor-pointer pr-12"
-                        >
-                          <option value="" disabled>Seleccionar empleado...</option>
-                          {employees.filter(e => e.active && (e.role === 'Confección' || e.role === 'Admin')).map(emp => (
-                            <option key={emp.id} value={emp.id}>{emp.name} — {emp.role}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-foreground-muted" size={18} />
-                        {employees.filter(e => e.active && (e.role === 'Confección' || e.role === 'Admin')).length === 0 && (
-                          <p className="text-[10px] font-black uppercase tracking-widest text-accent mt-2 flex items-center gap-1.5">
-                            <AlertCircle size={12} /> No hay empleados de Confección activos
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* TIPO DE PRENDA */}
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Tipo de Prenda</label>
-                      <div className="flex gap-3">
-                        {['Camiseta', 'Pantaloneta'].map(tipo => (
-                          <button
-                            key={tipo}
-                            type="button"
-                            onClick={() => setAssignmentForm({...assignmentForm, garment_type: tipo})}
-                            className={cn(
-                              "flex-1 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border",
-                              assignmentForm.garment_type === tipo
-                                ? "bg-accent text-white border-accent shadow-lg shadow-accent/20"
-                                : "bg-surface-hover text-foreground-muted border-border-custom hover:text-foreground-main"
-                            )}
-                          >
-                            {tipo}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* TAREAS */}
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">
-                        Tareas realizadas — {assignmentForm.garment_type}
-                      </label>
-                      <div className="bg-surface-hover rounded-[24px] border border-border-custom overflow-hidden">
-                        <div className="grid grid-cols-[auto_1fr_120px_100px] gap-4 px-5 py-3 border-b border-border-custom bg-surface">
-                          <div className="w-5" />
-                          <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Tarea</p>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">Cantidad</p>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-right">Subtotal</p>
-                        </div>
-                        {(
-                          assignmentForm.garment_type === 'Camiseta'
-                            ? [
-                                { key: 'filetes',           label: 'Filetes',             priceKey: 'filetes' },
-                                { key: 'despuntes',         label: 'Despuntes',           priceKey: 'despuntes' },
-                                { key: 'collarin',          label: 'Collarín',            priceKey: 'collarin' },
-                                { key: 'dobladillo_remate', label: 'Dobladillo y Remate', priceKey: 'dobladillo_remate' },
-                              ]
-                            : [
-                                { key: 'filete_p',      label: 'Filete',        priceKey: 'filete_p' },
-                                { key: 'despuntes_p',   label: 'Despuntes',     priceKey: 'despuntes_p' },
-                                { key: 'caucho',        label: 'Caucho',         priceKey: 'caucho' },
-                                { key: 'sentar_caucho', label: 'Sentar Caucho', priceKey: 'sentar_caucho' },
-                                { key: 'collarin_p',    label: 'Collarín',      priceKey: 'collarin_p' },
-                                { key: 'remate',        label: 'Remate',         priceKey: 'remate' },
-                              ]
-                        ).map(({ key, label, priceKey }) => {
-                          const task = assignmentForm.tasks[key];
-                          const unitPrice = productPrices[priceKey] || 0;
-                          const subtotal = (task.quantity || 0) * unitPrice;
-                          return (
-                            <div key={key} className={cn(
-                              "grid grid-cols-[auto_1fr_120px_100px] gap-4 items-center px-5 py-3 border-b border-border-custom last:border-0 transition-all",
-                              task.enabled ? "bg-accent/5" : "opacity-50"
-                            )}>
-                              <input type="checkbox" checked={task.enabled}
-                                onChange={e => setAssignmentForm(prev => ({
-                                  ...prev,
-                                  tasks: { ...prev.tasks, [key]: { ...prev.tasks[key], enabled: e.target.checked } }
-                                }))}
-                                className="w-4 h-4 accent-accent cursor-pointer"
-                              />
-                              <div>
-                                <p className={cn("text-[11px] font-black uppercase tracking-wider", task.enabled ? "text-foreground-main" : "text-foreground-muted")}>{label}</p>
-                                <p className="text-[9px] text-foreground-muted font-bold">${unitPrice.toLocaleString()} c/u</p>
-                              </div>
-                              {(() => {
-                                  // Total de prendas del tipo seleccionado en la orden
-                                  const totalThisType = order.items?.length || 0;
-
-                                  // Lo ya registrado en assignments anteriores para esta task key
-                                  const alreadyRegistered = assignments.reduce((sum, a) => {
-                                    const notesRaw = a.notes || '';
-                                    const typeMatch = notesRaw.match(/^\[(.+?)\]/);
-                                    const garmentType = typeMatch ? typeMatch[1] : 'Camiseta';
-                                    const rest = notesRaw.replace(/^\[.+?\]\s*/, '').split(' — ')[0].trim();
-
-                                    const labelToKey: Record<string, string> = {
-                                      'Filetes': 'filetes', 'Despuntes': 'despuntes', 'Collarín': 'collarin',
-                                      'Dobladillo y Remate': 'dobladillo_remate',
-                                      'Filete': 'filete_p', 'Caucho': 'caucho', 'Sentar Caucho': 'sentar_caucho',
-                                      'Remate': 'remate',
-                                    };
-                                    let assignedKey = labelToKey[rest];
-                                    if (rest === 'Despuntes' && garmentType === 'Pantaloneta') assignedKey = 'despuntes_p';
-                                    if (rest === 'Collarín' && garmentType === 'Pantaloneta') assignedKey = 'collarin_p';
-
-                                    if (assignedKey === key && garmentType === assignmentForm.garment_type) {
-                                      return sum + (a.garment_count || 0);
-                                    }
-                                    return sum;
-                                  }, 0);
-
-                                  const maxAllowed = Math.max(0, totalThisType - alreadyRegistered);
-
-                                  return (
-                                    <div className="flex flex-col items-center gap-1">
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        max={maxAllowed}
-                                        value={task.quantity || ''}
-                                        disabled={!task.enabled}
-                                        onChange={e => {
-                                          const val = Math.min(Number(e.target.value), maxAllowed);
-                                          setAssignmentForm(prev => ({
-                                            ...prev,
-                                            tasks: { ...prev.tasks, [key]: { ...prev.tasks[key], quantity: val, price: unitPrice } }
-                                          }));
-                                        }}
-                                        placeholder="0"
-                                        className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm disabled:opacity-30 focus:border-accent/50"
-                                      />
-                                      {task.enabled && (
-                                        <p className="text-[8px] font-black uppercase tracking-widest text-foreground-muted">
-                                          máx {maxAllowed}
-                                        </p>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              <p className={cn("text-right font-black text-sm", task.enabled && task.quantity > 0 ? "text-accent" : "text-foreground-muted/30")}>
-                                ${subtotal.toLocaleString()}
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-  {/* TOTAL */}
-  <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
-    <div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total a Pagar</p>
-      <p className="text-[9px] text-foreground-muted font-bold mt-0.5">
-        Tarifas tomadas del catálogo de productos
-      </p>
-    </div>
-    <p className="font-black text-2xl text-foreground-main tracking-tighter">
-      ${Object.entries(assignmentForm.tasks)
-        .filter(([_, t]) => t.enabled && t.quantity > 0)
-        .reduce((sum, [key, t]) => {
-          const priceKeyMap: Record<string, string> = {
-            filetes: 'filetes', despuntes: 'despuntes', collarin: 'collarin',
-            dobladillo_remate: 'dobladillo_remate', filete_p: 'filete_p',
-            despuntes_p: 'despuntes_p', caucho: 'caucho', sentar_caucho: 'sentar_caucho',
-            collarin_p: 'collarin_p', remate: 'remate'
-          };
-          return sum + t.quantity * (productPrices[priceKeyMap[key]] || 0);
-        }, 0).toLocaleString()}
-    </p>
-  </div>
-
-                    {/* TOTAL */}
-                    <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total Uds</p>
-                        <p className="text-[9px] text-foreground-muted font-bold mt-0.5">
-                          Las tarifas se calculan desde el catálogo de productos
-                        </p>
-                      </div>
-                      <p className="font-black text-2xl text-foreground-main tracking-tighter">
-                        {Object.values(assignmentForm.tasks)
-                          .filter(t => t.enabled && t.quantity > 0)
-                          .reduce((sum, t) => sum + t.quantity, 0)} uds
-                      </p>
-                    </div>
-
-                    {/* OBSERVACIONES */}
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Observaciones (opcional)</label>
-                      <input
-                        type="text"
-                        value={assignmentForm.notes}
-                        onChange={e => setAssignmentForm({...assignmentForm, notes: e.target.value})}
-                        placeholder="Ej. Prendas con refuerzo, ajuste especial..."
-                        className="w-full px-6 py-4 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main"
-                      />
-                    </div>
-
-                    {/* BOTONES */}
-                    <div className="flex gap-4 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowAssignmentModal(false)}
-                        className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="submit"
-                        className="flex-1 bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-xl shadow-accent/20"
-                      >
-                        <CheckCircle2 size={16} className="inline mr-2" /> Registrar
-                      </button>
-                    </div>
-                  </form>
-                </motion.div>
-              </div>
-            )}
-
-            <div className="bg-surface p-10 rounded-[40px] border border-border-custom shadow-2xl space-y-8 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-[60px] -mr-16 -mt-16"></div>
-              <div className="flex items-center gap-6 relative z-10">
-                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
-                  <Palette className="text-accent" size={24} />
-                </div>
-                <div>
-                  <h4 className="font-black text-foreground-main text-[11px] uppercase tracking-[0.3em]">Historial de Diseño</h4>
-                  <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-1">Versiones enviadas</p>
-                </div>
-              </div>
-              <div className="space-y-4 relative z-10">
-                {order.versions?.map((v) => (
-                  <div key={v.id} className="flex gap-6 p-6 rounded-[32px] border border-border-custom hover:bg-background transition-all group">
-                    
-                    <div 
-                      className="w-24 h-24 bg-background rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-border-custom group-hover:border-accent/30 transition-colors cursor-pointer relative"
-                      onClick={() => {
-                        if (v.file_path) {
-                          setSelectedImageUrl(v.file_path);
-                          setShowImageModal(true);
-                        }
-                      }}
-                    >
-                      {v.file_path ? (
-                        <>
-                          <img 
-                            src={v.file_path} 
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                            referrerPolicy="no-referrer" 
-                          />
-
-                          {/* Overlay tipo diseñador */}
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <div className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white">
-                              <Maximize2 size={16} />
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <Palette size={28} className="text-foreground-muted" />
-                      )}
-                    </div>
-
-                    {/* 👇 CONTENIDO */}
-                    <div className="flex-1 min-w-0 flex flex-col justify-center">
-                      <div className="flex justify-between items-start mb-2">
-                        <p className="font-black text-foreground-main text-base tracking-tight group-hover:text-accent transition-colors">
-                          Versión {v.version_number}
-                        </p>
-                        <span className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest bg-background px-2 py-1 rounded-lg">
-                          {format(new Date(v.created_at), 'dd/MM')}
-                        </span>
-                      </div>
-
-                      <p className="text-[11px] text-foreground-muted line-clamp-2 leading-relaxed italic mb-3">
-                        {v.comments}
-                      </p>
-
-                      {v.client_comments && (
-                        <div className="mb-3 p-3 bg-accent/5 border border-accent/10 rounded-xl">
-                          <p className="text-[9px] font-black uppercase tracking-widest text-accent mb-1 flex items-center gap-1.5">
-                            <MessageSquare size={10} /> Comentarios del Cliente:
-                          </p>
-                          <p className="text-[11px] text-foreground-main italic">
-                            {v.client_comments}
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={cn(
-                            "text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border",
-                            v.status === 'Aprobado'
-                              ? "bg-green-500/10 text-green-500 border-green-500/20"
-                              : "bg-accent/10 text-accent border-accent/20"
-                          )}
-                        >
-                          {v.status}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {(!order.versions || order.versions.length === 0) && (
-                  <div className="text-center py-16 bg-background rounded-[32px] border border-dashed border-border-custom">
-                    <Palette className="mx-auto text-foreground-muted opacity-20 mb-4" size={48} />
-                    <p className="text-[10px] text-foreground-muted font-black uppercase tracking-widest italic">
-                      No hay versiones aún
+                    <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px]">Confección</h4>
+                    <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
+                      {assignments.reduce((sum, a) => sum + (a.garment_count || 0), 0)} uds registradas
                     </p>
                   </div>
-                )}
-              </div>
-
-              
-              {order.status === 'En cuadro' && history.length > 0 && (() => {
-                  const lastReject = history.find(h => 
-                    (h.details && h.details.includes('Rechazo de calidad')) ||
-                    (h.details && h.details.includes('⚠')) ||
-                    (h.action && h.action.toLowerCase().includes('rechazo'))
-                  );
-                  if (!lastReject) return null;
-                  const motivo = (lastReject.details || '')
-                    .replace('⚠ Rechazo de calidad en impresión — Motivo: ', '')
-                    .replace('⚠ ', '')
-                    .trim();
-                  return (
-                    <div className="flex items-start gap-4 bg-amber-500/10 border-2 border-amber-500/40 rounded-[28px] px-8 py-6 my-4">
-                      <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-500 shrink-0 mt-0.5">
-                        <AlertTriangle size={20} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-500 mb-2">
-                          ⚠ Devuelto por rechazo de calidad en impresión
-                        </p>
-                        <p className="text-sm font-bold text-foreground-main leading-relaxed mb-2">
-                          {motivo}
-                        </p>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
-                          Registrado por: {lastReject.user_name} · {format(new Date(lastReject.created_at), 'dd/MM/yyyy HH:mm')}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })()}
-            </div>
-
-          </div>
-        </div>
-
-            <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
-              <div className="flex items-center justify-between">
-                
-                <div className="flex items-center gap-4">
-    
-                  <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
-                    <History className="text-accent" size={24} />
-                  </div>
-
-                  <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
-                    Historial de Cambios
-                  </h4>
-
                 </div>
-                <button 
-                  onClick={() => setShowHistory(!showHistory)}
-                  className="text-[9px] font-black uppercase tracking-widest text-accent hover:text-accent/90 transition-colors"
-                >
-                  {showHistory ? 'Ocultar' : 'Ver Todo'}
-                </button>
-              </div>
-              
-              <div className={cn("space-y-6 transition-all overflow-hidden relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-border-custom", showHistory ? "max-h-[500px] overflow-y-auto pr-2" : "max-h-[200px]")}>
-                {history.map((h) => {
-                  const isQualityReject = h.details?.includes('Rechazo de calidad');
-                  return (
-                    <div key={h.id} className="relative pl-8 group">
-                      <div className={cn(
-                        "absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full border-2 transition-colors",
-                        isQualityReject 
-                          ? "bg-amber-500/20 border-amber-500" 
-                          : "bg-surface border-border-custom group-hover:border-accent"
-                      )} />
-                      <div className="flex justify-between items-start mb-1">
-                        <p className={cn(
-                          "text-[11px] font-black tracking-tight leading-tight",
-                          isQualityReject ? "text-amber-500" : "text-foreground-main"
-                        )}>
-                          {h.action}
-                        </p>
-                        <span className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest">
-                          {format(new Date(h.created_at), 'dd/MM HH:mm')}
-                        </span>
-                      </div>
-                      {isQualityReject ? (
-                        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 mb-1">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1.5 mb-1">
-                            <AlertTriangle size={10} /> Motivo del rechazo:
-                          </p>
-                          <p className="text-[10px] text-foreground-main leading-relaxed">
-                            {h.details?.replace('⚠ Rechazo de calidad en impresión — Motivo: ', '')}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-foreground-muted leading-relaxed mb-1">{h.details}</p>
-                      )}
-                      <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Por: {h.user_name}</p>
-                    </div>
-                  );
-                })}
-                {history.length === 0 && (
-                  <p className="text-[10px] text-foreground-muted font-black uppercase tracking-widest italic text-center py-8">Sin historial registrado</p>
+                {order.status === 'En confección' && (role === 'Admin' || role === 'Ventas') && (
+                  <button
+                    onClick={() => {
+                      api.getEmployees().then(setEmployees).catch(console.error);
+                      setShowAssignmentModal(true);
+                    }}
+                    className="bg-accent text-white px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 hover:scale-105 transition-all"
+                  >
+                    <Plus size={14} /> Registrar
+                  </button>
                 )}
               </div>
-              
+
+              {assignments.length === 0 ? (
+                <div className="text-center py-8 bg-surface-hover rounded-2xl border border-dashed border-border-custom">
+                  <Shirt size={32} className="mx-auto text-foreground-muted/20 mb-3" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted/40">Sin asignaciones registradas</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {Object.values(
+                    assignments.reduce((acc, a) => {
+                      const key = a.employee_id;
+                      if (!acc[key]) {
+                        acc[key] = { employee_name: a.employee_name || `Empleado #${a.employee_id}`, total_garments: 0, total_earned: 0, items: [] };
+                      }
+                      acc[key].total_garments += a.garment_count || 0;
+                      acc[key].total_earned += (a.garment_count || 0) * (a.price_per_unit || 0);
+                      acc[key].items.push(a);
+                      return acc;
+                    }, {} as Record<number, any>)
+                  ).map((emp: any, i) => (
+                    <div key={i} className="bg-surface-hover p-5 rounded-2xl border border-border-custom">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
+                            <Users size={14} />
+                          </div>
+                          <div>
+                            <p className="font-black text-sm text-foreground-main">{emp.employee_name}</p>
+                            <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">Confección</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-black text-lg text-accent">{emp.total_garments} UDS</p>
+                          <p className="text-[9px] font-bold text-foreground-muted">${emp.total_earned.toLocaleString()}</p>
+                        </div>
+                      </div>
+                      {emp.items.map((item: any, j: number) => (
+                        <div key={j} className="flex items-center justify-between py-2 border-t border-border-custom text-[10px]">
+                          <span className="text-foreground-muted font-bold uppercase tracking-widest">
+                            {format(new Date(item.created_at), 'dd/MM HH:mm')}
+                          </span>
+                          <div className="flex items-center gap-4">
+                            <span className="text-foreground-main font-bold">{item.garment_count} uds × ${(item.price_per_unit || 0).toLocaleString()}</span>
+                            {item.notes && <span className="text-foreground-muted italic max-w-[120px] truncate">{item.notes}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total Confeccionado</p>
+                    <div className="text-right">
+                      <p className="font-black text-foreground-main">
+                        {assignments.reduce((sum, a) => sum + (a.garment_count || 0), 0)} / {order.items?.length || 0} uniformes
+                      </p>
+                      <p className="text-[9px] text-foreground-muted font-bold">
+                        ${assignments.reduce((sum, a) => sum + (a.garment_count || 0) * (a.price_per_unit || 0), 0).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          
-          {showStatusConfirm && pendingStatus && (
+          )}
+
+          {showAssignmentModal && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
               <motion.div
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
-                className="w-full max-w-md bg-surface rounded-[40px] border border-border-custom p-10 shadow-2xl relative overflow-hidden"
+                className="w-full max-w-2xl bg-surface rounded-[40px] border border-border-custom p-10 shadow-2xl relative overflow-y-auto max-h-[90vh]"
               >
                 <div className="absolute top-0 left-0 w-full h-1 bg-accent" />
-                <div className="text-center space-y-6">
-                  <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center text-accent mx-auto">
-                    <CheckCircle2 size={40} />
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
+                    <Shirt size={24} />
                   </div>
                   <div>
-                    <h4 className="text-xl font-black text-foreground-main uppercase tracking-tight">
-                      ¿Confirmar cambio de estado?
-                    </h4>
-                    <p className="text-foreground-muted text-sm mt-2">
-                      Pasará a: <span className="font-black text-foreground-main uppercase">{pendingStatusLabel}</span>
+                    <h3 className="text-xl font-black text-foreground-main uppercase tracking-tight">Registrar Confección</h3>
+                    <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
+                      Orden {order.order_number} · {order.items?.length || 0} uniformes totales
                     </p>
-                    <p className="text-foreground-muted text-xs mt-1">
-                      Esta acción quedará registrada en el historial.
-                    </p>
-                  </div>
-                  <div className="flex gap-4 pt-2">
-                    <button
-                      onClick={() => {
-                        setShowStatusConfirm(false);
-                        setPendingStatus(null);
-                        setPendingStatusLabel('');
-                      }}
-                      className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={() => {
-                        const statusToExecute = pendingStatus!;
-                        setShowStatusConfirm(false);
-                        setPendingStatus(null);
-                        setPendingStatusLabel('');
-                        handleStatusUpdate(statusToExecute);
-                      }}
-                      className="flex-1 bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-xl shadow-accent/20"
-                    >
-                      Confirmar
-                    </button>
                   </div>
                 </div>
+
+                <form onSubmit={handleCreateAssignment} className="space-y-6">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Empleado</label>
+                    <div className="relative">
+                      <select
+                        value={assignmentForm.employee_id}
+                        onChange={e => setAssignmentForm({...assignmentForm, employee_id: e.target.value})}
+                        required
+                        className="w-full px-6 py-4 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main appearance-none cursor-pointer pr-12"
+                      >
+                        <option value="" disabled>Seleccionar empleado...</option>
+                        {employees.filter(e => e.active && (e.role === 'Confección' || e.role === 'Admin')).map(emp => (
+                          <option key={emp.id} value={emp.id}>{emp.name} — {emp.role}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-foreground-muted" size={18} />
+                      {employees.filter(e => e.active && (e.role === 'Confección' || e.role === 'Admin')).length === 0 && (
+                        <p className="text-[10px] font-black uppercase tracking-widest text-accent mt-2 flex items-center gap-1.5">
+                          <AlertCircle size={12} /> No hay empleados de Confección activos
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Tipo de Prenda</label>
+                    <div className="flex gap-3">
+                      {['Camiseta', 'Pantaloneta'].map(tipo => (
+                        <button
+                          key={tipo}
+                          type="button"
+                          onClick={() => setAssignmentForm({...assignmentForm, garment_type: tipo})}
+                          className={cn(
+                            "flex-1 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border",
+                            assignmentForm.garment_type === tipo
+                              ? "bg-accent text-white border-accent shadow-lg shadow-accent/20"
+                              : "bg-surface-hover text-foreground-muted border-border-custom hover:text-foreground-main"
+                          )}
+                        >
+                          {tipo}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">
+                      Tareas realizadas — {assignmentForm.garment_type}
+                    </label>
+                    <div className="bg-surface-hover rounded-[24px] border border-border-custom overflow-hidden">
+                      <div className="grid grid-cols-[auto_1fr_120px_100px] gap-4 px-5 py-3 border-b border-border-custom bg-surface">
+                        <div className="w-5" />
+                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Tarea</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">Cantidad</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-right">Subtotal</p>
+                      </div>
+                      {(assignmentForm.garment_type === 'Camiseta'
+                        ? [
+                            { key: 'filetes', label: 'Filetes', priceKey: 'filetes' },
+                            { key: 'despuntes', label: 'Despuntes', priceKey: 'despuntes' },
+                            { key: 'collarin', label: 'Collarín', priceKey: 'collarin' },
+                            { key: 'dobladillo_remate', label: 'Dobladillo y Remate', priceKey: 'dobladillo_remate' },
+                          ]
+                        : [
+                            { key: 'filete_p', label: 'Filete', priceKey: 'filete_p' },
+                            { key: 'despuntes_p', label: 'Despuntes', priceKey: 'despuntes_p' },
+                            { key: 'caucho', label: 'Caucho', priceKey: 'caucho' },
+                            { key: 'sentar_caucho', label: 'Sentar Caucho', priceKey: 'sentar_caucho' },
+                            { key: 'collarin_p', label: 'Collarín', priceKey: 'collarin_p' },
+                            { key: 'remate', label: 'Remate', priceKey: 'remate' },
+                          ]
+                      ).map(({ key, label, priceKey }) => {
+                        const task = assignmentForm.tasks[key];
+                        const unitPrice = productPrices[priceKey] || 0;
+                        const subtotal = (task.quantity || 0) * unitPrice;
+                        const totalThisType = order.items?.length || 0;
+                        const alreadyRegistered = assignments.reduce((sum, a) => {
+                          const notesRaw = a.notes || '';
+                          const typeMatch = notesRaw.match(/^\[(.+?)\]/);
+                          const garmentType = typeMatch ? typeMatch[1] : 'Camiseta';
+                          const rest = notesRaw.replace(/^\[.+?\]\s*/, '').split(' — ')[0].trim();
+                          const labelToKey: Record<string, string> = {
+                            'Filetes': 'filetes', 'Despuntes': 'despuntes', 'Collarín': 'collarin',
+                            'Dobladillo y Remate': 'dobladillo_remate',
+                            'Filete': 'filete_p', 'Caucho': 'caucho', 'Sentar Caucho': 'sentar_caucho',
+                            'Remate': 'remate',
+                          };
+                          let assignedKey = labelToKey[rest];
+                          if (rest === 'Despuntes' && garmentType === 'Pantaloneta') assignedKey = 'despuntes_p';
+                          if (rest === 'Collarín' && garmentType === 'Pantaloneta') assignedKey = 'collarin_p';
+                          if (assignedKey === key && garmentType === assignmentForm.garment_type) {
+                            return sum + (a.garment_count || 0);
+                          }
+                          return sum;
+                        }, 0);
+                        const maxAllowed = Math.max(0, totalThisType - alreadyRegistered);
+
+                        return (
+                          <div key={key} className={cn(
+                            "grid grid-cols-[auto_1fr_120px_100px] gap-4 items-center px-5 py-3 border-b border-border-custom last:border-0 transition-all",
+                            task.enabled ? "bg-accent/5" : "opacity-50"
+                          )}>
+                            <input type="checkbox" checked={task.enabled}
+                              onChange={e => setAssignmentForm(prev => ({
+                                ...prev,
+                                tasks: { ...prev.tasks, [key]: { ...prev.tasks[key], enabled: e.target.checked } }
+                              }))}
+                              className="w-4 h-4 accent-accent cursor-pointer"
+                            />
+                            <div>
+                              <p className={cn("text-[11px] font-black uppercase tracking-wider", task.enabled ? "text-foreground-main" : "text-foreground-muted")}>{label}</p>
+                              <p className="text-[9px] text-foreground-muted font-bold">${unitPrice.toLocaleString()} c/u</p>
+                            </div>
+                            <div className="flex flex-col items-center gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                max={maxAllowed}
+                                value={task.quantity || ''}
+                                disabled={!task.enabled}
+                                onChange={e => {
+                                  const val = Math.min(Number(e.target.value), maxAllowed);
+                                  setAssignmentForm(prev => ({
+                                    ...prev,
+                                    tasks: { ...prev.tasks, [key]: { ...prev.tasks[key], quantity: val, price: unitPrice } }
+                                  }));
+                                }}
+                                placeholder="0"
+                                className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm disabled:opacity-30 focus:border-accent/50"
+                              />
+                              {task.enabled && (
+                                <p className="text-[8px] font-black uppercase tracking-widest text-foreground-muted">
+                                  máx {maxAllowed}
+                                </p>
+                              )}
+                            </div>
+                            <p className={cn("text-right font-black text-sm", task.enabled && task.quantity > 0 ? "text-accent" : "text-foreground-muted/30")}>
+                              ${subtotal.toLocaleString()}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total a Pagar</p>
+                      <p className="text-[9px] text-foreground-muted font-bold mt-0.5">Tarifas tomadas del catálogo de productos</p>
+                    </div>
+                    <p className="font-black text-2xl text-foreground-main tracking-tighter">
+                      ${Object.entries(assignmentForm.tasks)
+                        .filter(([_, t]) => t.enabled && t.quantity > 0)
+                        .reduce((sum, [key, t]) => {
+                          const priceKeyMap: Record<string, string> = {
+                            filetes: 'filetes', despuntes: 'despuntes', collarin: 'collarin',
+                            dobladillo_remate: 'dobladillo_remate', filete_p: 'filete_p',
+                            despuntes_p: 'despuntes_p', caucho: 'caucho', sentar_caucho: 'sentar_caucho',
+                            collarin_p: 'collarin_p', remate: 'remate'
+                          };
+                          return sum + t.quantity * (productPrices[priceKeyMap[key]] || 0);
+                        }, 0).toLocaleString()}
+                    </p>
+                  </div>
+
+                  <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total Uds</p>
+                      <p className="text-[9px] text-foreground-muted font-bold mt-0.5">Las tarifas se calculan desde el catálogo de productos</p>
+                    </div>
+                    <p className="font-black text-2xl text-foreground-main tracking-tighter">
+                      {Object.values(assignmentForm.tasks).filter(t => t.enabled && t.quantity > 0).reduce((sum, t) => sum + t.quantity, 0)} uds
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Observaciones (opcional)</label>
+                    <input
+                      type="text"
+                      value={assignmentForm.notes}
+                      onChange={e => setAssignmentForm({...assignmentForm, notes: e.target.value})}
+                      placeholder="Ej. Prendas con refuerzo, ajuste especial..."
+                      className="w-full px-6 py-4 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main"
+                    />
+                  </div>
+
+                  <div className="flex gap-4 pt-2">
+                    <button type="button" onClick={() => setShowAssignmentModal(false)} className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all">
+                      Cancelar
+                    </button>
+                    <button type="submit" className="flex-1 bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-xl shadow-accent/20">
+                      <CheckCircle2 size={16} className="inline mr-2" /> Registrar
+                    </button>
+                  </div>
+                </form>
               </motion.div>
             </div>
           )}
 
-          {showReceiptModal && lastPayment && order && (
-            <ReceiptModal 
-              payment={lastPayment}
-              order={order}
-              onClose={() => setShowReceiptModal(false)}
-            />
-          )}
+          <div className="bg-surface p-10 rounded-[40px] border border-border-custom shadow-2xl space-y-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-[60px] -mr-16 -mt-16"></div>
+            <div className="flex items-center gap-6 relative z-10">
+              <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                <Palette className="text-accent" size={24} />
+              </div>
+              <div>
+                <h4 className="font-black text-foreground-main text-[11px] uppercase tracking-[0.3em]">Historial de Diseño</h4>
+                <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-1">Versiones enviadas</p>
+              </div>
+            </div>
+            <div className="space-y-4 relative z-10">
+              {order.versions?.map((v) => (
+                <div key={v.id} className="flex gap-6 p-6 rounded-[32px] border border-border-custom hover:bg-background transition-all group">
+                  <div
+                    className="w-24 h-24 bg-background rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-border-custom group-hover:border-accent/30 transition-colors cursor-pointer relative"
+                    onClick={() => { if (v.file_path) { setSelectedImageUrl(v.file_path); setShowImageModal(true); } }}
+                  >
+                    {v.file_path ? (
+                      <>
+                        <img src={v.file_path} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white">
+                            <Maximize2 size={16} />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <Palette size={28} className="text-foreground-muted" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="font-black text-foreground-main text-base tracking-tight group-hover:text-accent transition-colors">
+                        Versión {v.version_number}
+                      </p>
+                      <span className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest bg-background px-2 py-1 rounded-lg">
+                        {format(new Date(v.created_at), 'dd/MM')}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-foreground-muted line-clamp-2 leading-relaxed italic mb-3">{v.comments}</p>
+                    {v.client_comments && (
+                      <div className="mb-3 p-3 bg-accent/5 border border-accent/10 rounded-xl">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-accent mb-1 flex items-center gap-1.5">
+                          <MessageSquare size={10} /> Comentarios del Cliente:
+                        </p>
+                        <p className="text-[11px] text-foreground-main italic">{v.client_comments}</p>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3">
+                      <span className={cn(
+                        "text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border",
+                        v.status === 'Aprobado'
+                          ? "bg-green-500/10 text-green-500 border-green-500/20"
+                          : "bg-accent/10 text-accent border-accent/20"
+                      )}>
+                        {v.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(!order.versions || order.versions.length === 0) && (
+                <div className="text-center py-16 bg-background rounded-[32px] border border-dashed border-border-custom">
+                  <Palette className="mx-auto text-foreground-muted opacity-20 mb-4" size={48} />
+                  <p className="text-[10px] text-foreground-muted font-black uppercase tracking-widest italic">No hay versiones aún</p>
+                </div>
+              )}
+            </div>
 
-          {showRejectModal && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
-              <div className="bg-surface w-full max-w-md rounded-[40px] p-10 border border-border-custom shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 blur-[60px] -mr-16 -mt-16"></div>
-                <h3 className="text-2xl font-black text-foreground-main tracking-tighter mb-2 relative z-10">Solicitar Correcciones</h3>
-                <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mb-8 relative z-10">
-                  Detalla los cambios necesarios para el diseñador
+            {order.status === 'En cuadro' && history.length > 0 && (() => {
+              const lastReject = history.find(h =>
+                (h.details && h.details.includes('Rechazo de calidad')) ||
+                (h.details && h.details.includes('⚠')) ||
+                (h.action && h.action.toLowerCase().includes('rechazo'))
+              );
+              if (!lastReject) return null;
+              const motivo = (lastReject.details || '')
+                .replace('⚠ Rechazo de calidad en impresión — Motivo: ', '')
+                .replace('⚠ ', '')
+                .trim();
+              return (
+                <div className="flex items-start gap-4 bg-amber-500/10 border-2 border-amber-500/40 rounded-[28px] px-8 py-6 my-4">
+                  <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-500 shrink-0 mt-0.5">
+                    <AlertTriangle size={20} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-500 mb-2">⚠ Devuelto por rechazo de calidad en impresión</p>
+                    <p className="text-sm font-bold text-foreground-main leading-relaxed mb-2">{motivo}</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+                      Registrado por: {lastReject.user_name} · {format(new Date(lastReject.created_at), 'dd/MM/yyyy HH:mm')}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+              <History className="text-accent" size={24} />
+            </div>
+            <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+              Historial de Cambios
+            </h4>
+          </div>
+          <button onClick={() => setShowHistory(!showHistory)} className="text-[9px] font-black uppercase tracking-widest text-accent hover:text-accent/90 transition-colors">
+            {showHistory ? 'Ocultar' : 'Ver Todo'}
+          </button>
+        </div>
+        <div className={cn("space-y-6 transition-all overflow-hidden relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-border-custom", showHistory ? "max-h-[500px] overflow-y-auto pr-2" : "max-h-[200px]")}>
+          {history.map((h) => {
+            const isQualityReject = h.details?.includes('Rechazo de calidad');
+            return (
+              <div key={h.id} className="relative pl-8 group">
+                <div className={cn(
+                  "absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full border-2 transition-colors",
+                  isQualityReject ? "bg-amber-500/20 border-amber-500" : "bg-surface border-border-custom group-hover:border-accent"
+                )} />
+                <div className="flex justify-between items-start mb-1">
+                  <p className={cn("text-[11px] font-black tracking-tight leading-tight", isQualityReject ? "text-amber-500" : "text-foreground-main")}>
+                    {h.action}
+                  </p>
+                  <span className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest">
+                    {format(new Date(h.created_at), 'dd/MM HH:mm')}
+                  </span>
+                </div>
+                {isQualityReject ? (
+                  <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 mb-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1.5 mb-1">
+                      <AlertTriangle size={10} /> Motivo del rechazo:
+                    </p>
+                    <p className="text-[10px] text-foreground-main leading-relaxed">
+                      {h.details?.replace('⚠ Rechazo de calidad en impresión — Motivo: ', '')}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-foreground-muted leading-relaxed mb-1">{h.details}</p>
+                )}
+                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Por: {h.user_name}</p>
+              </div>
+            );
+          })}
+          {history.length === 0 && (
+            <p className="text-[10px] text-foreground-muted font-black uppercase tracking-widest italic text-center py-8">Sin historial registrado</p>
+          )}
+        </div>
+      </div>
+
+      {showStatusConfirm && pendingStatus && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
+          <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} className="w-full max-w-md bg-surface rounded-[40px] border border-border-custom p-10 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-accent" />
+            <div className="text-center space-y-6">
+              <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center text-accent mx-auto">
+                <CheckCircle2 size={40} />
+              </div>
+              <div>
+                <h4 className="text-xl font-black text-foreground-main uppercase tracking-tight">¿Confirmar cambio de estado?</h4>
+                <p className="text-foreground-muted text-sm mt-2">Pasará a: <span className="font-black text-foreground-main uppercase">{pendingStatusLabel}</span></p>
+                <p className="text-foreground-muted text-xs mt-1">Esta acción quedará registrada en el historial.</p>
+              </div>
+              <div className="flex gap-4 pt-2">
+                <button
+                  onClick={() => { setShowStatusConfirm(false); setPendingStatus(null); setPendingStatusLabel(''); }}
+                  className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    const statusToExecute = pendingStatus!;
+                    setShowStatusConfirm(false);
+                    setPendingStatus(null);
+                    setPendingStatusLabel('');
+                    handleStatusUpdate(statusToExecute);
+                  }}
+                  className="flex-1 bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-xl shadow-accent/20"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {showReceiptModal && lastPayment && order && (
+        <ReceiptModal payment={lastPayment} order={order} onClose={() => setShowReceiptModal(false)} />
+      )}
+
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+          <div className="bg-surface w-full max-w-md rounded-[40px] p-10 border border-border-custom shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 blur-[60px] -mr-16 -mt-16"></div>
+            <h3 className="text-2xl font-black text-foreground-main tracking-tighter mb-2 relative z-10">Solicitar Correcciones</h3>
+            <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mb-8 relative z-10">Detalla los cambios necesarios para el diseñador</p>
+            <form onSubmit={handleRejectDesign} className="space-y-6 relative z-10">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-foreground-muted mb-3">Comentarios y Correcciones</label>
+                <textarea value={rejectComment} onChange={e => setRejectComment(e.target.value)} className="w-full bg-background border border-border-custom rounded-2xl p-6 text-foreground-main text-sm font-bold outline-none focus:border-accent/50 transition-all resize-none min-h-[120px]" placeholder="Ej. Cambiar el color del logo..." required />
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button type="button" onClick={() => { setShowRejectModal(false); setRejectComment(''); }} className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-foreground-main hover:bg-surface-hover transition-all">Cancelar</button>
+                <button type="submit" disabled={isSubmittingReject || !rejectComment.trim()} className="flex-1 bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-accent/90 transition-all shadow-[0_0_20px_rgba(220,38,38,0.2)] disabled:opacity-50 flex items-center justify-center gap-2">
+                  {isSubmittingReject ? <Clock className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
+                  Enviar Correcciones
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showQualityRejectModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+          <div className="bg-surface w-full max-w-md rounded-[40px] p-10 border border-border-custom shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-amber-500" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-[60px] -mr-16 -mt-16"></div>
+            <div className="flex items-center gap-4 mb-6 relative z-10">
+              <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-foreground-main tracking-tighter uppercase">Rechazar Calidad</h3>
+                <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">La orden volverá a En cuadro</p>
+              </div>
+            </div>
+            <form onSubmit={handleQualityReject} className="space-y-6 relative z-10">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-foreground-muted mb-3">Motivo del Rechazo <span className="text-amber-500">*</span></label>
+                <textarea value={qualityRejectComment} onChange={e => setQualityRejectComment(e.target.value)} className="w-full bg-background border border-border-custom rounded-2xl p-6 text-foreground-main text-sm font-bold outline-none focus:border-amber-500/50 transition-all resize-none min-h-[120px]" placeholder="Ej. Colores descuadrados..." required />
+              </div>
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
+                  <AlertTriangle size={12} /> Este motivo quedará registrado en el historial.
                 </p>
-                
-                <form onSubmit={handleRejectDesign} className="space-y-6 relative z-10">
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-foreground-muted mb-3">
-                      Comentarios y Correcciones
-                    </label>
-                    <textarea 
-                      value={rejectComment}
-                      onChange={e => setRejectComment(e.target.value)}
-                      className="w-full bg-background border border-border-custom rounded-2xl p-6 text-foreground-main text-sm font-bold outline-none focus:border-accent/50 transition-all resize-none min-h-[120px]"
-                      placeholder="Ej. Cambiar el color del logo, ajustar el tamaño de la tipografía..."
-                      required
-                    />
-                  </div>
-                  
-                  <div className="flex gap-4 pt-4">
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        setShowRejectModal(false);
-                        setRejectComment('');
-                      }}
-                      className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-foreground-main hover:bg-surface-hover transition-all"
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      type="submit"
-                      disabled={isSubmittingReject || !rejectComment.trim()}
-                      className="flex-1 bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-accent/90 transition-all shadow-[0_0_20px_rgba(220,38,38,0.2)] disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {isSubmittingReject ? <Clock className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
-                      Enviar Correcciones
-                    </button>
-                  </div>
-                </form>
+              </div>
+              <div className="flex gap-4 pt-2">
+                <button type="button" onClick={() => { setShowQualityRejectModal(false); setQualityRejectComment(''); }} className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-foreground-main hover:bg-surface-hover transition-all">Cancelar</button>
+                <button type="submit" disabled={isSubmittingQualityReject || !qualityRejectComment.trim()} className="flex-1 bg-amber-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-amber-500/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20">
+                  {isSubmittingQualityReject ? <Clock className="animate-spin" size={16} /> : <AlertTriangle size={16} />}
+                  Confirmar Rechazo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showRepositionModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+          <div className="bg-surface w-full max-w-md rounded-[40px] p-10 border border-orange-500/30 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-orange-500" />
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-foreground-main tracking-tighter uppercase">Marcar Reposición</h3>
+                <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">Esta orden tendrá prioridad inmediata en producción</p>
               </div>
             </div>
-          )}
-
-          {showQualityRejectModal && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
-              <div className="bg-surface w-full max-w-md rounded-[40px] p-10 border border-border-custom shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-amber-500" />
-                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-[60px] -mr-16 -mt-16"></div>
-                
-                <div className="flex items-center gap-4 mb-6 relative z-10">
-                  <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500">
-                    <AlertTriangle size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-foreground-main tracking-tighter uppercase">Rechazar Calidad</h3>
-                    <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
-                      La orden volverá a En cuadro
-                    </p>
-                  </div>
-                </div>
-
-                <form onSubmit={handleQualityReject} className="space-y-6 relative z-10">
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-foreground-muted mb-3">
-                      Motivo del Rechazo <span className="text-amber-500">*</span>
-                    </label>
-                    <textarea 
-                      value={qualityRejectComment}
-                      onChange={e => setQualityRejectComment(e.target.value)}
-                      className="w-full bg-background border border-border-custom rounded-2xl p-6 text-foreground-main text-sm font-bold outline-none focus:border-amber-500/50 transition-all resize-none min-h-[120px]"
-                      placeholder="Ej. Colores descuadrados, manchas en sublimación, bordes cortados incorrectamente..."
-                      required
-                    />
-                  </div>
-                  
-                  <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
-                      <AlertTriangle size={12} /> Este motivo quedará registrado en el historial de la orden.
-                    </p>
-                  </div>
-
-                  <div className="flex gap-4 pt-2">
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        setShowQualityRejectModal(false);
-                        setQualityRejectComment('');
-                      }}
-                      className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-foreground-main hover:bg-surface-hover transition-all"
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      type="submit"
-                      disabled={isSubmittingQualityReject || !qualityRejectComment.trim()}
-                      className="flex-1 bg-amber-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-amber-500/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20"
-                    >
-                      {isSubmittingQualityReject ? <Clock className="animate-spin" size={16} /> : <AlertTriangle size={16} />}
-                      Confirmar Rechazo
-                    </button>
-                  </div>
-                </form>
+            <form onSubmit={handleMarkReposition} className="space-y-6">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-foreground-muted mb-3">Motivo de la Reposición <span className="text-orange-500">*</span></label>
+                <textarea value={repositionReason} onChange={e => setRepositionReason(e.target.value)} className="w-full bg-background border border-border-custom rounded-2xl p-6 text-foreground-main text-sm font-bold outline-none focus:border-orange-500/50 transition-all resize-none min-h-[100px]" placeholder="Ej. Defecto en sublimación..." required />
               </div>
-            </div>
-          )}
-          
-          {showRepositionModal && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
-              <div className="bg-surface w-full max-w-md rounded-[40px] p-10 border border-orange-500/30 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-orange-500" />
-                
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500">
-                    <AlertTriangle size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-foreground-main tracking-tighter uppercase">Marcar Reposición</h3>
-                    <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
-                      Esta orden tendrá prioridad inmediata en producción
-                    </p>
-                  </div>
-                </div>
-
-                <form onSubmit={handleMarkReposition} className="space-y-6">
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-foreground-muted mb-3">
-                      Motivo de la Reposición <span className="text-orange-500">*</span>
-                    </label>
-                    <textarea
-                      value={repositionReason}
-                      onChange={e => setRepositionReason(e.target.value)}
-                      className="w-full bg-background border border-border-custom rounded-2xl p-6 text-foreground-main text-sm font-bold outline-none focus:border-orange-500/50 transition-all resize-none min-h-[100px]"
-                      placeholder="Ej. Defecto en sublimación, prenda dañada en corte..."
-                      required
-                    />
-                  </div>
-
-                  <div className="bg-orange-500/5 border border-orange-500/20 rounded-2xl p-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-orange-500 flex items-center gap-2">
-                      <AlertTriangle size={12} /> Esta orden aparecerá primero en el KDS de producción.
-                    </p>
-                  </div>
-
-                  <div className="flex gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setShowRepositionModal(false)}
-                      className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmittingReposition || !repositionReason.trim()}
-                      className="flex-1 bg-orange-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-orange-500/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-orange-500/20"
-                    >
-                      {isSubmittingReposition ? <Clock className="animate-spin" size={16} /> : <AlertTriangle size={16} />}
-                      Confirmar Reposición
-                    </button>
-                  </div>
-                </form>
+              <div className="bg-orange-500/5 border border-orange-500/20 rounded-2xl p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-orange-500 flex items-center gap-2">
+                  <AlertTriangle size={12} /> Esta orden aparecerá primero en el KDS de producción.
+                </p>
               </div>
-            </div>
-          )}
-        </motion.div>
-      );
+              <div className="flex gap-4">
+                <button type="button" onClick={() => setShowRepositionModal(false)} className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all">Cancelar</button>
+                <button type="submit" disabled={isSubmittingReposition || !repositionReason.trim()} className="flex-1 bg-orange-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-orange-500/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-orange-500/20">
+                  {isSubmittingReposition ? <Clock className="animate-spin" size={16} /> : <AlertTriangle size={16} />}
+                  Confirmar Reposición
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
 }
 
 // --- KDS Component ---
