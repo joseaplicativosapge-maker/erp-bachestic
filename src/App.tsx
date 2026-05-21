@@ -1502,15 +1502,60 @@ function OrdersList({
 }
 
 // --- Create Order Component ---
+function NewTeamInline({ onCreated }: { onCreated: (name: string) => void }) {
+  const [mode, setMode] = useState<'idle' | 'creating'>('idle');
+  const [teamName, setTeamName] = useState('');
+
+  if (mode === 'idle') {
+    return (
+      <button
+        type="button"
+        onClick={() => setMode('creating')}
+        className="w-full flex items-center justify-center gap-3 px-6 h-[52px] rounded-[20px] border-2 border-dashed border-accent/30 text-accent hover:bg-accent/5 transition-all"
+      >
+        <Plus size={14} />
+        <span className="text-[10px] font-black uppercase tracking-widest">Crear equipo para este cliente</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <input
+        type="text"
+        autoFocus
+        value={teamName}
+        onChange={e => setTeamName(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (teamName.trim()) { onCreated(teamName.trim()); setMode('idle'); setTeamName(''); } } }}
+        placeholder="Nombre del equipo..."
+        className="flex-1 px-5 py-3 rounded-2xl bg-surface border border-accent/40 focus:border-accent outline-none text-foreground-main font-bold text-sm transition-all"
+      />
+      <button
+        type="button"
+        disabled={!teamName.trim()}
+        onClick={() => { if (teamName.trim()) { onCreated(teamName.trim()); setMode('idle'); setTeamName(''); } }}
+        className="px-5 py-3 rounded-2xl bg-accent text-white font-black text-[10px] uppercase tracking-widest disabled:opacity-50 hover:scale-105 transition-all shadow-lg shadow-accent/20 flex items-center gap-2"
+      >
+        <CheckCircle2 size={14} /> Agregar
+      </button>
+      <button
+        type="button"
+        onClick={() => { setMode('idle'); setTeamName(''); }}
+        className="px-4 py-3 rounded-2xl border border-border-custom text-foreground-muted hover:bg-surface-hover text-[10px] font-black uppercase tracking-widest transition-all"
+      >
+        Cancelar
+      </button>
+    </div>
+  );
+}
+
 function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSuccess: () => void, user: User, key?: string }) {
   const getBusinessDaysFromNow = (days: number) => {
     let date = new Date();
     let count = 0;
     while (count < days) {
       date.setDate(date.getDate() + 1);
-      if (date.getDay() !== 0 && date.getDay() !== 6) {
-        count++;
-      }
+      if (date.getDay() !== 0 && date.getDay() !== 6) count++;
     }
     return date.toISOString().split('T')[0];
   };
@@ -1521,8 +1566,10 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientTeams, setClientTeams] = useState<Team[]>([]);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
+  // ✅ Para cliente nuevo: nombre del equipo a crear (se crea en handleSubmit)
+  const [newTeamName, setNewTeamName] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  
+
   const [formData, setFormData] = useState({
     client_id: undefined as number | undefined,
     team_id: undefined as number | undefined,
@@ -1545,9 +1592,7 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
         const data = await api.getProducts();
         setProducts(data);
         const initialQuants: Record<string, number> = {};
-        data.forEach(p => {
-          initialQuants[p.name] = 0;
-        });
+        data.forEach(p => { initialQuants[p.name] = 0; });
         setQuantities(initialQuants);
       } catch (error) {
         console.error('Error fetching products:', error);
@@ -1556,21 +1601,12 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
     fetchProducts();
   }, []);
 
-  const calculateTotalFromQuantities = () => {
-    const total = Object.entries(quantities).reduce((sum, [name, qty]) => {
-      const product = products.find(p => p.name === name);
-      return sum + ((qty as number) * (product?.sale_price || 0));
-    }, 0);
-    setFormData(prev => ({ ...prev, total_amount: total }));
-  };
   const [items, setItems] = useState<Partial<OrderItem>[]>([]);
   const [advancePercent, setAdvancePercent] = useState(50);
 
   const groupedItems = items.reduce((acc, item) => {
     const key = item.garment_type || 'Camiseta';
-    if (!acc[key]) {
-      acc[key] = { garment_type: key, quantity: 0, sale_price: item.sale_price || 0 };
-    }
+    if (!acc[key]) acc[key] = { garment_type: key, quantity: 0, sale_price: item.sale_price || 0 };
     acc[key].quantity += 1;
     return acc;
   }, {} as Record<string, { garment_type: string; quantity: number; sale_price: number }>);
@@ -1588,24 +1624,17 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
   }, [quantities, products, step]);
 
   useEffect(() => {
-  const camisetaKeys = [
-    'price_filetes', 'price_despuntes', 'price_collarin', 'price_dobladillo_remate'
-  ];
-  const pantalonetaKeys = [
-    'price_filete_p', 'price_despuntes_p', 'price_caucho',
-    'price_sentar_caucho', 'price_collarin_p', 'price_remate'
-  ];
-  const allKeys = [...camisetaKeys, ...pantalonetaKeys];
-
-  const total = Object.entries(quantities).reduce((sum, [name, qty]) => {
-    const product = products.find(p => p.name === name) as any;
-    if (!product || !(qty as number)) return sum;
-    const costoProducto = allKeys.reduce((s, key) => s + (product[key] || 0), 0);
-    return sum + costoProducto * (qty as number);
-  }, 0);
-
-  setFormData(prev => ({ ...prev, total_amount: total }));
-}, [quantities, products]);
+    const camisetaKeys = ['price_filetes', 'price_despuntes', 'price_collarin', 'price_dobladillo_remate'];
+    const pantalonetaKeys = ['price_filete_p', 'price_despuntes_p', 'price_caucho', 'price_sentar_caucho', 'price_collarin_p', 'price_remate'];
+    const allKeys = [...camisetaKeys, ...pantalonetaKeys];
+    const total = Object.entries(quantities).reduce((sum, [name, qty]) => {
+      const product = products.find(p => p.name === name) as any;
+      if (!product || !(qty as number)) return sum;
+      const costoProducto = allKeys.reduce((s, key) => s + (product[key] || 0), 0);
+      return sum + costoProducto * (qty as number);
+    }, 0);
+    setFormData(prev => ({ ...prev, total_amount: total }));
+  }, [quantities, products]);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
@@ -1613,29 +1642,24 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
         try {
           const results = await api.searchClients(clientSearch);
           setSearchResults(results);
-        } catch (error) {
-          console.error(error);
-        }
+        } catch (error) { console.error(error); }
       } else {
         setSearchResults([]);
       }
     }, 300);
-
     return () => clearTimeout(delayDebounceFn);
   }, [clientSearch]);
 
-  const handleSelectClient = async (client: Client) => { // equipo aca
+  const handleSelectClient = async (client: Client) => {
     setSelectedClient(client);
     try {
       const teams = await api.getClientTeams(client.id);
       setClientTeams(teams.filter(t => t.active));
-    } catch (error) {
-      console.error('Error fetching client teams:', error);
-    }
+    } catch (error) { console.error('Error fetching client teams:', error); }
     setFormData({
       ...formData,
       client_id: client.id,
-      team_id: undefined, // equipo aca
+      team_id: undefined,
       client_name: client.name,
       client_doc: client.doc,
       client_doc_type: client.doc_type || 'CC',
@@ -1646,6 +1670,7 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
     setClientSearch('');
     setSearchResults([]);
     setIsCreatingClient(false);
+    setNewTeamName(null);
   };
 
   const generateItems = () => {
@@ -1654,17 +1679,9 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
       const product = products.find(p => p.name === name);
       for (let i = 0; i < (qty as number); i++) {
         newItems.push({
-          garment_type: name,
-          item_name: '',
-          player_name: '',
-          number: '',
-          size: '',
-          sleeve: '',
-          design_type: '',
-          fit: '',
-          observations: '',
-          sewing_price: product?.sewing_cost || 0,
-          sale_price: product?.sale_price || 0
+          garment_type: name, item_name: '', player_name: '', number: '',
+          size: '', sleeve: '', design_type: '', fit: '', observations: '',
+          sewing_price: product?.sewing_cost || 0, sale_price: product?.sale_price || 0
         });
       }
     });
@@ -1679,7 +1696,9 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
   const handleSubmit = async () => {
     try {
       let finalClientId = formData.client_id;
+      let finalTeamId = formData.team_id;
 
+      // ✅ 1. Crear cliente si es nuevo
       if (isCreatingClient) {
         const newClient = await api.createClient({
           name: formData.client_name,
@@ -1690,12 +1709,24 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
           city: formData.client_city
         });
         finalClientId = newClient.id;
+
+        // ✅ 2. Crear equipo si se escribió uno, usando el ID del cliente recién creado
+        if (newTeamName && finalClientId) {
+          try {
+            const newTeam = await api.createClientTeam(finalClientId, { name: newTeamName });
+            finalTeamId = newTeam.id;
+          } catch (err) {
+            console.error('Error creando equipo:', err);
+            // No bloquear la orden si falla el equipo
+          }
+        }
       }
 
       const { id } = await api.createOrder({
         ...formData,
         status: 'Abono confirmado',
         client_id: finalClientId,
+        team_id: finalTeamId,
         user_name: user.name
       });
 
@@ -1710,20 +1741,20 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
 
   if (showReceipt && createdOrder && createdPayment) {
     return (
-      <ReceiptModal 
-        order={createdOrder} 
-        payment={createdPayment} 
-        onClose={() => {
-          setShowReceipt(false);
-          onSuccess();
-        }} 
+      <ReceiptModal
+        order={createdOrder}
+        payment={createdPayment}
+        onClose={() => { setShowReceipt(false); onSuccess(); }}
       />
     );
   }
 
+  // Equipos para cliente existente
+  const teamsToShow = clientTeams;
+
   return (
-    <Modal 
-      isOpen={true} 
+    <Modal
+      isOpen={true}
       onClose={onCancel}
       title="Nueva Orden de Producción"
       subtitle={`Paso ${step} de 2: ${step === 1 ? 'Información y Cantidades' : 'Detalle y Pago'}`}
@@ -1733,161 +1764,172 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
         {step === 1 ? (
           <div className="space-y-8">
             {!selectedClient && !isCreatingClient ? (
-  <div className="space-y-6">
-    <div className="relative">
-      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted mb-3 block">Buscar Cliente Existente</label>
-      <div className="relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-foreground-muted" size={20} />
-        <input 
-          type="text" 
-          value={clientSearch}
-          onChange={e => setClientSearch(e.target.value)}
-          className="w-full pl-14 pr-6 py-5 rounded-[24px] bg-surface border border-border-custom focus:border-accent/50 focus:ring-4 focus:ring-accent/10 outline-none text-foreground-main transition-all placeholder:text-foreground-muted/30" 
-          placeholder="Nombre o Documento del cliente..."
-        />
-        {clientSearch && (
-          <button 
-            onClick={() => setClientSearch('')}
-            className="absolute right-5 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
-          >
-            <X size={18} />
-          </button>
-        )}
-      </div>
+              <div className="space-y-6">
+                <div className="relative">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted mb-3 block">
+                    Buscar Cliente Existente
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-foreground-muted" size={20} />
+                    <input
+                      type="text"
+                      value={clientSearch}
+                      onChange={e => setClientSearch(e.target.value)}
+                      className="w-full pl-14 pr-6 py-5 rounded-[24px] bg-surface border border-border-custom focus:border-accent/50 focus:ring-4 focus:ring-accent/10 outline-none text-foreground-main transition-all placeholder:text-foreground-muted/30"
+                      placeholder="Nombre o Documento del cliente..."
+                    />
+                    {clientSearch && (
+                      <button onClick={() => setClientSearch('')} className="absolute right-5 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors">
+                        <X size={18} />
+                      </button>
+                    )}
+                  </div>
 
-      {/* PANEL DINÁMICO — reemplaza según estado */}
-      <div className="mt-3">
+                  <div className="mt-3">
+                    {!clientSearch.trim() && (
+                      <div className="w-full flex items-center gap-4 px-6 h-[60px] bg-surface-hover rounded-[24px] border border-border-custom">
+                        <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0">
+                          <Search size={16} />
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+                          Escribe el <span className="text-foreground-main">nombre o documento</span> del cliente para buscar
+                        </p>
+                      </div>
+                    )}
 
-  {/* ESTADO 1: campo vacío */}
-  {!clientSearch.trim() && (
-    <div className="w-full flex items-center gap-4 px-6 h-[60px] bg-surface-hover rounded-[24px] border border-border-custom">
-      <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0">
-        <Search size={16} />
-      </div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
-        Escribe el <span className="text-foreground-main">nombre o documento</span> del cliente para buscar
-      </p>
-    </div>
-  )}
+                    {clientSearch.trim() && clientSearch.length <= 2 && (
+                      <div className="w-full flex items-center gap-4 px-6 h-[60px] bg-surface-hover rounded-[24px] border border-border-custom">
+                        <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0">
+                          <Search size={16} />
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+                          Escribe al menos <span className="text-foreground-main">3 caracteres</span> para buscar...
+                        </p>
+                      </div>
+                    )}
 
-  {/* ESTADO 2: menos de 3 chars */}
-  {clientSearch.trim() && clientSearch.length <= 2 && (
-    <div className="w-full flex items-center gap-4 px-6 h-[60px] bg-surface-hover rounded-[24px] border border-border-custom">
-      <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0">
-        <Search size={16} />
-      </div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
-        Escribe al menos <span className="text-foreground-main">3 caracteres</span> para buscar...
-      </p>
-    </div>
-  )}
+                    {clientSearch.length > 2 && searchResults.length > 0 && (
+                      <div className="w-full bg-surface-hover border border-border-custom rounded-[24px] overflow-hidden">
+                        <div className="px-6 h-[40px] flex items-center border-b border-border-custom">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+                            {searchResults.length} resultado{searchResults.length !== 1 ? 's' : ''} encontrado{searchResults.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto divide-y divide-border-custom">
+                          {searchResults.map(client => (
+                            <button
+                              key={client.id}
+                              onClick={() => handleSelectClient(client)}
+                              className="w-full px-6 h-[60px] text-left hover:bg-accent/10 flex items-center justify-between transition-colors group"
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-all">
+                                  <Contact size={16} />
+                                </div>
+                                <div>
+                                  <p className="font-bold text-sm text-foreground-main group-hover:text-accent transition-colors leading-tight">{client.name}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-[9px] font-black text-accent bg-accent/10 px-1.5 py-0.5 rounded uppercase tracking-widest">{client.doc_type || 'CC'}</span>
+                                    <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">{client.doc} • {client.phone}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <ChevronRight size={14} className="text-foreground-muted group-hover:text-accent transition-colors shrink-0" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-  {/* ESTADO 3: resultados encontrados */}
-  {clientSearch.length > 2 && searchResults.length > 0 && (
-    <div className="w-full bg-surface-hover border border-border-custom rounded-[24px] overflow-hidden">
-      <div className="px-6 h-[40px] flex items-center border-b border-border-custom">
-        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
-          {searchResults.length} resultado{searchResults.length !== 1 ? 's' : ''} encontrado{searchResults.length !== 1 ? 's' : ''}
-        </p>
-      </div>
-      <div className="max-h-64 overflow-y-auto divide-y divide-border-custom">
-        {searchResults.map(client => (
-          <button
-            key={client.id}
-            onClick={() => handleSelectClient(client)}
-            className="w-full px-6 h-[60px] text-left hover:bg-accent/10 flex items-center justify-between transition-colors group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-all">
-                <Contact size={16} />
-              </div>
-              <div>
-                <p className="font-bold text-sm text-foreground-main group-hover:text-accent transition-colors leading-tight">{client.name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[9px] font-black text-accent bg-accent/10 px-1.5 py-0.5 rounded uppercase tracking-widest">{client.doc_type || 'CC'}</span>
-                  <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">{client.doc} • {client.phone}</p>
+                    {clientSearch.length > 2 && searchResults.length === 0 && (
+                      <div className="w-full space-y-3">
+                        <div className="w-full flex items-center gap-4 px-6 h-[60px] bg-surface-hover rounded-[24px] border border-border-custom">
+                          <div className="w-8 h-8 bg-foreground-muted/10 rounded-xl flex items-center justify-center text-foreground-muted shrink-0">
+                            <Search size={16} />
+                          </div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+                            Sin resultados para "<span className="text-accent">{clientSearch}</span>"
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setIsCreatingClient(true);
+                            const isDoc = /^[\d\-]+$/.test(clientSearch.trim());
+                            setFormData({
+                              ...formData,
+                              client_name: isDoc ? '' : clientSearch,
+                              client_doc: isDoc ? clientSearch : '',
+                            });
+                          }}
+                          className="w-full flex items-center justify-center gap-3 px-6 h-[60px] rounded-[24px] border-2 border-dashed border-accent/40 text-accent hover:bg-accent/5 transition-all"
+                        >
+                          <Plus size={16} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">
+                            Crear nuevo cliente "{clientSearch}"
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-            <ChevronRight size={14} className="text-foreground-muted group-hover:text-accent transition-colors shrink-0" />
-          </button>
-        ))}
-      </div>
-    </div>
-  )}
-
-  {/* ESTADO 4: sin resultados */}
-  {clientSearch.length > 2 && searchResults.length === 0 && (
-    <div className="w-full space-y-3">
-      <div className="w-full flex items-center gap-4 px-6 h-[60px] bg-surface-hover rounded-[24px] border border-border-custom">
-        <div className="w-8 h-8 bg-foreground-muted/10 rounded-xl flex items-center justify-center text-foreground-muted shrink-0">
-          <Search size={16} />
-        </div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
-          Sin resultados para "<span className="text-accent">{clientSearch}</span>"
-        </p>
-      </div>
-      <button
-        onClick={() => {
-          setIsCreatingClient(true);
-          setFormData({...formData, client_name: clientSearch});
-        }}
-        className="w-full flex items-center justify-center gap-3 px-6 h-[60px] rounded-[24px] border-2 border-dashed border-accent/40 text-accent hover:bg-accent/5 transition-all"
-      >
-        <Plus size={16} />
-        <span className="text-[10px] font-black uppercase tracking-widest">
-          Crear nuevo cliente "{clientSearch}"
-        </span>
-      </button>
-    </div>
-  )}
-
-</div>
-        </div>
-        
-      </div>
-
-      
-    ) : (
+            ) : (
               <div className="space-y-8">
+                {/* HEADER */}
                 <div className="flex justify-between items-center bg-accent/5 p-6 rounded-[24px] border border-accent/20">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-foreground-main shadow-lg shadow-accent/20 text-white">
+                    <div className="w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-white shadow-lg shadow-accent/20">
                       <Contact size={24} />
                     </div>
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-accent">Cliente Seleccionado</p>
-                      <p className="font-black text-lg text-foreground-main tracking-tight">{formData.client_name}</p>
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-accent">
+                        {isCreatingClient ? 'Nuevo Cliente' : 'Cliente Seleccionado'}
+                      </p>
+                      <p className="font-black text-lg text-foreground-main tracking-tight">
+                        {formData.client_name || 'Completar datos abajo'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-6">
-                    {clientTeams.length > 0 && (
+                    {/* Selector de equipo solo para cliente existente */}
+                    {!isCreatingClient && teamsToShow.length > 0 && (
                       <div className="w-48">
-                        <Select 
+                        <Select
                           label="Equipo"
                           value={formData.team_id?.toString() || ''}
                           onChange={e => setFormData({...formData, team_id: e.target.value ? Number(e.target.value) : undefined})}
                           options={[
                             { value: '', label: 'Sin Equipo' },
-                            ...clientTeams.map(t => ({ value: t.id.toString(), label: t.name }))
+                            ...teamsToShow.map(t => ({ value: t.id.toString(), label: t.name }))
                           ]}
                         />
                       </div>
                     )}
-                    <button 
+                    <button
                       onClick={() => {
                         setSelectedClient(null);
                         setClientTeams([]);
                         setIsCreatingClient(false);
-                        setFormData({...formData, client_id: undefined, team_id: undefined, client_name: '', client_doc: '', client_phone: '', client_address: '', client_city: ''});
+                        setNewTeamName(null);
+                        setFormData({
+                          ...formData,
+                          client_id: undefined,
+                          team_id: undefined,
+                          client_name: '',
+                          client_doc: '',
+                          client_phone: '',
+                          client_address: '',
+                          client_city: ''
+                        });
                       }}
-                      className="text-[10px] font-black text-accent uppercase tracking-widest hover:text-accent transition-colors"
+                      className="text-[10px] font-black text-accent uppercase tracking-widest hover:text-accent/70 transition-colors"
                     >
-                      Cambiar Cliente
+                      {isCreatingClient ? 'Cancelar' : 'Cambiar Cliente'}
                     </button>
                   </div>
                 </div>
 
+                {/* FORMULARIO CLIENTE NUEVO */}
                 {isCreatingClient && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <Input
@@ -1936,165 +1978,157 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                         onChange={e => setFormData({...formData, client_address: e.target.value})}
                       />
                     </div>
+
+                    {/* ✅ EQUIPO OPCIONAL */}
+                    <div className="md:col-span-2 pt-4 border-t border-border-custom space-y-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted flex items-center gap-2">
+                        <Users size={13} className="text-accent" /> Equipo (opcional)
+                      </p>
+
+                      {newTeamName ? (
+                        /* Equipo ya ingresado — mostrar con opción de quitar */
+                        <div className="flex items-center justify-between px-5 py-3 bg-accent/10 border border-accent/20 rounded-2xl">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-accent/20 rounded-xl flex items-center justify-center">
+                              <Users size={14} className="text-accent" />
+                            </div>
+                            <p className="font-black text-sm text-foreground-main uppercase tracking-wide">{newTeamName}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setNewTeamName(null)}
+                            className="text-foreground-muted hover:text-accent transition-colors p-1"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <NewTeamInline onCreated={(name) => setNewTeamName(name)} />
+                      )}
+                    </div>
                   </div>
                 )}
 
+                {/* CANTIDADES */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-border-custom">
                   <div className="space-y-6">
                     <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted mb-4">Cantidades por Prenda</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-  {Object.keys(quantities).map(type => (
-    <div key={type} className="bg-surface-hover p-4 rounded-2xl border border-border-custom flex items-center justify-between">
-      <span className="text-xs font-bold text-foreground-main">{type}</span>
-      <div className="flex items-center gap-3">
-        <button 
-          onClick={() => setQuantities(prev => ({ ...prev, [type]: Math.max(0, prev[type] - 1) }))}
-          className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-foreground-muted hover:text-accent transition-colors"
-        >
-          -
-        </button>
-        <span className="w-8 text-center font-black text-foreground-main">{quantities[type]}</span>
-        <button 
-          onClick={() => setQuantities(prev => ({ ...prev, [type]: prev[type] + 1 }))}
-          className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-foreground-muted hover:text-accent transition-colors"
-        >
-          +
-        </button>
-      </div>
-    </div>
-  ))}
-</div>
-
-{/* COSTOS DE CONFECCIÓN EN TIEMPO REAL */}
-{Object.values(quantities).some(q => (q as number) > 0) && (() => {
-  const camisetaTasks = [
-    { label: 'Filetes',             key: 'price_filetes' },
-    { label: 'Despuntes',           key: 'price_despuntes' },
-    { label: 'Collarín',            key: 'price_collarin' },
-    { label: 'Dobladillo y Remate', key: 'price_dobladillo_remate' },
-  ];
-  const pantalonetaTasks = [
-    { label: 'Filete',        key: 'price_filete_p' },
-    { label: 'Despuntes',     key: 'price_despuntes_p' },
-    { label: 'Caucho',        key: 'price_caucho' },
-    { label: 'Sentar Caucho', key: 'price_sentar_caucho' },
-    { label: 'Collarín',      key: 'price_collarin_p' },
-    { label: 'Remate',        key: 'price_remate' },
-  ];
-
-  const bloques = Object.entries(quantities)
-    .filter(([_, qty]) => (qty as number) > 0)
-    .map(([productName, qty]) => {
-      const product = products.find(p => p.name === productName) as any;
-      if (!product) return null;
-
-      const camActivas = camisetaTasks.filter(t => (product[t.key] || 0) > 0);
-      const pantActivas = pantalonetaTasks.filter(t => (product[t.key] || 0) > 0);
-
-      // Si no tiene ninguna tarea configurada, omitir
-      if (camActivas.length === 0 && pantActivas.length === 0) return null;
-
-      return {
-        label: productName,
-        qty: qty as number,
-        product,
-        camActivas,
-        pantActivas,
-        totalCam: camActivas.reduce((s, t) => s + (product[t.key] || 0) * (qty as number), 0),
-        totalPant: pantActivas.reduce((s, t) => s + (product[t.key] || 0) * (qty as number), 0),
-      };
-    })
-    .filter(Boolean) as any[];
-
-  if (bloques.length === 0) return null;
-
-  const grandTotal = bloques.reduce((t, b) => t + b.totalCam + b.totalPant, 0);
-
-  return (
-    <div className="mt-2 border border-border-custom rounded-[24px] overflow-hidden">
-      {/* HEADER */}
-      <div className="px-6 py-4 bg-surface-hover border-b border-border-custom flex items-center justify-between">
-        <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted flex items-center gap-2">
-          <Calculator size={13} className="text-accent" /> Costos de Confección
-        </p>
-        <p className="text-[10px] font-black text-accent">
-          Total: ${grandTotal.toLocaleString()}
-        </p>
-      </div>
-
-      {bloques.map((bloque: any) => (
-        <div key={bloque.label} className="border-b border-border-custom last:border-0">
-
-          {/* NOMBRE DEL PRODUCTO */}
-          <div className="px-6 py-3 bg-foreground-main/[0.03] flex items-center justify-between">
-            <p className="text-[10px] font-black uppercase tracking-widest text-foreground-main flex items-center gap-2">
-              <Shirt size={12} className="text-accent" />
-              {bloque.label} — {bloque.qty} uds
-            </p>
-            <p className="text-[10px] font-black text-foreground-muted">
-              ${(bloque.totalCam + bloque.totalPant).toLocaleString()}
-            </p>
-          </div>
-
-          {/* SECCIÓN CAMISETA */}
-          {bloque.camActivas.length > 0 && (
-            <>
-              <div className="px-6 py-2 bg-blue-500/5 border-t border-border-custom/60 flex items-center gap-2">
-                <Shirt size={10} className="text-blue-400" />
-                <p className="text-[9px] font-black uppercase tracking-widest text-blue-400">
-                  Camiseta — ${bloque.totalCam.toLocaleString()}
-                </p>
-              </div>
-              {bloque.camActivas.map(({ label, key }: any) => {
-                const unitPrice = bloque.product[key] || 0;
-                const subtotal = unitPrice * bloque.qty;
-                return (
-                  <div key={key} className="flex items-center justify-between px-6 py-2 border-t border-border-custom/30 hover:bg-surface-hover/50 transition-colors">
-                    <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest pl-4">
-                      {label}
-                    </span>
-                    <div className="flex items-center gap-6 text-[10px]">
-                      <span className="text-foreground-muted/60">${unitPrice.toLocaleString()} × {bloque.qty}</span>
-                      <span className="font-black w-20 text-right text-foreground-main">${subtotal.toLocaleString()}</span>
+                      {Object.keys(quantities).map(type => (
+                        <div key={type} className="bg-surface-hover p-4 rounded-2xl border border-border-custom flex items-center justify-between">
+                          <span className="text-xs font-bold text-foreground-main">{type}</span>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => setQuantities(prev => ({ ...prev, [type]: Math.max(0, prev[type] - 1) }))}
+                              className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-foreground-muted hover:text-accent transition-colors"
+                            >-</button>
+                            <span className="w-8 text-center font-black text-foreground-main">{quantities[type]}</span>
+                            <button
+                              onClick={() => setQuantities(prev => ({ ...prev, [type]: prev[type] + 1 }))}
+                              className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-foreground-muted hover:text-accent transition-colors"
+                            >+</button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
 
-          {/* SECCIÓN PANTALONETA */}
-          {bloque.pantActivas.length > 0 && (
-            <>
-              <div className="px-6 py-2 bg-purple-500/5 border-t border-border-custom/60 flex items-center gap-2">
-                <Shirt size={10} className="text-purple-400" />
-                <p className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                  Pantaloneta — ${bloque.totalPant.toLocaleString()}
-                </p>
-              </div>
-              {bloque.pantActivas.map(({ label, key }: any) => {
-                const unitPrice = bloque.product[key] || 0;
-                const subtotal = unitPrice * bloque.qty;
-                return (
-                  <div key={key} className="flex items-center justify-between px-6 py-2 border-t border-border-custom/30 hover:bg-surface-hover/50 transition-colors">
-                    <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest pl-4">
-                      {label}
-                    </span>
-                    <div className="flex items-center gap-6 text-[10px]">
-                      <span className="text-foreground-muted/60">${unitPrice.toLocaleString()} × {bloque.qty}</span>
-                      <span className="font-black w-20 text-right text-foreground-main">${subtotal.toLocaleString()}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
+                    {/* COSTOS EN TIEMPO REAL */}
+                    {Object.values(quantities).some(q => (q as number) > 0) && (() => {
+                      const camisetaTasks = [
+                        { label: 'Filetes', key: 'price_filetes' },
+                        { label: 'Despuntes', key: 'price_despuntes' },
+                        { label: 'Collarín', key: 'price_collarin' },
+                        { label: 'Dobladillo y Remate', key: 'price_dobladillo_remate' },
+                      ];
+                      const pantalonetaTasks = [
+                        { label: 'Filete', key: 'price_filete_p' },
+                        { label: 'Despuntes', key: 'price_despuntes_p' },
+                        { label: 'Caucho', key: 'price_caucho' },
+                        { label: 'Sentar Caucho', key: 'price_sentar_caucho' },
+                        { label: 'Collarín', key: 'price_collarin_p' },
+                        { label: 'Remate', key: 'price_remate' },
+                      ];
 
-        </div>
-      ))}
-    </div>
-  );
-})()}
+                      const bloques = Object.entries(quantities)
+                        .filter(([_, qty]) => (qty as number) > 0)
+                        .map(([productName, qty]) => {
+                          const product = products.find(p => p.name === productName) as any;
+                          if (!product) return null;
+                          const camActivas = camisetaTasks.filter(t => (product[t.key] || 0) > 0);
+                          const pantActivas = pantalonetaTasks.filter(t => (product[t.key] || 0) > 0);
+                          if (camActivas.length === 0 && pantActivas.length === 0) return null;
+                          return {
+                            label: productName, qty: qty as number, product, camActivas, pantActivas,
+                            totalCam: camActivas.reduce((s, t) => s + (product[t.key] || 0) * (qty as number), 0),
+                            totalPant: pantActivas.reduce((s, t) => s + (product[t.key] || 0) * (qty as number), 0),
+                          };
+                        }).filter(Boolean) as any[];
+
+                      if (bloques.length === 0) return null;
+                      const grandTotal = bloques.reduce((t, b) => t + b.totalCam + b.totalPant, 0);
+
+                      return (
+                        <div className="mt-2 border border-border-custom rounded-[24px] overflow-hidden">
+                          <div className="px-6 py-4 bg-surface-hover border-b border-border-custom flex items-center justify-between">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted flex items-center gap-2">
+                              <Calculator size={13} className="text-accent" /> Costos de Confección
+                            </p>
+                            <p className="text-[10px] font-black text-accent">Total: ${grandTotal.toLocaleString()}</p>
+                          </div>
+                          {bloques.map((bloque: any) => (
+                            <div key={bloque.label} className="border-b border-border-custom last:border-0">
+                              <div className="px-6 py-3 bg-foreground-main/[0.03] flex items-center justify-between">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-foreground-main flex items-center gap-2">
+                                  <Shirt size={12} className="text-accent" />
+                                  {bloque.label} — {bloque.qty} uds
+                                </p>
+                                <p className="text-[10px] font-black text-foreground-muted">${(bloque.totalCam + bloque.totalPant).toLocaleString()}</p>
+                              </div>
+                              {bloque.camActivas.length > 0 && (
+                                <>
+                                  <div className="px-6 py-2 bg-blue-500/5 border-t border-border-custom/60 flex items-center gap-2">
+                                    <Shirt size={10} className="text-blue-400" />
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-blue-400">Camiseta — ${bloque.totalCam.toLocaleString()}</p>
+                                  </div>
+                                  {bloque.camActivas.map(({ label, key }: any) => {
+                                    const unitPrice = bloque.product[key] || 0;
+                                    return (
+                                      <div key={key} className="flex items-center justify-between px-6 py-2 border-t border-border-custom/30 hover:bg-surface-hover/50 transition-colors">
+                                        <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest pl-4">{label}</span>
+                                        <div className="flex items-center gap-6 text-[10px]">
+                                          <span className="text-foreground-muted/60">${unitPrice.toLocaleString()} × {bloque.qty}</span>
+                                          <span className="font-black w-20 text-right text-foreground-main">${(unitPrice * bloque.qty).toLocaleString()}</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </>
+                              )}
+                              {bloque.pantActivas.length > 0 && (
+                                <>
+                                  <div className="px-6 py-2 bg-purple-500/5 border-t border-border-custom/60 flex items-center gap-2">
+                                    <Shirt size={10} className="text-purple-400" />
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-purple-400">Pantaloneta — ${bloque.totalPant.toLocaleString()}</p>
+                                  </div>
+                                  {bloque.pantActivas.map(({ label, key }: any) => {
+                                    const unitPrice = bloque.product[key] || 0;
+                                    return (
+                                      <div key={key} className="flex items-center justify-between px-6 py-2 border-t border-border-custom/30 hover:bg-surface-hover/50 transition-colors">
+                                        <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest pl-4">{label}</span>
+                                        <div className="flex items-center gap-6 text-[10px]">
+                                          <span className="text-foreground-muted/60">${unitPrice.toLocaleString()} × {bloque.qty}</span>
+                                          <span className="font-black w-20 text-right text-foreground-main">${(unitPrice * bloque.qty).toLocaleString()}</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="space-y-6">
@@ -2118,8 +2152,6 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                           />
                         </div>
                       </div>
-                      
-                      
                     </div>
                   </div>
                 </div>
@@ -2130,50 +2162,37 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
           <div className="space-y-8">
             <div className="flex justify-between items-center bg-accent/5 p-6 rounded-[24px] border border-accent/20">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-foreground-main shadow-lg shadow-accent/20 text-white">
+                <div className="w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-white shadow-lg shadow-accent/20">
                   <Contact size={24} />
                 </div>
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-accent">Cliente Seleccionado</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-accent">Cliente</p>
                   <p className="font-black text-lg text-foreground-main tracking-tight">{formData.client_name}</p>
+                  {(formData.team_id || newTeamName) && (
+                    <p className="text-[9px] font-black uppercase tracking-widest text-accent mt-0.5 flex items-center gap-1">
+                      <Users size={10} />
+                      {newTeamName || teamsToShow.find(t => t.id === formData.team_id)?.name}
+                    </p>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-6">
-                {clientTeams.length > 0 && (
-                  <div className="w-48">
-                    <Select 
-                      label="Equipo"
-                      value={formData.team_id?.toString() || ''}
-                      onChange={e => setFormData({...formData, team_id: e.target.value ? Number(e.target.value) : undefined})}
-                      options={[
-                        { value: '', label: 'Sin Equipo' },
-                        ...clientTeams.map(t => ({ value: t.id.toString(), label: t.name }))
-                      ]}
-                    />
-                  </div>
-                )}
-                <button 
-                  onClick={() => {
-                    setStep(1);
-                    setSelectedClient(null);
-                    setIsCreatingClient(false);
-                    setFormData({...formData, client_id: undefined, client_name: '', client_doc: '', client_phone: '', client_address: '', client_city: ''});
-                  }}
-                  className="text-[10px] font-black text-accent uppercase tracking-widest hover:text-accent transition-colors"
-                >
-                  Cambiar Cliente
-                </button>
-              </div>
+              <button
+                onClick={() => {
+                  setStep(1);
+                  setSelectedClient(null);
+                  setIsCreatingClient(false);
+                  setNewTeamName(null);
+                  setFormData({...formData, client_id: undefined, client_name: '', client_doc: '', client_phone: '', client_address: '', client_city: ''});
+                }}
+                className="text-[10px] font-black text-accent uppercase tracking-widest hover:text-accent/70 transition-colors"
+              >
+                Cambiar Cliente
+              </button>
             </div>
 
             <div className="grid grid-cols-1 gap-8">
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-black text-xl tracking-tight text-foreground-main uppercase">
-                    Listado de Uniformes
-                  </h4>
-                </div>
-
+                <h4 className="font-black text-xl tracking-tight text-foreground-main uppercase">Listado de Uniformes</h4>
                 <div className="overflow-x-auto border border-border-custom rounded-[32px] bg-surface-hover">
                   <table className="w-full text-left text-sm">
                     <thead>
@@ -2182,25 +2201,15 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                         <th className="py-5 px-6 text-center">Cant.</th>
                       </tr>
                     </thead>
-
                     <tbody className="divide-y divide-border-custom">
                       {groupedList.map((group, idx) => (
-                        <tr
-                          key={idx}
-                          className="hover:bg-surface-hover transition-colors"
-                        >
+                        <tr key={idx} className="hover:bg-surface-hover transition-colors">
                           <td className="py-4 px-6 whitespace-nowrap">
-                            <span className="text-foreground-muted font-bold text-[10px] uppercase">
-                              {group.garment_type}
-                            </span>
+                            <span className="text-foreground-muted font-bold text-[10px] uppercase">{group.garment_type}</span>
                           </td>
-
                           <td className="py-4 px-6 text-center whitespace-nowrap">
-                            <span className="font-black text-foreground-main text-[10px]">
-                              {group.quantity}
-                            </span>
+                            <span className="font-black text-foreground-main text-[10px]">{group.quantity}</span>
                           </td>
-
                         </tr>
                       ))}
                     </tbody>
@@ -2208,18 +2217,17 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                 </div>
               </div>
             </div>
-
           </div>
         )}
 
         <div className="flex items-center justify-between pt-6 border-t border-border-custom">
-          <button 
+          <button
             onClick={step === 1 ? onCancel : () => setStep(step - 1)}
             className="px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-foreground-muted hover:text-foreground-main transition-colors"
           >
             {step === 1 ? 'Cancelar' : 'Volver'}
           </button>
-          <button 
+          <button
             onClick={step === 1 ? generateItems : handleSubmit}
             disabled={
               step === 1 && (
