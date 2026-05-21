@@ -3564,14 +3564,87 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 };
                 const next = nextMap[order.status];
                 if (!next) return null;
+
+                let confeccionCompleta = true;
+                let confeccionMensaje = '';
+
+                if (order.status === 'En confección') {
+                  const totalCamisetas = order.items?.filter(i => i.garment_type === 'Camiseta').length || 0;
+                  const totalPantalonetas = order.items?.filter(i => i.garment_type === 'Pantaloneta').length || 0;
+
+                  const CAM_TASKS = ['filetes', 'despuntes', 'collarin', 'dobladillo_remate'];
+                  const PANT_TASKS = ['filete_p', 'despuntes_p', 'caucho', 'sentar_caucho', 'collarin_p', 'remate'];
+
+                  // Acumular cantidades por task_key desde assignments
+                  const taskTotals: Record<string, number> = {};
+                  assignments.forEach(a => {
+                    const notesRaw = a.notes || '';
+                    const typeMatch = notesRaw.match(/^\[(.+?)\]/);
+                    const garmentType = typeMatch ? typeMatch[1] : 'Camiseta';
+                    const rest = notesRaw.replace(/^\[.+?\]\s*/, '').split(' — ')[0].trim();
+
+                    // Mapear label → key
+                    const labelToKey: Record<string, string> = {
+                      'Filetes': 'filetes', 'Despuntes': 'despuntes', 'Collarín': 'collarin',
+                      'Dobladillo y Remate': 'dobladillo_remate',
+                      'Filete': 'filete_p', 'Caucho': 'caucho', 'Sentar Caucho': 'sentar_caucho',
+                      'Remate': 'remate',
+                    };
+                    // Despuntes de pantaloneta tiene mismo label que camiseta → distinguir por tipo
+                    let key = labelToKey[rest];
+                    if (rest === 'Despuntes' && garmentType === 'Pantaloneta') key = 'despuntes_p';
+                    if (rest === 'Collarín' && garmentType === 'Pantaloneta') key = 'collarin_p';
+
+                    if (key) {
+                      taskTotals[key] = (taskTotals[key] || 0) + (a.garment_count || 0);
+                    }
+                  });
+
+                  // Validar camisetas
+                  if (totalCamisetas > 0) {
+                    for (const tk of CAM_TASKS) {
+                      if ((taskTotals[tk] || 0) < totalCamisetas) {
+                        confeccionCompleta = false;
+                        confeccionMensaje = `Faltan tareas de camiseta: se necesitan ${totalCamisetas} en cada tarea`;
+                        break;
+                      }
+                    }
+                  }
+
+                  // Validar pantalonetas
+                  if (confeccionCompleta && totalPantalonetas > 0) {
+                    for (const tk of PANT_TASKS) {
+                      if ((taskTotals[tk] || 0) < totalPantalonetas) {
+                        confeccionCompleta = false;
+                        confeccionMensaje = `Faltan tareas de pantaloneta: se necesitan ${totalPantalonetas} en cada tarea`;
+                        break;
+                      }
+                    }
+                  }
+                }
+
                 return (
                   <div className="space-y-3">
                     <button
-                      onClick={() => handleStatusUpdate(next)}
-                      className="w-full bg-foreground-main text-background py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main/90 transition-all"
+                      onClick={() => confeccionCompleta && handleStatusUpdate(next)}
+                      disabled={!confeccionCompleta}
+                      className={cn(
+                        "w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all",
+                        confeccionCompleta
+                          ? "bg-foreground-main text-background hover:bg-foreground-main/90"
+                          : "bg-surface-hover text-foreground-muted/40 cursor-not-allowed border border-dashed border-border-custom"
+                      )}
                     >
                       <CheckCircle2 size={18} /> Avanzar a: {next}
                     </button>
+                    {/* Mensaje de validación cuando está incompleto */}
+                    {order.status === 'En confección' && !confeccionCompleta && (
+                      <p className="text-[9px] font-black uppercase tracking-widest text-accent/70 text-center flex items-center justify-center gap-1.5">
+                        <AlertCircle size={12} />
+                        {confeccionMensaje}
+                      </p>
+                    )}
+
                     {order.status === 'En impresión' && (role === 'Admin' || role === 'Ventas' || role === 'Impresión') && (
                       <button
                         onClick={() => setShowQualityRejectModal(true)}
@@ -3632,7 +3705,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
         <div>
           <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px]">Confección</h4>
           <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
-            {assignments.reduce((sum, a) => sum + (a.garment_count || 0), 0)} prendas registradas
+            {assignments.reduce((sum, a) => sum + (a.garment_count || 0), 0)} uds registradas
           </p>
         </div>
       </div>
@@ -3688,7 +3761,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-black text-lg text-accent">{emp.total_garments} prendas</p>
+                <p className="font-black text-lg text-accent">{emp.total_garments} UDS</p>
                 <p className="text-[9px] font-bold text-foreground-muted">${emp.total_earned.toLocaleString()}</p>
               </div>
             </div>
@@ -3887,7 +3960,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                   {/* TOTAL */}
                   <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total Prendas</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total Uds</p>
                       <p className="text-[9px] text-foreground-muted font-bold mt-0.5">
                         Las tarifas se calculan desde el catálogo de productos
                       </p>
@@ -8196,6 +8269,126 @@ function ClientManagement({}: { key?: string }) {
           />
         )}
       </Modal>
+
+      {/* MODAL CREAR / EDITAR CLIENTE */}
+<Modal
+  isOpen={isAdding}
+  onClose={() => {
+    setIsAdding(false);
+    setEditingClient(null);
+    setFormData({
+      name: '',
+      doc: '',
+      doc_type: 'CC',
+      phone: '',
+      address: '',
+      city: '',
+      email: '',
+      active: true
+    });
+  }}
+  title={editingClient ? 'Editar Cliente' : 'Nuevo Cliente'}
+  maxWidth="max-w-2xl"
+>
+  <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Nombre</label>
+        <input
+          type="text"
+          required
+          value={formData.name}
+          onChange={e => setFormData({ ...formData, name: e.target.value })}
+          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+        />
+      </div>
+
+      <div>
+        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Tipo Doc</label>
+        <select
+          value={formData.doc_type}
+          onChange={e => setFormData({ ...formData, doc_type: e.target.value })}
+          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+        >
+          <option value="CC">CC</option>
+          <option value="CE">CE</option>
+          <option value="NIT">NIT</option>
+          <option value="PP">PP</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Documento</label>
+        <input
+          type="text"
+          required
+          value={formData.doc}
+          onChange={e => setFormData({ ...formData, doc: e.target.value })}
+          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+        />
+      </div>
+
+      <div>
+        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Teléfono</label>
+        <input
+          type="text"
+          value={formData.phone}
+          onChange={e => setFormData({ ...formData, phone: e.target.value })}
+          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+        />
+      </div>
+
+      <div>
+        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Email</label>
+        <input
+          type="email"
+          value={formData.email}
+          onChange={e => setFormData({ ...formData, email: e.target.value })}
+          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+        />
+      </div>
+
+      <div>
+        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Ciudad</label>
+        <input
+          type="text"
+          value={formData.city}
+          onChange={e => setFormData({ ...formData, city: e.target.value })}
+          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+        />
+      </div>
+
+      <div className="md:col-span-2">
+        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Dirección</label>
+        <input
+          type="text"
+          value={formData.address}
+          onChange={e => setFormData({ ...formData, address: e.target.value })}
+          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+        />
+      </div>
+    </div>
+
+    <div className="flex justify-end gap-3 pt-4">
+      <button
+        type="button"
+        onClick={() => {
+          setIsAdding(false);
+          setEditingClient(null);
+        }}
+        className="px-6 py-3 rounded-2xl border border-border-custom text-[10px] font-black uppercase tracking-widest"
+      >
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20"
+      >
+        {editingClient ? 'Guardar Cambios' : 'Registrar Cliente'}
+      </button>
+    </div>
+  </form>
+</Modal>
     </div>
   );
 }
