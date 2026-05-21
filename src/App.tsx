@@ -1945,11 +1945,18 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                           value={formData.client_doc_type}
                           onChange={e => setFormData({...formData, client_doc_type: e.target.value})}
                           options={[
-                            { value: 'CC', label: 'CC' },
+                            { value: 'CC', label: 'Cédula de Ciudadanía' },
+                            { value: 'TI', label: 'Tarjeta de Identidad' },
+                            { value: 'CE', label: 'Cédula de Extranjería' },
                             { value: 'NIT', label: 'NIT' },
-                            { value: 'CE', label: 'CE' },
-                            { value: 'TI', label: 'TI' },
-                            { value: 'Pasaporte', label: 'Pasaporte' }
+                            { value: 'RUT', label: 'RUT' },
+                            { value: 'PAS', label: 'Pasaporte' },
+                            { value: 'PEP', label: 'Permiso Especial de Permanencia (PEP)' },
+                            { value: 'PPT', label: 'Permiso por Protección Temporal (PPT)' },
+                            { value: 'RC', label: 'Registro Civil' },
+                            { value: 'NUIP', label: 'Número Único de Identificación Personal (NUIP)' },
+                            { value: 'CD', label: 'Carné Diplomático' },
+                            { value: 'SC', label: 'Salvoconducto' }
                           ]}
                         />
                       </div>
@@ -7820,15 +7827,25 @@ function ClientManagement({}: { key?: string }) {
                 Tipo Doc
               </label>
               <select
-                value={formData.doc_type}
-                onChange={e => setFormData({ ...formData, doc_type: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
-              >
-                <option value="CC">CC</option>
-                <option value="CE">CE</option>
-                <option value="NIT">NIT</option>
-                <option value="PP">PP</option>
-              </select>
+                  value={formData.doc_type}
+                  onChange={e =>
+                    setFormData({ ...formData, doc_type: e.target.value })
+                  }
+                  className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+                >
+                  <option value="CC">Cédula de Ciudadanía (CC)</option>
+                  <option value="TI">Tarjeta de Identidad (TI)</option>
+                  <option value="CE">Cédula de Extranjería (CE)</option>
+                  <option value="NIT">NIT</option>
+                  <option value="RUT">RUT</option>
+                  <option value="PAS">Pasaporte</option>
+                  <option value="PEP">Permiso Especial de Permanencia (PEP)</option>
+                  <option value="PPT">Permiso por Protección Temporal (PPT)</option>
+                  <option value="RC">Registro Civil (RC)</option>
+                  <option value="NUIP">NUIP</option>
+                  <option value="CD">Carné Diplomático (CD)</option>
+                  <option value="SC">Salvoconducto (SC)</option>
+                </select>
             </div>
             <div>
               <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
