@@ -1431,53 +1431,35 @@ function OrdersList({
 
       {/* MODAL */}
       <Modal
-        isOpen={showConfirmToggle}
-        onClose={() => setShowConfirmToggle(false)}
-        title="Confirmar Cambio de Estado"
-        maxWidth="max-w-md"
+  isOpen={showConfirmToggle}
+  onClose={() => setShowConfirmToggle(false)}
+  title={orderToToggle?.active ? 'Desactivar Pedido' : 'Activar Pedido'}
+  maxWidth="max-w-md"
+>
+  <div className="space-y-6">
+    <p className="text-sm font-bold text-foreground-muted">
+      ¿Estás seguro de que deseas{' '}
+      {orderToToggle?.active ? 'desactivar' : 'activar'} el pedido de{' '}
+      <span className="font-black text-foreground-main">
+        {orderToToggle?.client_name}
+      </span>?
+    </p>
+    <div className="flex justify-end gap-3">
+      <button
+        onClick={() => setShowConfirmToggle(false)}
+        className="px-6 py-3 rounded-2xl border border-border-custom text-[10px] font-black uppercase tracking-widest text-foreground-muted hover:bg-surface-hover transition-all"
       >
-        <div className="space-y-6 text-center">
-          <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center text-accent mx-auto">
-            {orderToToggle?.active ? (
-              <Archive size={40} />
-            ) : (
-              <RotateCcw size={40} />
-            )}
-          </div>
-
-          <div>
-            <h4 className="text-xl font-black text-foreground-main uppercase tracking-tight">
-              ¿Estás seguro de{' '}
-              {orderToToggle?.active
-                ? 'desactivar'
-                : 'activar'}{' '}
-              este pedido?
-            </h4>
-
-            <p className="text-foreground-muted text-sm mt-2">
-              {orderToToggle?.active
-                ? 'El pedido se moverá a inactivos.'
-                : 'El pedido volverá a activos.'}
-            </p>
-          </div>
-
-          <div className="flex gap-4 pt-4">
-            <button
-              onClick={() => setShowConfirmToggle(false)}
-              className="flex-1 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
-            >
-              Cancelar
-            </button>
-
-            <button
-              onClick={handleToggleActive}
-              className="flex-1 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] bg-accent text-white hover:scale-105 transition-all shadow-xl shadow-accent/20"
-            >
-              Confirmar
-            </button>
-          </div>
-        </div>
-      </Modal>
+        Cancelar
+      </button>
+      <button
+        onClick={handleToggleActive}
+        className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20 hover:scale-105 transition-all"
+      >
+        {orderToToggle?.active ? 'Desactivar' : 'Activar'}
+      </button>
+    </div>
+  </div>
+</Modal>
     </motion.div>
   );
 }
