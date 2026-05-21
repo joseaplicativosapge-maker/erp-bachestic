@@ -238,6 +238,8 @@ async function startServer() {
     db.prepare('ALTER TABLE orders ADD COLUMN reposition_from_status TEXT').run();
   } catch (e) {}
 
+  try { db.prepare('ALTER TABLE orders ADD COLUMN is_priority BOOLEAN DEFAULT 0').run(); } catch (e) {}
+
   const app = express();
   const PORT = 3000;
 
@@ -487,7 +489,7 @@ async function startServer() {
       client_id, client_name, client_doc, client_doc_type, client_phone,
       client_address, client_city, contact_method, delivery_date,
       items, active, team_id, user_name, soligem_code, status, is_reposition,
-      reposition_reason, reposition_from_status
+      reposition_reason, reposition_from_status, is_priority
     } = req.body;
     const order_id = req.params.id;
 
@@ -514,13 +516,14 @@ async function startServer() {
     const updatedRepositionFromStatus = reposition_from_status !== undefined 
       ? reposition_from_status 
       : current.reposition_from_status;
+    const updatedIsPriority = is_priority !== undefined ? (is_priority ? 1 : 0) : current.is_priority ?? 0;
 
     const transaction = db.transaction(() => {
       db.prepare(`
         UPDATE orders
         SET client_id = ?, client_name = ?, client_doc = ?, client_doc_type = ?, client_phone = ?,
             client_address = ?, client_city = ?, contact_method = ?, delivery_date = ?,
-            active = ?, team_id = ?, soligem_code = ?, status = ?, is_reposition = ?, reposition_reason = ?, reposition_from_status = ?
+            active = ?, team_id = ?, soligem_code = ?, status = ?, is_reposition = ?, reposition_reason = ?, reposition_from_status = ?, is_priority = ?
         WHERE id = ?
       `).run(
         updatedClientId, 
@@ -539,6 +542,7 @@ async function startServer() {
         updatedIsReposition,
         updatedRepositionReason,
         updatedRepositionFromStatus,
+        updatedIsPriority,
         order_id
       );
 

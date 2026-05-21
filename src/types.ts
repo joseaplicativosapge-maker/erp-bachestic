@@ -69,6 +69,7 @@ export interface Order {
   assigned_employee_id?: number;
   is_reposition?: boolean;
   reposition_reason?: string;
+  is_priority?: boolean;
 }
 
 export interface Client {

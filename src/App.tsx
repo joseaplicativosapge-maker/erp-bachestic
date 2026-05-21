@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   ShoppingCart, 
+  Star,
   Palette, 
   AlertTriangle,
   Printer,  
@@ -869,6 +870,11 @@ function OrdersList({
       );
     })
     .sort((a, b) => {
+
+      // Es prioridad primero
+      if (a.is_priority && !b.is_priority) return -1;
+      if (!a.is_priority && b.is_priority) return 1;
+
       // Reposiciones primero
       if (a.is_reposition && !b.is_reposition) return -1;
       if (!a.is_reposition && b.is_reposition) return 1;
@@ -1376,6 +1382,37 @@ function OrdersList({
                   >
                     <Copy size={18} />
                   </button>
+
+                  {user.role === 'Admin' && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        try {
+                          await api.updateOrder(order.id, {
+                            is_priority: !order.is_priority,
+                            user_name: user.name,
+                          });
+                          toast.success(
+                            order.is_priority ? 'Prioridad eliminada' : 'Orden marcada como prioridad'
+                          );
+                          onUpdate();
+                        } catch (error) {
+                          console.error(error);
+                          toast.error('Error al cambiar prioridad');
+                        }
+                      }}
+                      className={cn(
+                        'p-3 rounded-xl transition-all',
+                        order.is_priority
+                          ? 'bg-yellow-500 text-white'
+                          : 'bg-surface-hover hover:bg-yellow-500/20 text-foreground-muted hover:text-yellow-500'
+                      )}
+                      title={order.is_priority ? 'Quitar prioridad' : 'Marcar como prioridad'}
+                    >
+                      <Star size={18} />
+                    </button>
+                  )}
                 </div>
               </div>
             </Card>
@@ -5013,6 +5050,11 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
 
     return true;
   }).sort((a, b) => {
+
+    // Es prioridad primero
+    if (a.is_priority && !b.is_priority) return -1;
+    if (!a.is_priority && b.is_priority) return 1;
+
     if (a.is_reposition && !b.is_reposition) return -1;
     if (!a.is_reposition && b.is_reposition) return 1;
 
@@ -5435,6 +5477,12 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
                       {order.is_reposition && (
                         <span className="flex items-center gap-1 bg-orange-500 text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full animate-pulse">
                           <AlertTriangle size={9} /> REPOSICIÓN
+                        </span>
+                      )}
+
+                      {order.is_priority && (
+                        <span className="flex items-center gap-1 bg-yellow-500 text-black text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full">
+                          <Star size={9} /> PRIORIDAD
                         </span>
                       )}
                     </p>
