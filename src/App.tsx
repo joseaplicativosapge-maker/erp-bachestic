@@ -3299,7 +3299,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               {/* Resumen de uniformes */}
               <div className="bg-background rounded-[28px] border border-border-custom p-6 space-y-3">
                 <p className="text-[9px] font-black uppercase tracking-[0.3em] text-foreground-muted mb-4">
-                  Resumen de Uniformes
+                  Resumen de Prendas
                 </p>
 
                 {(() => {
@@ -3354,7 +3354,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                               <Shirt className="text-accent" size={14} />
                             </div>
                             <span className="text-[11px] font-black uppercase tracking-widest text-foreground-main">
-                              Otros
+                              Uniformes
                             </span>
                           </div>
                           <span className="font-black text-xl text-foreground-main tracking-tighter">
@@ -3591,7 +3591,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                         </div>
 
                         <div class="items-section">
-                          <div class="section-title">Resumen de Uniformes</div>
+                          <div class="section-title">Resumen de Prendas</div>
                           ${camisetas > 0 ? `
                             <div class="item-row">
                               <span class="item-label">Camisetas</span>
@@ -3613,7 +3613,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                         </div>
 
                         <div class="total-row">
-                          <span class="total-label">Total Uniformes</span>
+                          <span class="total-label">Total Prendas</span>
                           <span class="total-qty">${order.items?.length || 0}</span>
                         </div>
 
