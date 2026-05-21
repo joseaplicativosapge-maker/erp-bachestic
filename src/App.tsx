@@ -7513,50 +7513,29 @@ function TeamManagement({ client, onClose }: { client: Client, onClose: () => vo
 function ClientManagement({}: { key?: string }) {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [isAdding, setIsAdding] =
-    useState(false);
-
-  const [editingClient, setEditingClient] =
-    useState<Client | null>(null);
-
-  const [searchTerm, setSearchTerm] =
-    useState('');
-
-  const [teamFilter, setTeamFilter] =
-    useState('');
-
-  const [includeInactive, setIncludeInactive] =
-    useState(false);
-
-  const [showConfirmToggle, setShowConfirmToggle] =
-    useState(false);
-
-  const [clientToToggle, setClientToToggle] =
-    useState<Client | null>(null);
-
-  const [showTeamManagement, setShowTeamManagement] =
-    useState(false);
-
-  const [selectedClientForTeams, setSelectedClientForTeams] =
-    useState<Client | null>(null);
-
-  const [currentPage, setCurrentPage] =
-    useState(1);
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [teamFilter, setTeamFilter] = useState('');
+  const [includeInactive, setIncludeInactive] = useState(false);
+  const [showConfirmToggle, setShowConfirmToggle] = useState(false);
+  const [clientToToggle, setClientToToggle] = useState<Client | null>(null);
+  const [showTeamManagement, setShowTeamManagement] = useState(false);
+  const [selectedClientForTeams, setSelectedClientForTeams] = useState<Client | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const CLIENTS_PER_PAGE = 9;
 
-  const [formData, setFormData] =
-    useState({
-      name: '',
-      doc: '',
-      doc_type: 'CC',
-      phone: '',
-      address: '',
-      city: '',
-      email: '',
-      active: true
-    });
+  const [formData, setFormData] = useState({
+    name: '',
+    doc: '',
+    doc_type: 'CC',
+    phone: '',
+    address: '',
+    city: '',
+    email: '',
+    active: true
+  });
 
   useEffect(() => {
     fetchClients();
@@ -7564,19 +7543,12 @@ function ClientManagement({}: { key?: string }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [
-    searchTerm,
-    teamFilter,
-    includeInactive
-  ]);
+  }, [searchTerm, teamFilter, includeInactive]);
 
   const fetchClients = async () => {
     try {
       setLoading(true);
-
-      const data =
-        await api.getClients(true);
-
+      const data = await api.getClients(true);
       setClients(data);
     } catch (error) {
       console.error(error);
@@ -7585,35 +7557,21 @@ function ClientManagement({}: { key?: string }) {
     }
   };
 
-  const handleSubmit = async (
-    e: React.FormEvent
-  ) => {
+  // ✅ FIX 1: al editar no se toca el campo "active"
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       if (editingClient) {
-        await api.updateClient(
-          editingClient.id,
-          formData
-        );
-
-        toast.success(
-          'Cliente actualizado correctamente'
-        );
+        const { active, ...updatePayload } = formData;
+        await api.updateClient(editingClient.id, updatePayload);
+        toast.success('Cliente actualizado correctamente');
       } else {
-        await api.createClient(
-          formData
-        );
-
-        toast.success(
-          'Cliente registrado correctamente'
-        );
+        await api.createClient(formData);
+        toast.success('Cliente registrado correctamente');
       }
 
       setIsAdding(false);
-
       setEditingClient(null);
-
       setFormData({
         name: '',
         doc: '',
@@ -7631,171 +7589,88 @@ function ClientManagement({}: { key?: string }) {
     }
   };
 
-  const handleEdit = (
-    client: Client
-  ) => {
+  const handleEdit = (client: Client) => {
     setEditingClient(client);
-
     setFormData({
       name: client.name,
       doc: client.doc,
-      doc_type:
-        client.doc_type || 'CC',
+      doc_type: client.doc_type || 'CC',
       phone: client.phone,
       address: client.address,
       city: client.city,
       email: client.email || '',
       active: client.active
     });
-
     setIsAdding(true);
   };
 
-  const handleToggleActive =
-    async () => {
-      if (!clientToToggle) return;
-
-      try {
-        const newStatus =
-          !clientToToggle.active;
-
-        await api.updateClient(
-          clientToToggle.id,
-          {
-            active: newStatus
-          }
-        );
-
-        toast.success(
-          `Cliente ${
-            clientToToggle.active
-              ? 'desactivado'
-              : 'activado'
-          } correctamente`
-        );
-
-        setShowConfirmToggle(
-          false
-        );
-
-        setClientToToggle(null);
-
-        if (!newStatus) {
-          setIncludeInactive(
-            true
-          );
-        }
-
-        fetchClients();
-      } catch (error) {
-        console.error(error);
-
-        toast.error(
-          'Error al cambiar estado'
-        );
+  // ✅ FIX 2: ahora sí se ejecuta porque hay un modal que lo llama
+  const handleToggleActive = async () => {
+    if (!clientToToggle) return;
+    try {
+      const newStatus = !clientToToggle.active;
+      await api.updateClient(clientToToggle.id, { active: newStatus });
+      toast.success(
+        `Cliente ${clientToToggle.active ? 'desactivado' : 'activado'} correctamente`
+      );
+      setShowConfirmToggle(false);
+      setClientToToggle(null);
+      if (!newStatus) {
+        setIncludeInactive(true);
       }
-    };
+      fetchClients();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al cambiar estado');
+    }
+  };
 
-  const confirmToggleActive = (
-    client: Client
-  ) => {
+  const confirmToggleActive = (client: Client) => {
     setClientToToggle(client);
-
     setShowConfirmToggle(true);
   };
 
   if (loading) {
-    return (
-      <LoadingState message="Cargando Clientes" />
-    );
+    return <LoadingState message="Cargando Clientes" />;
   }
 
-  // ✅ FILTRADO
-  const filteredClients =
-    clients.filter(client => {
-      const clientName =
-        client.name?.toLowerCase() ||
-        '';
+  // FILTRADO
+  const filteredClients = clients.filter(client => {
+    const clientName = client.name?.toLowerCase() || '';
+    const clientDoc = client.doc?.toLowerCase() || '';
+    const teams = Array.isArray(client.teams) ? client.teams : [];
 
-      const clientDoc =
-        client.doc?.toLowerCase() ||
-        '';
+    const matchesClient =
+      clientName.includes(searchTerm.toLowerCase()) ||
+      clientDoc.includes(searchTerm.toLowerCase());
 
-      const teams =
-        Array.isArray(
-          client.teams
-        )
-          ? client.teams
-          : [];
+    const normalizedTeamFilter = teamFilter.trim().toLowerCase();
+    let matchesTeam = true;
 
-      // ✅ CLIENTE
-      const matchesClient =
-        clientName.includes(
-          searchTerm.toLowerCase()
-        ) ||
-        clientDoc.includes(
-          searchTerm.toLowerCase()
-        );
-
-      // ✅ EQUIPOS
-      const normalizedTeamFilter =
-        teamFilter
-          .trim()
-          .toLowerCase();
-
-      let matchesTeam = true;
-
+    if (normalizedTeamFilter) {
       if (
-        normalizedTeamFilter
+        normalizedTeamFilter === 'sin equipo' ||
+        normalizedTeamFilter === 'sin equipos'
       ) {
-        // 🔥 SIN EQUIPOS
-        if (
-          normalizedTeamFilter ===
-            'sin equipo' ||
-          normalizedTeamFilter ===
-            'sin equipos'
-        ) {
-          matchesTeam =
-            teams.length === 0;
-        } else {
-          // 🔥 BUSCAR EQUIPO
-          matchesTeam =
-            teams.some(
-              (team: any) =>
-                team?.name
-                  ?.toLowerCase()
-                  .includes(
-                    normalizedTeamFilter
-                  )
-            );
-        }
+        matchesTeam = teams.length === 0;
+      } else {
+        matchesTeam = teams.some((team: any) =>
+          team?.name?.toLowerCase().includes(normalizedTeamFilter)
+        );
       }
+    }
 
-      // ✅ ESTADO
-      const matchesStatus =
-        includeInactive
-          ? !client.active
-          : client.active;
+    const matchesStatus = includeInactive ? !client.active : client.active;
 
-      return (
-        matchesClient &&
-        matchesTeam &&
-        matchesStatus
-      );
-    });
+    return matchesClient && matchesTeam && matchesStatus;
+  });
 
-  const totalPages = Math.ceil(
-    filteredClients.length /
-      CLIENTS_PER_PAGE
+  const totalPages = Math.ceil(filteredClients.length / CLIENTS_PER_PAGE);
+
+  const paginatedClients = filteredClients.slice(
+    (currentPage - 1) * CLIENTS_PER_PAGE,
+    currentPage * CLIENTS_PER_PAGE
   );
-
-  const paginatedClients =
-    filteredClients.slice(
-      (currentPage - 1) *
-        CLIENTS_PER_PAGE,
-      currentPage *
-        CLIENTS_PER_PAGE
-    );
 
   return (
     <div className="space-y-8">
@@ -7805,7 +7680,6 @@ function ClientManagement({}: { key?: string }) {
 
         {/* LEFT */}
         <div className="space-y-5">
-
           <div>
             <h3 className="text-3xl font-black tracking-tight text-foreground-main">
               Clientes
@@ -7814,13 +7688,8 @@ function ClientManagement({}: { key?: string }) {
 
           {/* TABS */}
           <div className="flex bg-surface-hover border border-border-custom rounded-2xl p-1 w-fit">
-
             <button
-              onClick={() =>
-                setIncludeInactive(
-                  false
-                )
-              }
+              onClick={() => setIncludeInactive(false)}
               className={cn(
                 'px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
                 !includeInactive
@@ -7830,13 +7699,8 @@ function ClientManagement({}: { key?: string }) {
             >
               Activos
             </button>
-
             <button
-              onClick={() =>
-                setIncludeInactive(
-                  true
-                )
-              }
+              onClick={() => setIncludeInactive(true)}
               className={cn(
                 'px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
                 includeInactive
@@ -7854,71 +7718,31 @@ function ClientManagement({}: { key?: string }) {
 
           {/* CLIENTE */}
           <div className="relative min-w-[300px]">
-
             <Search
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted"
             />
-
             <input
               type="text"
               placeholder="Buscar cliente o documento..."
               value={searchTerm}
-              onChange={e =>
-                setSearchTerm(
-                  e.target.value
-                )
-              }
-              className="
-                w-full
-                h-14
-                rounded-2xl
-                border border-border-custom
-                bg-surface-hover
-                pl-12 pr-4
-                text-sm
-                font-bold
-                outline-none
-                transition-all
-                focus:ring-2
-                focus:ring-accent/20
-                focus:border-accent/30
-              "
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full h-14 rounded-2xl border border-border-custom bg-surface-hover pl-12 pr-4 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent/30"
             />
           </div>
 
           {/* EQUIPOS */}
           <div className="relative min-w-[300px]">
-
             <Users
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted"
             />
-
             <input
               type="text"
               placeholder='Buscar equipo o escribir "sin equipos"'
               value={teamFilter}
-              onChange={e =>
-                setTeamFilter(
-                  e.target.value
-                )
-              }
-              className="
-                w-full
-                h-14
-                rounded-2xl
-                border border-border-custom
-                bg-surface-hover
-                pl-12 pr-4
-                text-sm
-                font-bold
-                outline-none
-                transition-all
-                focus:ring-2
-                focus:ring-accent/20
-                focus:border-accent/30
-              "
+              onChange={e => setTeamFilter(e.target.value)}
+              className="w-full h-14 rounded-2xl border border-border-custom bg-surface-hover pl-12 pr-4 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent/30"
             />
           </div>
 
@@ -7926,11 +7750,7 @@ function ClientManagement({}: { key?: string }) {
           <button
             onClick={() => {
               setIsAdding(true);
-
-              setEditingClient(
-                null
-              );
-
+              setEditingClient(null);
               setFormData({
                 name: '',
                 doc: '',
@@ -7942,22 +7762,7 @@ function ClientManagement({}: { key?: string }) {
                 active: true
               });
             }}
-            className="
-              h-14
-              px-8
-              rounded-2xl
-              bg-accent
-              text-white
-              font-black
-              uppercase
-              tracking-widest
-              text-[10px]
-              flex items-center justify-center gap-3
-              hover:scale-[1.03]
-              transition-all
-              shadow-xl shadow-accent/20
-              whitespace-nowrap
-            "
+            className="h-14 px-8 rounded-2xl bg-accent text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:scale-[1.03] transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
           >
             <Plus size={20} />
             Nuevo Cliente
@@ -7967,9 +7772,7 @@ function ClientManagement({}: { key?: string }) {
 
       {/* GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-
-        {paginatedClients.length ===
-        0 ? (
+        {paginatedClients.length === 0 ? (
           <div className="col-span-full">
             <EmptyState
               icon={Contact}
@@ -7978,242 +7781,133 @@ function ClientManagement({}: { key?: string }) {
             />
           </div>
         ) : (
-          paginatedClients.map(
-            client => (
-              <Card
-                key={client.id}
-                className={cn(
-                  'relative overflow-hidden transition-all hover:border-accent/30 hover:-translate-y-1',
-                  !client.active &&
-                    'opacity-60 grayscale-[0.4]'
-                )}
-              >
-
-                {!client.active && (
-                  <div className="absolute top-0 right-0 bg-accent text-white text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-bl-xl">
-                    Inactivo
-                  </div>
-                )}
-
-                {/* HEADER */}
-                <div className="flex justify-between items-start mb-5">
-
-                  <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
-                    <Contact size={24} />
-                  </div>
-
-                  <div className="flex gap-2">
-
-                    <button
-                      onClick={() => {
-                        setSelectedClientForTeams(
-                          client
-                        );
-
-                        setShowTeamManagement(
-                          true
-                        );
-                      }}
-                      className="p-3 rounded-xl bg-surface-hover hover:bg-accent/10 transition-all"
-                    >
-                      <Users size={18} />
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        handleEdit(
-                          client
-                        )
-                      }
-                      className="p-3 rounded-xl bg-surface-hover hover:bg-accent/10 transition-all"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        confirmToggleActive(
-                          client
-                        )
-                      }
-                      className={cn(
-                        'p-3 rounded-xl transition-all',
-                        client.active
-                          ? 'bg-surface-hover hover:bg-accent/10'
-                          : 'bg-accent text-white'
-                      )}
-                    >
-                      {client.active ? (
-                        <Trash2 size={18} />
-                      ) : (
-                        <RefreshCw size={18} />
-                      )}
-                    </button>
-                  </div>
+          paginatedClients.map(client => (
+            <Card
+              key={client.id}
+              className={cn(
+                'relative overflow-hidden transition-all hover:border-accent/30 hover:-translate-y-1',
+                !client.active && 'opacity-60 grayscale-[0.4]'
+              )}
+            >
+              {!client.active && (
+                <div className="absolute top-0 right-0 bg-accent text-white text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-bl-xl">
+                  Inactivo
                 </div>
+              )}
 
-                {/* INFO */}
-                <h4 className="text-lg font-black tracking-tight text-foreground-main">
-                  {client.name}
-                </h4>
+              {/* HEADER */}
+              <div className="flex justify-between items-start mb-5">
+                <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
+                  <Contact size={24} />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedClientForTeams(client);
+                      setShowTeamManagement(true);
+                    }}
+                    className="p-3 rounded-xl bg-surface-hover hover:bg-accent/10 transition-all"
+                  >
+                    <Users size={18} />
+                  </button>
+                  <button
+                    onClick={() => handleEdit(client)}
+                    className="p-3 rounded-xl bg-surface-hover hover:bg-accent/10 transition-all"
+                  >
+                    <Edit2 size={18} />
+                  </button>
+                  <button
+                    onClick={() => confirmToggleActive(client)}
+                    className={cn(
+                      'p-3 rounded-xl transition-all',
+                      client.active
+                        ? 'bg-surface-hover hover:bg-accent/10'
+                        : 'bg-accent text-white'
+                    )}
+                  >
+                    {client.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
+                  </button>
+                </div>
+              </div>
 
-                <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted mt-1 mb-5">
-                  {client.doc_type ||
-                    'CC'}{' '}
-                  {client.doc}
-                </p>
+              {/* INFO */}
+              <h4 className="text-lg font-black tracking-tight text-foreground-main">
+                {client.name}
+              </h4>
+              <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted mt-1 mb-5">
+                {client.doc_type || 'CC'} {client.doc}
+              </p>
 
-                {/* EQUIPOS */}
-                <div className="flex flex-wrap gap-2 mb-5 min-h-[44px]">
-
-                  {Array.isArray(
-                    client.teams
-                  ) &&
-                  client.teams.length >
-                    0 ? (
-                    client.teams.map(
-                      (
-                        team: any
-                      ) => (
-                        <div
-                          key={
-                            team.id
-                          }
-                          className="
-                            px-3 py-1.5
-                            rounded-xl
-                            bg-accent/10
-                            border border-accent/20
-                            text-accent
-                            text-[10px]
-                            font-black
-                            uppercase
-                            tracking-widest
-                            flex items-center gap-2
-                          "
-                        >
-                          <Users size={12} />
-                          {
-                            team.name
-                          }
-                        </div>
-                      )
-                    )
-                  ) : (
+              {/* EQUIPOS */}
+              <div className="flex flex-wrap gap-2 mb-5 min-h-[44px]">
+                {Array.isArray(client.teams) && client.teams.length > 0 ? (
+                  client.teams.map((team: any) => (
                     <div
-                      className="
-                        px-3 py-1.5
-                        rounded-xl
-                        bg-surface-hover
-                        border border-border-custom
-                        text-foreground-muted
-                        text-[10px]
-                        font-black
-                        uppercase
-                        tracking-widest
-                      "
+                      key={team.id}
+                      className="px-3 py-1.5 rounded-xl bg-accent/10 border border-accent/20 text-accent text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
                     >
-                      Sin equipos
+                      <Users size={12} />
+                      {team.name}
                     </div>
-                  )}
+                  ))
+                ) : (
+                  <div className="px-3 py-1.5 rounded-xl bg-surface-hover border border-border-custom text-foreground-muted text-[10px] font-black uppercase tracking-widest">
+                    Sin equipos
+                  </div>
+                )}
+              </div>
+
+              {/* DATOS */}
+              <div className="space-y-3 pt-4 border-t border-border-custom">
+                <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                  <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
+                    <Phone size={14} />
+                  </div>
+                  <span className="font-bold">{client.phone || 'Sin teléfono'}</span>
                 </div>
-
-                {/* DATOS */}
-                <div className="space-y-3 pt-4 border-t border-border-custom">
-
-                  <div className="flex items-center gap-3 text-sm text-foreground-muted">
-
-                    <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
-                      <Phone size={14} />
-                    </div>
-
-                    <span className="font-bold">
-                      {client.phone ||
-                        'Sin teléfono'}
-                    </span>
+                <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                  <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
+                    <Mail size={14} />
                   </div>
-
-                  <div className="flex items-center gap-3 text-sm text-foreground-muted">
-
-                    <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
-                      <Mail size={14} />
-                    </div>
-
-                    <span className="font-bold">
-                      {client.email ||
-                        'Sin email'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-sm text-foreground-muted">
-
-                    <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
-                      <LayoutDashboard size={14} />
-                    </div>
-
-                    <span className="font-bold">
-                      {client.city ||
-                        'Sin ciudad'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-sm text-foreground-muted">
-
-                    <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
-                      <Locate size={14} />
-                    </div>
-
-                    <span className="font-bold">
-                      {client.address ||
-                        'Sin dirección'}
-                    </span>
-                  </div>
+                  <span className="font-bold">{client.email || 'Sin email'}</span>
                 </div>
-              </Card>
-            )
-          )
+                <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                  <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
+                    <LayoutDashboard size={14} />
+                  </div>
+                  <span className="font-bold">{client.city || 'Sin ciudad'}</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                  <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
+                    <Locate size={14} />
+                  </div>
+                  <span className="font-bold">{client.address || 'Sin dirección'}</span>
+                </div>
+              </div>
+            </Card>
+          ))
         )}
       </div>
 
       {/* PAGINACIÓN */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 flex-wrap pt-6">
-
           <button
-            onClick={() =>
-              setCurrentPage(prev =>
-                Math.max(
-                  prev - 1,
-                  1
-                )
-              )
-            }
-            disabled={
-              currentPage === 1
-            }
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
             className="px-5 py-3 rounded-2xl border border-border-custom bg-surface text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
           >
             Anterior
           </button>
-
-          {Array.from({
-            length: totalPages
-          }).map((_, index) => {
-            const page =
-              index + 1;
-
+          {Array.from({ length: totalPages }).map((_, index) => {
+            const page = index + 1;
             return (
               <button
                 key={page}
-                onClick={() =>
-                  setCurrentPage(
-                    page
-                  )
-                }
+                onClick={() => setCurrentPage(page)}
                 className={cn(
                   'w-12 h-12 rounded-2xl text-[10px] font-black transition-all',
-                  currentPage ===
-                    page
+                  currentPage === page
                     ? 'bg-accent text-white shadow-lg shadow-accent/20'
                     : 'bg-surface border border-border-custom text-foreground-muted'
                 )}
@@ -8222,20 +7916,9 @@ function ClientManagement({}: { key?: string }) {
               </button>
             );
           })}
-
           <button
-            onClick={() =>
-              setCurrentPage(prev =>
-                Math.min(
-                  prev + 1,
-                  totalPages
-                )
-              )
-            }
-            disabled={
-              currentPage ===
-              totalPages
-            }
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
             className="px-5 py-3 rounded-2xl border border-border-custom bg-surface text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
           >
             Siguiente
@@ -8243,152 +7926,184 @@ function ClientManagement({}: { key?: string }) {
         </div>
       )}
 
+      {/* MODAL CONFIRMAR ACTIVAR/DESACTIVAR */}
+      <Modal
+        isOpen={showConfirmToggle}
+        onClose={() => {
+          setShowConfirmToggle(false);
+          setClientToToggle(null);
+        }}
+        title={clientToToggle?.active ? 'Desactivar Cliente' : 'Activar Cliente'}
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-6">
+          <p className="text-sm font-bold text-foreground-muted">
+            ¿Estás seguro de que deseas{' '}
+            {clientToToggle?.active ? 'desactivar' : 'activar'} a{' '}
+            <span className="text-foreground-main">{clientToToggle?.name}</span>?
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => {
+                setShowConfirmToggle(false);
+                setClientToToggle(null);
+              }}
+              className="px-6 py-3 rounded-2xl border border-border-custom text-[10px] font-black uppercase tracking-widest"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleToggleActive}
+              className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20"
+            >
+              {clientToToggle?.active ? 'Desactivar' : 'Activar'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* MODAL EQUIPOS */}
       <Modal
-        isOpen={
-          showTeamManagement
-        }
-        onClose={() =>
-          setShowTeamManagement(
-            false
-          )
-        }
+        isOpen={showTeamManagement}
+        onClose={() => setShowTeamManagement(false)}
         title="Gestión de Equipos"
         maxWidth="max-w-2xl"
       >
         {selectedClientForTeams && (
           <TeamManagement
-            client={
-              selectedClientForTeams
-            }
-            onClose={() =>
-              setShowTeamManagement(
-                false
-              )
-            }
+            client={selectedClientForTeams}
+            onClose={() => setShowTeamManagement(false)}
           />
         )}
       </Modal>
 
       {/* MODAL CREAR / EDITAR CLIENTE */}
-<Modal
-  isOpen={isAdding}
-  onClose={() => {
-    setIsAdding(false);
-    setEditingClient(null);
-    setFormData({
-      name: '',
-      doc: '',
-      doc_type: 'CC',
-      phone: '',
-      address: '',
-      city: '',
-      email: '',
-      active: true
-    });
-  }}
-  title={editingClient ? 'Editar Cliente' : 'Nuevo Cliente'}
-  maxWidth="max-w-2xl"
->
-  <form onSubmit={handleSubmit} className="space-y-4">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Nombre</label>
-        <input
-          type="text"
-          required
-          value={formData.name}
-          onChange={e => setFormData({ ...formData, name: e.target.value })}
-          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
-        />
-      </div>
-
-      <div>
-        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Tipo Doc</label>
-        <select
-          value={formData.doc_type}
-          onChange={e => setFormData({ ...formData, doc_type: e.target.value })}
-          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
-        >
-          <option value="CC">CC</option>
-          <option value="CE">CE</option>
-          <option value="NIT">NIT</option>
-          <option value="PP">PP</option>
-        </select>
-      </div>
-
-      <div>
-        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Documento</label>
-        <input
-          type="text"
-          required
-          value={formData.doc}
-          onChange={e => setFormData({ ...formData, doc: e.target.value })}
-          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
-        />
-      </div>
-
-      <div>
-        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Teléfono</label>
-        <input
-          type="text"
-          value={formData.phone}
-          onChange={e => setFormData({ ...formData, phone: e.target.value })}
-          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
-        />
-      </div>
-
-      <div>
-        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Email</label>
-        <input
-          type="email"
-          value={formData.email}
-          onChange={e => setFormData({ ...formData, email: e.target.value })}
-          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
-        />
-      </div>
-
-      <div>
-        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Ciudad</label>
-        <input
-          type="text"
-          value={formData.city}
-          onChange={e => setFormData({ ...formData, city: e.target.value })}
-          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
-        />
-      </div>
-
-      <div className="md:col-span-2">
-        <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">Dirección</label>
-        <input
-          type="text"
-          value={formData.address}
-          onChange={e => setFormData({ ...formData, address: e.target.value })}
-          className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
-        />
-      </div>
-    </div>
-
-    <div className="flex justify-end gap-3 pt-4">
-      <button
-        type="button"
-        onClick={() => {
+      <Modal
+        isOpen={isAdding}
+        onClose={() => {
           setIsAdding(false);
           setEditingClient(null);
+          setFormData({
+            name: '',
+            doc: '',
+            doc_type: 'CC',
+            phone: '',
+            address: '',
+            city: '',
+            email: '',
+            active: true
+          });
         }}
-        className="px-6 py-3 rounded-2xl border border-border-custom text-[10px] font-black uppercase tracking-widest"
+        title={editingClient ? 'Editar Cliente' : 'Nuevo Cliente'}
+        maxWidth="max-w-2xl"
       >
-        Cancelar
-      </button>
-      <button
-        type="submit"
-        className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20"
-      >
-        {editingClient ? 'Guardar Cambios' : 'Registrar Cliente'}
-      </button>
-    </div>
-  </form>
-</Modal>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
+                Nombre
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
+                Tipo Doc
+              </label>
+              <select
+                value={formData.doc_type}
+                onChange={e => setFormData({ ...formData, doc_type: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+              >
+                <option value="CC">CC</option>
+                <option value="CE">CE</option>
+                <option value="NIT">NIT</option>
+                <option value="PP">PP</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
+                Documento
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.doc}
+                onChange={e => setFormData({ ...formData, doc: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
+                Teléfono
+              </label>
+              <input
+                type="text"
+                value={formData.phone}
+                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
+                Email
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
+                Ciudad
+              </label>
+              <input
+                type="text"
+                value={formData.city}
+                onChange={e => setFormData({ ...formData, city: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
+                Dirección
+              </label>
+              <input
+                type="text"
+                value={formData.address}
+                onChange={e => setFormData({ ...formData, address: e.target.value })}
+                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAdding(false);
+                setEditingClient(null);
+              }}
+              className="px-6 py-3 rounded-2xl border border-border-custom text-[10px] font-black uppercase tracking-widest"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20"
+            >
+              {editingClient ? 'Guardar Cambios' : 'Registrar Cliente'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
     </div>
   );
 }
