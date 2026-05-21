@@ -4228,14 +4228,61 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                                 <p className={cn("text-[11px] font-black uppercase tracking-wider", task.enabled ? "text-foreground-main" : "text-foreground-muted")}>{label}</p>
                                 <p className="text-[9px] text-foreground-muted font-bold">${unitPrice.toLocaleString()} c/u</p>
                               </div>
-                              <input type="number" min={0} value={task.quantity || ''} disabled={!task.enabled}
-                                onChange={e => setAssignmentForm(prev => ({
-                                  ...prev,
-                                  tasks: { ...prev.tasks, [key]: { ...prev.tasks[key], quantity: Number(e.target.value), price: unitPrice } }
-                                }))}
-                                placeholder="0"
-                                className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm disabled:opacity-30 focus:border-accent/50"
-                              />
+                              {(() => {
+                                  // Total de prendas del tipo seleccionado en la orden
+                                  const totalThisType = order.items?.length || 0;
+
+                                  // Lo ya registrado en assignments anteriores para esta task key
+                                  const alreadyRegistered = assignments.reduce((sum, a) => {
+                                    const notesRaw = a.notes || '';
+                                    const typeMatch = notesRaw.match(/^\[(.+?)\]/);
+                                    const garmentType = typeMatch ? typeMatch[1] : 'Camiseta';
+                                    const rest = notesRaw.replace(/^\[.+?\]\s*/, '').split(' — ')[0].trim();
+
+                                    const labelToKey: Record<string, string> = {
+                                      'Filetes': 'filetes', 'Despuntes': 'despuntes', 'Collarín': 'collarin',
+                                      'Dobladillo y Remate': 'dobladillo_remate',
+                                      'Filete': 'filete_p', 'Caucho': 'caucho', 'Sentar Caucho': 'sentar_caucho',
+                                      'Remate': 'remate',
+                                    };
+                                    let assignedKey = labelToKey[rest];
+                                    if (rest === 'Despuntes' && garmentType === 'Pantaloneta') assignedKey = 'despuntes_p';
+                                    if (rest === 'Collarín' && garmentType === 'Pantaloneta') assignedKey = 'collarin_p';
+
+                                    if (assignedKey === key && garmentType === assignmentForm.garment_type) {
+                                      return sum + (a.garment_count || 0);
+                                    }
+                                    return sum;
+                                  }, 0);
+
+                                  const maxAllowed = Math.max(0, totalThisType - alreadyRegistered);
+
+                                  return (
+                                    <div className="flex flex-col items-center gap-1">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={maxAllowed}
+                                        value={task.quantity || ''}
+                                        disabled={!task.enabled}
+                                        onChange={e => {
+                                          const val = Math.min(Number(e.target.value), maxAllowed);
+                                          setAssignmentForm(prev => ({
+                                            ...prev,
+                                            tasks: { ...prev.tasks, [key]: { ...prev.tasks[key], quantity: val, price: unitPrice } }
+                                          }));
+                                        }}
+                                        placeholder="0"
+                                        className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm disabled:opacity-30 focus:border-accent/50"
+                                      />
+                                      {task.enabled && (
+                                        <p className="text-[8px] font-black uppercase tracking-widest text-foreground-muted">
+                                          máx {maxAllowed}
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               <p className={cn("text-right font-black text-sm", task.enabled && task.quantity > 0 ? "text-accent" : "text-foreground-muted/30")}>
                                 ${subtotal.toLocaleString()}
                               </p>
