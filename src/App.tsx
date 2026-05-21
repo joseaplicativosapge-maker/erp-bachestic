@@ -1502,49 +1502,150 @@ function OrdersList({
 }
 
 // --- Create Order Component ---
-function NewTeamInline({ onCreated }: { onCreated: (name: string) => void }) {
-  const [mode, setMode] = useState<'idle' | 'creating'>('idle');
+function NewTeamInline({ 
+  clientId, 
+  onSelected 
+}: { 
+  clientId?: number;           // undefined = cliente nuevo
+  onSelected: (team: { id?: number; name: string }) => void;
+}) {
+  const [mode, setMode] = useState<'idle' | 'selecting' | 'creating'>('idle');
+  const [existingTeams, setExistingTeams] = useState<Team[]>([]);
   const [teamName, setTeamName] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Si hay clientId, cargar sus equipos al abrir
+  const handleOpen = async () => {
+    if (clientId) {
+      setLoading(true);
+      try {
+        const teams = await api.getClientTeams(clientId);
+        const active = teams.filter((t: Team) => t.active);
+        setExistingTeams(active);
+        setMode(active.length > 0 ? 'selecting' : 'creating');
+      } catch {
+        setMode('creating');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setMode('creating');
+    }
+  };
 
   if (mode === 'idle') {
     return (
       <button
         type="button"
-        onClick={() => setMode('creating')}
-        className="w-full flex items-center justify-center gap-3 px-6 h-[52px] rounded-[20px] border-2 border-dashed border-accent/30 text-accent hover:bg-accent/5 transition-all"
+        onClick={handleOpen}
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-3 px-6 h-[52px] rounded-[20px] border-2 border-dashed border-accent/30 text-accent hover:bg-accent/5 transition-all disabled:opacity-50"
       >
-        <Plus size={14} />
-        <span className="text-[10px] font-black uppercase tracking-widest">Crear equipo para este cliente</span>
+        {loading ? <Clock size={14} className="animate-spin" /> : <Plus size={14} />}
+        <span className="text-[10px] font-black uppercase tracking-widest">
+          {clientId ? 'Seleccionar o crear equipo' : 'Crear equipo para este cliente'}
+        </span>
       </button>
     );
   }
 
+  if (mode === 'selecting' && existingTeams.length > 0) {
+    return (
+      <div className="space-y-3">
+        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+          Equipos existentes del cliente
+        </p>
+        <div className="bg-surface-hover rounded-[20px] border border-border-custom overflow-hidden divide-y divide-border-custom">
+          {existingTeams.map(team => (
+            <button
+              key={team.id}
+              type="button"
+              onClick={() => onSelected({ id: team.id, name: team.name })}
+              className="w-full flex items-center justify-between px-5 py-3 hover:bg-accent/10 transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-7 h-7 bg-accent/10 rounded-lg flex items-center justify-center text-accent">
+                  <Users size={13} />
+                </div>
+                <span className="font-black text-sm text-foreground-main uppercase tracking-wide group-hover:text-accent transition-colors">
+                  {team.name}
+                </span>
+              </div>
+              <ChevronRight size={14} className="text-foreground-muted group-hover:text-accent transition-colors" />
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setMode('creating')}
+          className="w-full flex items-center justify-center gap-2 px-5 h-[44px] rounded-[18px] border border-dashed border-accent/30 text-accent hover:bg-accent/5 transition-all text-[10px] font-black uppercase tracking-widest"
+        >
+          <Plus size={12} /> Crear nuevo equipo
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('idle')}
+          className="w-full text-[9px] font-black uppercase tracking-widest text-foreground-muted hover:text-foreground-main transition-colors py-1"
+        >
+          Cancelar
+        </button>
+      </div>
+    );
+  }
+
+  // mode === 'creating'
   return (
-    <div className="flex items-center gap-3">
-      <input
-        type="text"
-        autoFocus
-        value={teamName}
-        onChange={e => setTeamName(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (teamName.trim()) { onCreated(teamName.trim()); setMode('idle'); setTeamName(''); } } }}
-        placeholder="Nombre del equipo..."
-        className="flex-1 px-5 py-3 rounded-2xl bg-surface border border-accent/40 focus:border-accent outline-none text-foreground-main font-bold text-sm transition-all"
-      />
-      <button
-        type="button"
-        disabled={!teamName.trim()}
-        onClick={() => { if (teamName.trim()) { onCreated(teamName.trim()); setMode('idle'); setTeamName(''); } }}
-        className="px-5 py-3 rounded-2xl bg-accent text-white font-black text-[10px] uppercase tracking-widest disabled:opacity-50 hover:scale-105 transition-all shadow-lg shadow-accent/20 flex items-center gap-2"
-      >
-        <CheckCircle2 size={14} /> Agregar
-      </button>
-      <button
-        type="button"
-        onClick={() => { setMode('idle'); setTeamName(''); }}
-        className="px-4 py-3 rounded-2xl border border-border-custom text-foreground-muted hover:bg-surface-hover text-[10px] font-black uppercase tracking-widest transition-all"
-      >
-        Cancelar
-      </button>
+    <div className="space-y-3">
+      {existingTeams.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setMode('selecting')}
+          className="text-[9px] font-black uppercase tracking-widest text-accent hover:text-accent/70 transition-colors flex items-center gap-1"
+        >
+          ← Ver equipos existentes
+        </button>
+      )}
+      <div className="flex items-center gap-3">
+        <input
+          type="text"
+          autoFocus
+          value={teamName}
+          onChange={e => setTeamName(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (teamName.trim()) {
+                onSelected({ name: teamName.trim() });
+                setMode('idle');
+                setTeamName('');
+              }
+            }
+          }}
+          placeholder="Nombre del equipo..."
+          className="flex-1 px-5 py-3 rounded-2xl bg-surface border border-accent/40 focus:border-accent outline-none text-foreground-main font-bold text-sm transition-all"
+        />
+        <button
+          type="button"
+          disabled={!teamName.trim()}
+          onClick={() => {
+            if (teamName.trim()) {
+              onSelected({ name: teamName.trim() });
+              setMode('idle');
+              setTeamName('');
+            }
+          }}
+          className="px-5 py-3 rounded-2xl bg-accent text-white font-black text-[10px] uppercase tracking-widest disabled:opacity-50 hover:scale-105 transition-all shadow-lg shadow-accent/20 flex items-center gap-2"
+        >
+          <CheckCircle2 size={14} /> Agregar
+        </button>
+        <button
+          type="button"
+          onClick={() => { setMode('idle'); setTeamName(''); }}
+          className="px-4 py-3 rounded-2xl border border-border-custom text-foreground-muted hover:bg-surface-hover text-[10px] font-black uppercase tracking-widest transition-all"
+        >
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 }
@@ -1567,6 +1668,7 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
   const [clientTeams, setClientTeams] = useState<Team[]>([]);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
   // ✅ Para cliente nuevo: nombre del equipo a crear (se crea en handleSubmit)
+  const [selectedTeam, setSelectedTeam] = useState<{ id?: number; name: string } | null>(null);
   const [newTeamName, setNewTeamName] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
 
@@ -1711,13 +1813,27 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
         finalClientId = newClient.id;
 
         // ✅ 2. Crear equipo si se escribió uno, usando el ID del cliente recién creado
-        if (newTeamName && finalClientId) {
+      
+        if (selectedTeam && finalClientId) {
           try {
-            const newTeam = await api.createClientTeam(finalClientId, { name: newTeamName });
+            const newTeam = await api.createClientTeam(finalClientId, { name: selectedTeam.name });
             finalTeamId = newTeam.id;
           } catch (err) {
             console.error('Error creando equipo:', err);
-            // No bloquear la orden si falla el equipo
+          }
+        }
+      } else {
+        // si es nuevo (sin ID) crearlo
+        if (selectedTeam) {
+          if (selectedTeam.id) {
+            finalTeamId = selectedTeam.id;
+          } else if (finalClientId) {
+            try {
+              const newTeam = await api.createClientTeam(finalClientId, { name: selectedTeam.name });
+              finalTeamId = newTeam.id;
+            } catch (err) {
+              console.error('Error creando equipo:', err);
+            }
           }
         }
       }
@@ -1892,19 +2008,48 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                   </div>
                   <div className="flex items-center gap-6">
                     {/* Selector de equipo solo para cliente existente */}
-                    {!isCreatingClient && teamsToShow.length > 0 && (
-                      <div className="w-48">
-                        <Select
-                          label="Equipo"
-                          value={formData.team_id?.toString() || ''}
-                          onChange={e => setFormData({...formData, team_id: e.target.value ? Number(e.target.value) : undefined})}
-                          options={[
-                            { value: '', label: 'Sin Equipo' },
-                            ...teamsToShow.map(t => ({ value: t.id.toString(), label: t.name }))
-                          ]}
-                        />
-                      </div>
-                    )}
+                    {!isCreatingClient && (
+                        teamsToShow.length > 0 ? (
+                          <div className="w-48">
+                            <Select
+                              label="Equipo"
+                              value={formData.team_id?.toString() || ''}
+                              onChange={e => setFormData({...formData, team_id: e.target.value ? Number(e.target.value) : undefined})}
+                              options={[
+                                { value: '', label: 'Sin Equipo' },
+                                ...teamsToShow.map(t => ({ value: t.id.toString(), label: t.name }))
+                              ]}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-56">
+                            {newTeamName ? (
+                              <div className="flex items-center justify-between px-4 py-2 bg-accent/10 border border-accent/20 rounded-2xl">
+                                <div className="flex items-center gap-2">
+                                  <Users size={13} className="text-accent" />
+                                  <p className="font-black text-sm text-foreground-main uppercase tracking-wide">{newTeamName}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => { setNewTeamName(null); setSelectedTeam(null); }}
+                                  className="text-foreground-muted hover:text-accent transition-colors"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <NewTeamInline
+                                clientId={formData.client_id}
+                                onSelected={(team) => {
+                                  setSelectedTeam(team);
+                                  setNewTeamName(team.name);
+                                  if (team.id) setFormData(prev => ({ ...prev, team_id: team.id }));
+                                }}
+                              />
+                            )}
+                          </div>
+                        )
+                      )}
                     <button
                       onClick={() => {
                         setSelectedClient(null);
@@ -1993,25 +2138,29 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                       </p>
 
                       {newTeamName ? (
-                        /* Equipo ya ingresado — mostrar con opción de quitar */
-                        <div className="flex items-center justify-between px-5 py-3 bg-accent/10 border border-accent/20 rounded-2xl">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-accent/20 rounded-xl flex items-center justify-center">
-                              <Users size={14} className="text-accent" />
-                            </div>
-                            <p className="font-black text-sm text-foreground-main uppercase tracking-wide">{newTeamName}</p>
+                      <div className="flex items-center justify-between px-5 py-3 bg-accent/10 border border-accent/20 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-accent/20 rounded-xl flex items-center justify-center">
+                            <Users size={14} className="text-accent" />
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setNewTeamName(null)}
-                            className="text-foreground-muted hover:text-accent transition-colors p-1"
-                          >
-                            <X size={16} />
-                          </button>
+                          <p className="font-black text-sm text-foreground-main uppercase tracking-wide">{newTeamName}</p>
                         </div>
-                      ) : (
-                        <NewTeamInline onCreated={(name) => setNewTeamName(name)} />
-                      )}
+                        <button
+                          type="button"
+                          onClick={() => { setNewTeamName(null); setSelectedTeam(null); }}
+                          className="text-foreground-muted hover:text-accent transition-colors p-1"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <NewTeamInline
+                        onSelected={(team) => {
+                          setSelectedTeam(team);
+                          setNewTeamName(team.name);
+                        }}
+                      />
+                    )}
                     </div>
                   </div>
                 )}
