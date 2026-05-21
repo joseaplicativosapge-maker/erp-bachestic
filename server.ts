@@ -330,7 +330,11 @@ async function startServer() {
   // ─── Product Routes ────────────────────────────────────────────────────────
 
   app.get('/api/products', (req, res) => {
-    const products = db.prepare('SELECT * FROM products WHERE active = 1 ORDER BY name').all();
+    const includeInactive = req.query.includeInactive === 'true';
+    const query = includeInactive
+      ? 'SELECT * FROM products ORDER BY name'
+      : 'SELECT * FROM products WHERE active = 1 ORDER BY name';
+    const products = db.prepare(query).all();
     res.json(products);
   });
 

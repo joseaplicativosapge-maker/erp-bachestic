@@ -138,8 +138,8 @@ export const api = {
     await handleResponse(res);
   },
   // Product API
-  getProducts: async (): Promise<Product[]> => {
-    const res = await fetch(`${API_BASE}/products`);
+  getProducts: async (includeInactive: boolean = false): Promise<Product[]> => {
+    const res = await fetch(`${API_BASE}/products?includeInactive=${includeInactive}`);
     return handleResponse(res);
   },
   createProduct: async (product: Partial<Product>): Promise<{ id: number }> => {

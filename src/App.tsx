@@ -6790,7 +6790,11 @@ function ProductManagement({}: { key?: string }) {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [includeInactive, setIncludeInactive] = useState(false);
 
-  // ✅ PAGINACIÓN
+  // ✅ CONFIRMACIÓN
+  const [showConfirmToggle, setShowConfirmToggle] = useState(false);
+  const [productToToggle, setProductToToggle] = useState<Product | null>(null);
+
+  // PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 9;
 
@@ -6801,14 +6805,10 @@ function ProductManagement({}: { key?: string }) {
     sale_price: 0,
     sewing_cost: 0,
     active: true,
-
-    // Precios confección camiseta
     price_filetes: 0,
     price_despuntes: 0,
     price_collarin: 0,
     price_dobladillo_remate: 0,
-
-    // Precios confección pantaloneta
     price_filete_p: 0,
     price_despuntes_p: 0,
     price_caucho: 0,
@@ -6818,13 +6818,13 @@ function ProductManagement({}: { key?: string }) {
   });
 
   useEffect(() => {
-    loadProducts();
-  }, []);
+    loadProducts(includeInactive);
+  }, [includeInactive]);
 
-  const loadProducts = async () => {
+  const loadProducts = async (inactive: boolean = false) => {
     try {
       setLoading(true);
-      const data = await api.getProducts();
+      const data = await api.getProducts(inactive);
       setProducts(data);
     } catch (error) {
       console.error(error);
@@ -6835,7 +6835,6 @@ function ProductManagement({}: { key?: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       if (editingProduct) {
         await api.updateProduct(editingProduct.id, newProduct);
@@ -6847,7 +6846,6 @@ function ProductManagement({}: { key?: string }) {
 
       setShowAdd(false);
       setEditingProduct(null);
-
       setNewProduct({
         code: '',
         name: '',
@@ -6855,12 +6853,10 @@ function ProductManagement({}: { key?: string }) {
         sale_price: 0,
         sewing_cost: 0,
         active: true,
-
         price_filetes: 0,
         price_despuntes: 0,
         price_collarin: 0,
         price_dobladillo_remate: 0,
-
         price_filete_p: 0,
         price_despuntes_p: 0,
         price_caucho: 0,
@@ -6868,8 +6864,7 @@ function ProductManagement({}: { key?: string }) {
         price_collarin_p: 0,
         price_remate: 0,
       });
-
-      loadProducts();
+      loadProducts(includeInactive);
     } catch (error) {
       console.error(error);
     }
@@ -6877,7 +6872,6 @@ function ProductManagement({}: { key?: string }) {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
-
     setNewProduct({
       code: (product as any).code || '',
       name: product.name,
@@ -6885,57 +6879,67 @@ function ProductManagement({}: { key?: string }) {
       sale_price: product.sale_price,
       sewing_cost: product.sewing_cost,
       active: product.active,
-
       price_filetes: (product as any).price_filetes || 0,
       price_despuntes: (product as any).price_despuntes || 0,
       price_collarin: (product as any).price_collarin || 0,
-      price_dobladillo_remate:
-        (product as any).price_dobladillo_remate || 0,
-
+      price_dobladillo_remate: (product as any).price_dobladillo_remate || 0,
       price_filete_p: (product as any).price_filete_p || 0,
       price_despuntes_p: (product as any).price_despuntes_p || 0,
       price_caucho: (product as any).price_caucho || 0,
-      price_sentar_caucho:
-        (product as any).price_sentar_caucho || 0,
+      price_sentar_caucho: (product as any).price_sentar_caucho || 0,
       price_collarin_p: (product as any).price_collarin_p || 0,
       price_remate: (product as any).price_remate || 0,
     });
-
     setShowAdd(true);
   };
 
-  const toggleProductActive = async (product: Product) => {
-    try {
-      await api.updateProduct(product.id, {
-        ...product,
-        active: !product.active,
-      });
+  // ✅ FIX: separar confirmación de ejecución
+  const confirmToggleActive = (product: Product) => {
+    setProductToToggle(product);
+    setShowConfirmToggle(true);
+  };
 
-      loadProducts();
+  const handleToggleActive = async () => {
+    if (!productToToggle) return;
+    try {
+      const newStatus = !productToToggle.active;
+      await api.updateProduct(productToToggle.id, {
+        ...productToToggle,
+        active: newStatus,
+      });
+      toast.success(
+        `Producto ${productToToggle.active ? 'desactivado' : 'activado'} correctamente`
+      );
+      setShowConfirmToggle(false);
+      setProductToToggle(null);
+      setCurrentPage(1);
+
+      if (!newStatus) {
+        // Al desactivar: cambiar a pestaña Desactivados
+        // El useEffect se encarga de recargar automáticamente
+        setIncludeInactive(true);
+      } else {
+        // Al activar: cambiar a pestaña Activos
+        setIncludeInactive(false);
+      }
+      // NO llamar loadProducts() aquí — el useEffect lo hará
     } catch (error) {
       console.error(error);
+      toast.error('Error al cambiar estado');
     }
   };
 
-  if (loading)
-    return <LoadingState message="Cargando Productos" />;
+  if (loading) return <LoadingState message="Cargando Productos" />;
 
-  // ✅ FILTRADO
+  // FILTRADO
   const filteredProducts = products.filter((p) =>
     includeInactive ? !p.active : p.active
   );
 
-  // ✅ PAGINACIÓN
-  const totalPages = Math.ceil(
-    filteredProducts.length / productsPerPage
-  );
-
+  // PAGINACIÓN
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
   const startIndex = (currentPage - 1) * productsPerPage;
-
-  const paginatedProducts = filteredProducts.slice(
-    startIndex,
-    startIndex + productsPerPage
-  );
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + productsPerPage);
 
   return (
     <div className="space-y-8">
@@ -6949,10 +6953,7 @@ function ProductManagement({}: { key?: string }) {
 
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button
-              onClick={() => {
-                setIncludeInactive(false);
-                setCurrentPage(1);
-              }}
+              onClick={() => { setIncludeInactive(false); setCurrentPage(1); }}
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                 !includeInactive
@@ -6962,12 +6963,8 @@ function ProductManagement({}: { key?: string }) {
             >
               Activos
             </button>
-
             <button
-              onClick={() => {
-                setIncludeInactive(true);
-                setCurrentPage(1);
-              }}
+              onClick={() => { setIncludeInactive(true); setCurrentPage(1); }}
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                 includeInactive
@@ -6983,7 +6980,6 @@ function ProductManagement({}: { key?: string }) {
         <button
           onClick={() => {
             setEditingProduct(null);
-
             setNewProduct({
               code: '',
               name: '',
@@ -6991,12 +6987,10 @@ function ProductManagement({}: { key?: string }) {
               sale_price: 0,
               sewing_cost: 0,
               active: true,
-
               price_filetes: 0,
               price_despuntes: 0,
               price_collarin: 0,
               price_dobladillo_remate: 0,
-
               price_filete_p: 0,
               price_despuntes_p: 0,
               price_caucho: 0,
@@ -7004,7 +6998,6 @@ function ProductManagement({}: { key?: string }) {
               price_collarin_p: 0,
               price_remate: 0,
             });
-
             setShowAdd(true);
           }}
           className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
@@ -7016,11 +7009,7 @@ function ProductManagement({}: { key?: string }) {
       {filteredProducts.length === 0 ? (
         <EmptyState
           icon={Package}
-          title={
-            includeInactive
-              ? "No hay productos desactivados"
-              : "Sin productos"
-          }
+          title={includeInactive ? "No hay productos desactivados" : "Sin productos"}
           message={
             includeInactive
               ? "No se han encontrado productos en el archivo."
@@ -7050,7 +7039,6 @@ function ProductManagement({}: { key?: string }) {
                   <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent group-hover:scale-110 transition-transform">
                     <Package size={24} />
                   </div>
-
                   <div className="flex gap-3">
                     <button
                       onClick={() => handleEdit(product)}
@@ -7059,26 +7047,18 @@ function ProductManagement({}: { key?: string }) {
                     >
                       <Edit2 size={18} />
                     </button>
-
+                    {/* ✅ FIX: llama a confirmToggleActive, no directo */}
                     <button
-                      onClick={() => toggleProductActive(product)}
+                      onClick={() => confirmToggleActive(product)}
                       className={cn(
                         "p-3 rounded-xl transition-all",
                         product.active
                           ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent"
                           : "bg-accent text-white"
                       )}
-                      title={
-                        product.active
-                          ? "Desactivar producto"
-                          : "Activar producto"
-                      }
+                      title={product.active ? "Desactivar producto" : "Activar producto"}
                     >
-                      {product.active ? (
-                        <Trash2 size={18} />
-                      ) : (
-                        <RefreshCw size={18} />
-                      )}
+                      {product.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
                     </button>
                   </div>
                 </div>
@@ -7088,21 +7068,17 @@ function ProductManagement({}: { key?: string }) {
                     <p className="text-[10px] font-bold text-accent uppercase tracking-widest">
                       {product.code}
                     </p>
-
                     <h4 className="text-xl font-black text-foreground-main tracking-tight uppercase">
                       {product.name}
                     </h4>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-custom">
                     <div>
                       <p className="text-[9px] font-black text-foreground-muted uppercase tracking-widest mb-1">
                         Costo Costura
                       </p>
-
                       <p className="text-lg font-black text-foreground-main">
-                        $
-                        {(product.sewing_cost || 0).toLocaleString()}
+                        ${(product.sewing_cost || 0).toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -7111,28 +7087,21 @@ function ProductManagement({}: { key?: string }) {
             ))}
           </div>
 
-          {/* ✅ PAGINACIÓN */}
           {totalPages > 1 && (
             <div className="flex justify-center items-center gap-3 pt-6">
               <button
                 disabled={currentPage === 1}
-                onClick={() =>
-                  setCurrentPage((prev) => prev - 1)
-                }
+                onClick={() => setCurrentPage((prev) => prev - 1)}
                 className="px-4 py-2 rounded-xl border border-border-custom bg-surface-hover text-sm font-black uppercase tracking-widest disabled:opacity-40"
               >
                 Anterior
               </button>
-
               <div className="px-4 py-2 rounded-xl bg-accent text-white text-sm font-black">
                 {currentPage} / {totalPages}
               </div>
-
               <button
                 disabled={currentPage === totalPages}
-                onClick={() =>
-                  setCurrentPage((prev) => prev + 1)
-                }
+                onClick={() => setCurrentPage((prev) => prev + 1)}
                 className="px-4 py-2 rounded-xl border border-border-custom bg-surface-hover text-sm font-black uppercase tracking-widest disabled:opacity-40"
               >
                 Siguiente
@@ -7142,26 +7111,54 @@ function ProductManagement({}: { key?: string }) {
         </>
       )}
 
+      {/* MODAL CONFIRMAR ACTIVAR/DESACTIVAR */}
+      <Modal
+        isOpen={showConfirmToggle}
+        onClose={() => {
+          setShowConfirmToggle(false);
+          setProductToToggle(null);
+        }}
+        title={productToToggle?.active ? 'Desactivar Producto' : 'Activar Producto'}
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-6">
+          <p className="text-sm font-bold text-foreground-muted">
+            ¿Estás seguro de que deseas{' '}
+            {productToToggle?.active ? 'desactivar' : 'activar'} el producto{' '}
+            <span className="text-foreground-main">{productToToggle?.name}</span>?
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => {
+                setShowConfirmToggle(false);
+                setProductToToggle(null);
+              }}
+              className="px-6 py-3 rounded-2xl border border-border-custom text-[10px] font-black uppercase tracking-widest"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleToggleActive}
+              className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20"
+            >
+              {productToToggle?.active ? 'Desactivar' : 'Activar'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* MODAL CREAR / EDITAR */}
       <Modal
         isOpen={showAdd}
         onClose={() => setShowAdd(false)}
-        title={
-          editingProduct
-            ? "Editar Producto"
-            : "Nuevo Producto"
-        }
+        title={editingProduct ? "Editar Producto" : "Nuevo Producto"}
         subtitle="Configuración de precios y costos"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           <Input
             label="Código del Producto"
             value={newProduct.code || ''}
-            onChange={(e) =>
-              setNewProduct({
-                ...newProduct,
-                code: e.target.value,
-              })
-            }
+            onChange={(e) => setNewProduct({ ...newProduct, code: e.target.value })}
             placeholder="Ej. PROD-001"
             className="bg-background"
           />
@@ -7169,12 +7166,7 @@ function ProductManagement({}: { key?: string }) {
           <Input
             label="Nombre del Producto"
             value={newProduct.name}
-            onChange={(e) =>
-              setNewProduct({
-                ...newProduct,
-                name: e.target.value,
-              })
-            }
+            onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
             placeholder="Ej. Uniforme Completo"
             className="bg-background"
             required
@@ -7184,12 +7176,7 @@ function ProductManagement({}: { key?: string }) {
             label="Costo de Costura"
             type="number"
             value={newProduct.sewing_cost.toString()}
-            onChange={(e) =>
-              setNewProduct({
-                ...newProduct,
-                sewing_cost: Number(e.target.value),
-              })
-            }
+            onChange={(e) => setNewProduct({ ...newProduct, sewing_cost: Number(e.target.value) })}
             required
           />
 
@@ -7199,54 +7186,24 @@ function ProductManagement({}: { key?: string }) {
               <Shirt size={14} className="text-accent" />
               Precios Confección — Camiseta
             </p>
-
             <div className="bg-surface-hover rounded-[20px] border border-border-custom overflow-hidden">
               <div className="grid grid-cols-[1fr_120px] gap-4 px-5 py-2.5 border-b border-border-custom bg-surface">
-                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
-                  Tarea
-                </p>
-
-                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">
-                  $ x Prenda
-                </p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Tarea</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">$ x Prenda</p>
               </div>
-
               {[
-                {
-                  key: 'price_filetes',
-                  label: 'Filetes',
-                },
-                {
-                  key: 'price_despuntes',
-                  label: 'Despuntes',
-                },
-                {
-                  key: 'price_collarin',
-                  label: 'Collarín',
-                },
-                {
-                  key: 'price_dobladillo_remate',
-                  label: 'Dobladillo y Remate',
-                },
+                { key: 'price_filetes', label: 'Filetes' },
+                { key: 'price_despuntes', label: 'Despuntes' },
+                { key: 'price_collarin', label: 'Collarín' },
+                { key: 'price_dobladillo_remate', label: 'Dobladillo y Remate' },
               ].map(({ key, label }) => (
-                <div
-                  key={key}
-                  className="grid grid-cols-[1fr_120px] gap-4 items-center px-5 py-2.5 border-b border-border-custom last:border-0"
-                >
-                  <p className="text-[11px] font-black uppercase tracking-wider text-foreground-main">
-                    {label}
-                  </p>
-
+                <div key={key} className="grid grid-cols-[1fr_120px] gap-4 items-center px-5 py-2.5 border-b border-border-custom last:border-0">
+                  <p className="text-[11px] font-black uppercase tracking-wider text-foreground-main">{label}</p>
                   <input
                     type="number"
                     min={0}
                     value={(newProduct as any)[key] || ''}
-                    onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        [key]: Number(e.target.value),
-                      })
-                    }
+                    onChange={(e) => setNewProduct({ ...newProduct, [key]: Number(e.target.value) })}
                     placeholder="$0"
                     className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm focus:border-accent/50"
                   />
@@ -7261,62 +7218,26 @@ function ProductManagement({}: { key?: string }) {
               <Shirt size={14} className="text-accent" />
               Precios Confección — Pantaloneta
             </p>
-
             <div className="bg-surface-hover rounded-[20px] border border-border-custom overflow-hidden">
               <div className="grid grid-cols-[1fr_120px] gap-4 px-5 py-2.5 border-b border-border-custom bg-surface">
-                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
-                  Tarea
-                </p>
-
-                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">
-                  $ x Prenda
-                </p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Tarea</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">$ x Prenda</p>
               </div>
-
               {[
-                {
-                  key: 'price_filete_p',
-                  label: 'Filete',
-                },
-                {
-                  key: 'price_despuntes_p',
-                  label: 'Despuntes',
-                },
-                {
-                  key: 'price_caucho',
-                  label: 'Caucho',
-                },
-                {
-                  key: 'price_sentar_caucho',
-                  label: 'Sentar Caucho',
-                },
-                {
-                  key: 'price_collarin_p',
-                  label: 'Collarín',
-                },
-                {
-                  key: 'price_remate',
-                  label: 'Remate',
-                },
+                { key: 'price_filete_p', label: 'Filete' },
+                { key: 'price_despuntes_p', label: 'Despuntes' },
+                { key: 'price_caucho', label: 'Caucho' },
+                { key: 'price_sentar_caucho', label: 'Sentar Caucho' },
+                { key: 'price_collarin_p', label: 'Collarín' },
+                { key: 'price_remate', label: 'Remate' },
               ].map(({ key, label }) => (
-                <div
-                  key={key}
-                  className="grid grid-cols-[1fr_120px] gap-4 items-center px-5 py-2.5 border-b border-border-custom last:border-0"
-                >
-                  <p className="text-[11px] font-black uppercase tracking-wider text-foreground-main">
-                    {label}
-                  </p>
-
+                <div key={key} className="grid grid-cols-[1fr_120px] gap-4 items-center px-5 py-2.5 border-b border-border-custom last:border-0">
+                  <p className="text-[11px] font-black uppercase tracking-wider text-foreground-main">{label}</p>
                   <input
                     type="number"
                     min={0}
                     value={(newProduct as any)[key] || ''}
-                    onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        [key]: Number(e.target.value),
-                      })
-                    }
+                    onChange={(e) => setNewProduct({ ...newProduct, [key]: Number(e.target.value) })}
                     placeholder="$0"
                     className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm focus:border-accent/50"
                   />
@@ -7329,15 +7250,9 @@ function ProductManagement({}: { key?: string }) {
             <input
               type="checkbox"
               checked={newProduct.active}
-              onChange={(e) =>
-                setNewProduct({
-                  ...newProduct,
-                  active: e.target.checked,
-                })
-              }
+              onChange={(e) => setNewProduct({ ...newProduct, active: e.target.checked })}
               className="w-5 h-5 rounded-lg accent-accent"
             />
-
             <label className="text-xs font-bold text-foreground-main uppercase tracking-widest">
               Producto Activo
             </label>
@@ -7347,9 +7262,7 @@ function ProductManagement({}: { key?: string }) {
             type="submit"
             className="w-full bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-accent/20 hover:scale-[1.02] transition-all"
           >
-            {editingProduct
-              ? 'Actualizar Producto'
-              : 'Guardar Producto'}
+            {editingProduct ? 'Actualizar Producto' : 'Guardar Producto'}
           </button>
         </form>
       </Modal>
