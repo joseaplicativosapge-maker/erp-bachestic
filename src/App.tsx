@@ -7925,14 +7925,20 @@ function ClientManagement({}: { key?: string }) {
       {/* MODAL EQUIPOS */}
       <Modal
         isOpen={showTeamManagement}
-        onClose={() => setShowTeamManagement(false)}
+        onClose={() => {
+          setShowTeamManagement(false);
+          fetchClients();
+        }}
         title="Gestión de Equipos"
         maxWidth="max-w-2xl"
       >
         {selectedClientForTeams && (
           <TeamManagement
             client={selectedClientForTeams}
-            onClose={() => setShowTeamManagement(false)}
+            onClose={() => {
+              setShowTeamManagement(false);
+              fetchClients();
+            }}
           />
         )}
       </Modal>
