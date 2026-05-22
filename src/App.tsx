@@ -2568,7 +2568,7 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
               }
               className="h-12 px-6 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-[0.25em] hover:scale-[1.03] transition-all shadow-xl shadow-accent/20"
             >
-              + Agregar Uniforme
+              + Agregar
             </button>
           </div>
 
