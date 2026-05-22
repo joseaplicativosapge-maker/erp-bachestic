@@ -2536,99 +2536,276 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="font-black text-lg tracking-tight text-foreground-main uppercase">Uniformes</h4>
-            <button 
-              onClick={() => setItems([...items, { item_name: '', player_name: '', number: '', size: '', sleeve: '', design_type: '', fit: '', garment_type: 'Camiseta', observations: '', sewing_price: 0, sale_price: 0 }])}
-              className="bg-foreground-main text-background px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all"
+        <div className="space-y-6">
+
+          {/* HEADER */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+            <div>
+              <h4 className="font-black text-2xl tracking-tight text-foreground-main">
+                Uniformes
+              </h4>
+
+              <p className="text-[10px] uppercase tracking-[0.3em] font-black text-foreground-muted mt-1">
+                Gestión de prendas del pedido
+              </p>
+            </div>
+
+            <button
+              onClick={() =>
+                setItems([
+                  ...items,
+                  {
+                    item_name: '',
+                    player_name: '',
+                    number: '',
+                    size: '',
+                    sleeve: '',
+                    design_type: '',
+                    fit: '',
+                    garment_type: 'Camiseta',
+                    observations: '',
+                    sewing_price: 0,
+                    sale_price: 0
+                  }
+                ])
+              }
+              className="h-12 px-6 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-[0.25em] hover:scale-[1.03] transition-all shadow-xl shadow-accent/20"
             >
-              + Agregar
+              + Agregar Uniforme
             </button>
           </div>
-          <div className="overflow-x-auto border border-border-custom rounded-[24px] bg-surface-hover">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="bg-surface-hover text-[9px] uppercase font-black tracking-[0.2em] text-foreground-muted">
-                  <th className="py-4 px-4">Nombre</th>
-                  <th className="py-4 px-4 text-center">N°</th>
-                  <th className="py-4 px-4 text-center">Talla</th>
-                  <th className="py-4 px-4 text-center">Manga</th>
-                  <th className="py-4 px-4 text-center">Tipo</th>
-                  <th className="py-4 px-4 text-center">Horma</th>
-                  <th className="py-4 px-4">Observaciones</th>
-                  <th className="py-4 px-4 text-right"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-custom">
-                {items.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-surface-hover transition-colors">
-                    <td className="py-3 px-4"><input type="text" value={item.player_name || ''} onChange={e => { const newItems = [...items]; newItems[idx].player_name = e.target.value; setItems(newItems); }} className="w-full bg-transparent outline-none font-bold text-foreground-main" placeholder="Nombre..." /></td>
-                    <td className="py-3 px-4"><input type="text" value={item.number || ''} onChange={e => { const newItems = [...items]; newItems[idx].number = e.target.value; setItems(newItems); }} className="w-12 bg-transparent outline-none text-foreground-muted text-center" placeholder="00" /></td>
-                    <td className="py-3 px-4">
-                      <select 
-                        value={item.size || ''} 
-                        onChange={e => { 
-                          const newItems = [...items]; 
-                          newItems[idx] = { ...newItems[idx], size: e.target.value }; 
-                          setItems(newItems); 
-                        }} 
-                        className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase text-center"
-                      >
-                        <option value="">-</option>
-                        {SIZES.map(size => (
-                          <option key={size} value={size}>
-                            {size}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="py-3 px-4">
-                      <select 
-                        value={item.sleeve || 'MANGA'} 
-                        onChange={e => { const newItems = [...items]; newItems[idx].sleeve = e.target.value; setItems(newItems); }} 
-                        className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase text-center"
-                      >
-                        <option className="bg-background">MANGA</option>
-                        <option className="bg-background">Corta</option>
-                        <option className="bg-background">Larga</option>
-                      </select>
-                    </td>
-                    <td className="py-3 px-4">
-                      <select 
-                        value={item.design_type || 'TIPO'} 
-                        onChange={e => { const newItems = [...items]; newItems[idx].design_type = e.target.value; setItems(newItems); }} 
-                        className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase text-center"
-                      >
-                        <option className="bg-background">TIPO</option>
-                        <option className="bg-background">Jugador</option>
-                        <option className="bg-background">Portero</option>
-                      </select>
-                    </td>
-                    <td className="py-3 px-4">
-                      <select 
-                        value={item.fit || 'HORMA'} 
-                        onChange={e => { const newItems = [...items]; newItems[idx].fit = e.target.value; setItems(newItems); }} 
-                        className="bg-transparent outline-none text-foreground-muted font-bold cursor-pointer text-[10px] uppercase text-center"
-                      >
-                        <option className="bg-background">HORMA</option>
-                        <option className="bg-background">Hombre</option>
-                        <option className="bg-background">Dama</option>
-                      </select>
-                    </td>
-                    <td className="py-3 px-4"><input type="text" value={item.observations || ''} onChange={e => { const newItems = [...items]; newItems[idx].observations = e.target.value; setItems(newItems); }} className="w-full bg-transparent outline-none text-foreground-muted text-[10px]" placeholder="Obs..." /></td>
-                    <td className="py-3 px-4 text-right">
-                      <button 
-                        onClick={() => setItems(items.filter((_, i) => i !== idx))}
-                        className="text-accent hover:text-accent/80 transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
+
+          {/* TABLE CARD */}
+          <div className="overflow-hidden rounded-[32px] border border-border-custom bg-surface shadow-2xl shadow-black/5">
+
+            <div className="overflow-x-auto">
+
+              <table className="w-full min-w-[1100px]">
+
+                {/* HEAD */}
+                <thead className="bg-surface-hover border-b border-border-custom">
+
+                  <tr className="text-[9px] uppercase font-black tracking-[0.25em] text-foreground-muted">
+
+                    <th className="py-5 px-5 text-left">
+                      Jugador
+                    </th>
+
+                    <th className="py-5 px-4 text-center">
+                      Número
+                    </th>
+
+                    <th className="py-5 px-4 text-center">
+                      Talla
+                    </th>
+
+                    <th className="py-5 px-4 text-center">
+                      Manga
+                    </th>
+
+                    <th className="py-5 px-4 text-center">
+                      Tipo
+                    </th>
+
+                    <th className="py-5 px-4 text-center">
+                      Horma
+                    </th>
+
+                    <th className="py-5 px-5 text-left">
+                      Observaciones
+                    </th>
+
+                    <th className="py-5 px-5 text-right">
+                      Acción
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                {/* BODY */}
+                <tbody className="divide-y divide-border-custom">
+
+                  {items.map((item, idx) => (
+
+                    <tr
+                      key={idx}
+                      className="group hover:bg-surface-hover/60 transition-all"
+                    >
+
+                      {/* NOMBRE */}
+                      <td className="py-4 px-5">
+
+                        <input
+                          type="text"
+                          value={item.player_name || ''}
+                          onChange={e => {
+                            const newItems = [...items];
+                            newItems[idx].player_name = e.target.value;
+                            setItems(newItems);
+                          }}
+                          className="w-full h-11 rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background px-4 outline-none font-bold text-sm text-foreground-main transition-all"
+                          placeholder="Nombre del jugador"
+                        />
+                      </td>
+
+                      {/* NUMERO */}
+                      <td className="py-4 px-4">
+
+                        <input
+                          type="text"
+                          value={item.number || ''}
+                          onChange={e => {
+                            const newItems = [...items];
+                            newItems[idx].number = e.target.value;
+                            setItems(newItems);
+                          }}
+                          className="w-16 h-11 mx-auto rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none text-center font-black text-foreground-main transition-all"
+                          placeholder="00"
+                        />
+                      </td>
+
+                      {/* TALLA */}
+                      <td className="py-4 px-4">
+
+                        <select
+                          value={item.size || ''}
+                          onChange={e => {
+                            const newItems = [...items];
+                            newItems[idx] = {
+                              ...newItems[idx],
+                              size: e.target.value
+                            };
+                            setItems(newItems);
+                          }}
+                          className="h-11 min-w-[90px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-center text-[11px] font-black uppercase text-foreground-main transition-all"
+                        >
+                          <option value="">Talla</option>
+
+                          {SIZES.map(size => (
+                            <option key={size} value={size}>
+                              {size}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+
+                      {/* MANGA */}
+                      <td className="py-4 px-4">
+
+                        <select
+                          value={item.sleeve || ''}
+                          onChange={e => {
+                            const newItems = [...items];
+                            newItems[idx].sleeve = e.target.value;
+                            setItems(newItems);
+                          }}
+                          className="h-11 min-w-[110px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-center text-[11px] font-black uppercase text-foreground-main transition-all"
+                        >
+                          <option value="">Manga</option>
+                          <option value="Corta">Corta</option>
+                          <option value="Larga">Larga</option>
+                        </select>
+                      </td>
+
+                      {/* TIPO */}
+                      <td className="py-4 px-4">
+
+                        <select
+                          value={item.design_type || ''}
+                          onChange={e => {
+                            const newItems = [...items];
+                            newItems[idx].design_type = e.target.value;
+                            setItems(newItems);
+                          }}
+                          className="h-11 min-w-[120px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-center text-[11px] font-black uppercase text-foreground-main transition-all"
+                        >
+                          <option value="">Tipo</option>
+                          <option value="Jugador">Jugador</option>
+                          <option value="Portero">Portero</option>
+                        </select>
+                      </td>
+
+                      {/* HORMA */}
+                      <td className="py-4 px-4">
+
+                        <select
+                          value={item.fit || ''}
+                          onChange={e => {
+                            const newItems = [...items];
+                            newItems[idx].fit = e.target.value;
+                            setItems(newItems);
+                          }}
+                          className="h-11 min-w-[120px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-center text-[11px] font-black uppercase text-foreground-main transition-all"
+                        >
+                          <option value="">Horma</option>
+                          <option value="Hombre">Hombre</option>
+                          <option value="Dama">Dama</option>
+                        </select>
+                      </td>
+
+                      {/* OBS */}
+                      <td className="py-4 px-5">
+
+                        <input
+                          type="text"
+                          value={item.observations || ''}
+                          onChange={e => {
+                            const newItems = [...items];
+                            newItems[idx].observations = e.target.value;
+                            setItems(newItems);
+                          }}
+                          className="w-full h-11 rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background px-4 outline-none text-sm text-foreground-muted transition-all"
+                          placeholder="Observaciones..."
+                        />
+                      </td>
+
+                      {/* DELETE */}
+                      <td className="py-4 px-5 text-right">
+
+                        <button
+                          onClick={() =>
+                            setItems(
+                              items.filter((_, i) => i !== idx)
+                            )
+                          }
+                          className="w-11 h-11 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center ml-auto"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {/* EMPTY */}
+                  {items.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="py-20 text-center"
+                      >
+                        <div className="space-y-4">
+                          <Shirt
+                            size={42}
+                            className="mx-auto text-foreground-muted/20"
+                          />
+
+                          <div>
+                            <p className="text-sm font-black text-foreground-main">
+                              No hay uniformes agregados
+                            </p>
+
+                            <p className="text-[10px] uppercase tracking-[0.25em] font-black text-foreground-muted mt-2">
+                              Agrega el primer uniforme
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -6642,6 +6819,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
             
           </div>
         </motion.div>
+
       ) : search ? (
         // ❌ BUSCÓ PERO NO EXISTE
         <div className="py-32 text-center bg-surface border border-border-custom shadow-2xl">
