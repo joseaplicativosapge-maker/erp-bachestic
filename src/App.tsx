@@ -1093,12 +1093,13 @@ function OrdersList({
             >
               {[
                 'Todos',
-                'Abono pendiente',
                 'Abono confirmado',
                 'En diseño',
                 'Versión enviada',
                 'Corrección solicitada',
                 'Diseño aprobado',
+                'En cuadro',
+                'En montaje',
                 'En impresión',
                 'En sublimación',
                 'En corte',
@@ -2516,7 +2517,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
               value={formData.status}
               onChange={e => setFormData({...formData, status: e.target.value as OrderStatus})}
               options={[
-                { value: 'Abono pendiente', label: 'Abono pendiente' },
                 { value: 'Abono confirmado', label: 'Abono confirmado' },
                 { value: 'En diseño', label: 'En diseño' },
                 { value: 'Versión enviada', label: 'Versión enviada' },
@@ -4721,6 +4721,8 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     'Corrección solicitada',
     'Diseño aprobado',
     'Arte final cargado',
+    'En cuadro',
+    'En montaje',
     'En impresión',
     'En sublimación',
     'En corte',
