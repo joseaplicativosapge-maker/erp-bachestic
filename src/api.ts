@@ -222,4 +222,24 @@ export const api = {
     });
     return handleResponse(res);
   },
+  
+  // Sube una imagen para una zona del diseño de uniforme
+  uploadUniformZone: async (orderId: number, zoneId: string, file: File): Promise<{ file_path: string }> => {
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('zone_id', zoneId);
+    const res = await fetch(`${API_BASE}/orders/${orderId}/uniform-zone`, {
+      method: 'POST',
+      body: formData,
+    });
+    return handleResponse(res);
+  },
+
+  // Elimina la imagen de una zona
+  deleteUniformZone: async (orderId: number, zoneId: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/uniform-zone/${zoneId}`, {
+      method: 'DELETE',
+    });
+    await handleResponse(res);
+  }
 };

@@ -70,6 +70,7 @@ export interface Order {
   is_reposition?: boolean;
   reposition_reason?: string;
   is_priority?: boolean;
+  uniform_zones?: Record<string, string>;
 }
 
 export interface Client {

@@ -147,6 +147,16 @@ async function startServer() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+     CREATE TABLE IF NOT EXISTS uniform_zone_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id INTEGER NOT NULL,
+        zone_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(order_id) REFERENCES orders(id),
+        UNIQUE(order_id, zone_id)
+      );
+
     -- Seed initial admin if no employees exist
     INSERT INTO employees (name, role, pin) 
     SELECT 'Administrador', 'Admin', '1234'
@@ -257,8 +267,6 @@ async function startServer() {
     }
   });
   const upload = multer({ storage });
-
-  // ─── Employee Routes ───────────────────────────────────────────────────────
 
   app.post('/api/login', (req, res) => {
     const { pin } = req.body;
@@ -461,8 +469,12 @@ async function startServer() {
     const versions   = db.prepare('SELECT * FROM design_versions WHERE order_id = ? ORDER BY version_number DESC').all(req.params.id);
     const references = db.prepare('SELECT * FROM design_references WHERE order_id = ?').all(req.params.id);
     const history    = db.prepare('SELECT * FROM order_history WHERE order_id = ? ORDER BY created_at DESC').all(req.params.id);
+    const uniformZones = db.prepare('SELECT zone_id, file_path FROM uniform_zone_images WHERE order_id = ?').all(req.params.id);
+    
+    const uniformZonesMap: Record<string, string> = {};
+    uniformZones.forEach((z: any) => { uniformZonesMap[z.zone_id] = z.file_path; });
 
-    res.json({ ...order, items, versions, references, history });
+    res.json({ ...order, items, versions, references, history, uniform_zones: uniformZonesMap });
   });
 
   app.post('/api/orders', (req, res) => {
@@ -483,7 +495,7 @@ async function startServer() {
 
     res.json({ id: order_id, order_number });
   });
-
+  
   app.put('/api/orders/:id', (req, res) => {
     const {
       client_id, client_name, client_doc, client_doc_type, client_phone,
@@ -850,6 +862,41 @@ app.get('/api/orders/:id/assignments', (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ─── Guardar diseño de uniforme por zona ─────────────────────────────────────
+// POST /api/orders/:id/uniform-zone
+// body: multipart con campo "image" (File) y "zone_id" (string)
+  app.post('/api/orders/:id/uniform-zone', upload.single('image'), (req: MulterRequest, res) => {
+    const { zone_id } = req.body;
+    const file_path   = req.file ? `/uploads/${req.file.filename}` : null;
+    if (!zone_id || !file_path) return res.status(400).json({ error: 'zone_id e image son requeridos' });
+
+    // Upsert: si ya existe la zona para esa orden, actualiza; si no, inserta
+    const existing = db.prepare(
+      'SELECT id FROM uniform_zone_images WHERE order_id = ? AND zone_id = ?'
+    ).get(req.params.id, zone_id);
+
+    if (existing) {
+      db.prepare(
+        'UPDATE uniform_zone_images SET file_path = ? WHERE order_id = ? AND zone_id = ?'
+      ).run(file_path, req.params.id, zone_id);
+    } else {
+      db.prepare(
+        'INSERT INTO uniform_zone_images (order_id, zone_id, file_path) VALUES (?, ?, ?)'
+      ).run(req.params.id, zone_id, file_path);
+    }
+
+    res.json({ success: true, file_path });
+  });
+
+  // DELETE /api/orders/:id/uniform-zone/:zone_id
+  app.delete('/api/orders/:id/uniform-zone/:zone_id', (req, res) => {
+    db.prepare(
+      'DELETE FROM uniform_zone_images WHERE order_id = ? AND zone_id = ?'
+    ).run(req.params.id, req.params.zone_id);
+    res.json({ success: true });
+});
+
 
   // ─── Fallbacks ─────────────────────────────────────────────────────────────
 

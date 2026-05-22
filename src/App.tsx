@@ -63,6 +63,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Toaster, toast } from 'sonner';
 import QRCode from "react-qr-code";
+import UniformDesigner from './UniformDesigner';
 
 import { 
   BarChart, 
@@ -3573,7 +3574,19 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               )}
             </div>
           </div>
-
+          
+          {/* Diseño de Uniformes */}
+          <UniformDesignerSection
+            order={order}
+            user={user}
+            readOnly={
+              ['En cuadro','En montaje','En impresión','En sublimación',
+              'En corte','En confección','En empaque','En despacho','Entregado']
+                .includes(order.status)
+            }
+            onSaved={() => { loadOrder(); onUpdate(); }}
+          />
+          
           <div className="bg-surface rounded-[48px] border border-border-custom shadow-2xl overflow-hidden relative">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 blur-[100px] -mr-32 -mt-32"></div>
             <div className="p-12 border-b border-border-custom flex items-center justify-between relative z-10">
@@ -6415,6 +6428,18 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
                 </div>
               )}
             
+            {/* Diseño de Uniformes — editable solo antes de En cuadro */}
+            {foundOrder && (
+              <div className="col-span-full">
+                <UniformDesignerSection
+                  order={foundOrder}
+                  user={user}
+                  readOnly={isReadOnlyItems || false}
+                  onSaved={handleSearch}
+                />
+              </div>
+            )}
+
             {/* Detalle de Uniformes */}
             {editingItems.length > 0 && (canFillItems || isReadOnlyItems) && (
               <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl col-span-full">
@@ -9429,5 +9454,97 @@ function ConfectionReport({ key }: { key?: string }) {
         </div>
       )}
     </motion.div>
+  );
+}
+
+// ─── Sección Diseño de Uniformes ─────────────────────────────────────────────
+function UniformDesignerSection({
+  order,
+  user,
+  readOnly,
+  onSaved,
+}: {
+  order: Order;
+  user?: User;
+  readOnly: boolean;
+  onSaved?: () => void;
+}) {
+  // Archivos pendientes de subir: zoneId → File
+  const [pendingFiles, setPendingFiles] = useState<Record<string, File | null>>({});
+  const [isSaving, setIsSaving]         = useState(false);
+  const [saved, setSaved]               = useState<Record<string, string>>(order.uniform_zones || {});
+
+  const handleZoneChange = (zoneId: string, file: File | null, _previewUrl: string | null) => {
+    setPendingFiles(prev => ({ ...prev, [zoneId]: file }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const entries = Object.entries(pendingFiles);
+      for (const [zoneId, file] of entries) {
+        if (file) {
+          const result = await api.uploadUniformZone(order.id, zoneId, file);
+          setSaved(prev => ({ ...prev, [zoneId]: result.file_path }));
+        } else if (file === null && saved[zoneId]) {
+          // Si explícitamente se eliminó
+          await api.deleteUniformZone(order.id, zoneId);
+          setSaved(prev => { const n = { ...prev }; delete n[zoneId]; return n; });
+        }
+      }
+      setPendingFiles({});
+      toast.success('Diseño de uniformes guardado');
+      onSaved?.();
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al guardar el diseño de uniformes');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const hasPending = Object.keys(pendingFiles).length > 0;
+
+  // Merge: saved del servidor + previews locales pendientes
+  const mergedLogos: Record<string, string> = { ...saved };
+  // Los previews ya los maneja UniformDesigner internamente vía savedLogos prop
+
+  return (
+    <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+            <Shirt className="text-accent" size={24} />
+          </div>
+          <div>
+            <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px]">
+              Diseño de Uniformes
+            </h4>
+            <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
+              {readOnly ? 'Vista de composición final' : 'Carga los logos y elementos por zona'}
+            </p>
+          </div>
+        </div>
+
+        {!readOnly && hasPending && (
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-accent text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-2 hover:scale-105 transition-all shadow-xl shadow-accent/20 disabled:opacity-50"
+          >
+            {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+            Guardar cambios
+          </button>
+        )}
+      </div>
+
+      <UniformDesigner
+        savedLogos={mergedLogos}
+        readOnly={readOnly}
+        onZoneChange={!readOnly ? handleZoneChange : undefined}
+        playerName="JUGADOR"
+        playerNumber="10"
+      />
+    </div>
   );
 }
