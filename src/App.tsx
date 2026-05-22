@@ -1669,10 +1669,14 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientTeams, setClientTeams] = useState<Team[]>([]);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
-  // ✅ Para cliente nuevo: nombre del equipo a crear (se crea en handleSubmit)
   const [selectedTeam, setSelectedTeam] = useState<{ id?: number; name: string } | null>(null);
   const [newTeamName, setNewTeamName] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+
+  // ── Filtro y paginación de productos ──
+  const [productSearch, setProductSearch] = useState('');
+  const [productPage, setProductPage] = useState(1);
+  const PRODUCTS_PER_PAGE = 6;
 
   const [formData, setFormData] = useState({
     client_id: undefined as number | undefined,
@@ -1802,7 +1806,6 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
       let finalClientId = formData.client_id;
       let finalTeamId = formData.team_id;
 
-      // ✅ 1. Crear cliente si es nuevo
       if (isCreatingClient) {
         const newClient = await api.createClient({
           name: formData.client_name,
@@ -1814,8 +1817,6 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
         });
         finalClientId = newClient.id;
 
-        // ✅ 2. Crear equipo si se escribió uno, usando el ID del cliente recién creado
-      
         if (selectedTeam && finalClientId) {
           try {
             const newTeam = await api.createClientTeam(finalClientId, { name: selectedTeam.name });
@@ -1825,7 +1826,6 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
           }
         }
       } else {
-        // si es nuevo (sin ID) crearlo
         if (selectedTeam) {
           if (selectedTeam.id) {
             finalTeamId = selectedTeam.id;
@@ -1867,8 +1867,22 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
     );
   }
 
-  // Equipos para cliente existente
   const teamsToShow = clientTeams;
+
+  // ── Productos filtrados y paginados ──
+  const filteredProductKeys = Object.keys(quantities).filter(name => {
+    const product = products.find(p => p.name === name);
+    const code = (product as any)?.code || '';
+    return (
+      name.toLowerCase().includes(productSearch.toLowerCase()) ||
+      code.toLowerCase().includes(productSearch.toLowerCase())
+    );
+  });
+  const totalProductPages = Math.ceil(filteredProductKeys.length / PRODUCTS_PER_PAGE);
+  const paginatedProductKeys = filteredProductKeys.slice(
+    (productPage - 1) * PRODUCTS_PER_PAGE,
+    productPage * PRODUCTS_PER_PAGE
+  );
 
   return (
     <Modal
@@ -1993,7 +2007,7 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
               </div>
             ) : (
               <div className="space-y-8">
-                {/* HEADER */}
+                {/* HEADER CLIENTE */}
                 <div className="flex justify-between items-center bg-accent/5 p-6 rounded-[24px] border border-accent/20">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-white shadow-lg shadow-accent/20">
@@ -2009,49 +2023,48 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                     </div>
                   </div>
                   <div className="flex items-center gap-6">
-                    {/* Selector de equipo solo para cliente existente */}
                     {!isCreatingClient && (
-                        teamsToShow.length > 0 ? (
-                          <div className="w-48">
-                            <Select
-                              label="Equipo"
-                              value={formData.team_id?.toString() || ''}
-                              onChange={e => setFormData({...formData, team_id: e.target.value ? Number(e.target.value) : undefined})}
-                              options={[
-                                { value: '', label: 'Sin Equipo' },
-                                ...teamsToShow.map(t => ({ value: t.id.toString(), label: t.name }))
-                              ]}
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-56">
-                            {newTeamName ? (
-                              <div className="flex items-center justify-between px-4 py-2 bg-accent/10 border border-accent/20 rounded-2xl">
-                                <div className="flex items-center gap-2">
-                                  <Users size={13} className="text-accent" />
-                                  <p className="font-black text-sm text-foreground-main uppercase tracking-wide">{newTeamName}</p>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => { setNewTeamName(null); setSelectedTeam(null); }}
-                                  className="text-foreground-muted hover:text-accent transition-colors"
-                                >
-                                  <X size={14} />
-                                </button>
+                      teamsToShow.length > 0 ? (
+                        <div className="w-48">
+                          <Select
+                            label="Equipo"
+                            value={formData.team_id?.toString() || ''}
+                            onChange={e => setFormData({...formData, team_id: e.target.value ? Number(e.target.value) : undefined})}
+                            options={[
+                              { value: '', label: 'Sin Equipo' },
+                              ...teamsToShow.map(t => ({ value: t.id.toString(), label: t.name }))
+                            ]}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-56">
+                          {newTeamName ? (
+                            <div className="flex items-center justify-between px-4 py-2 bg-accent/10 border border-accent/20 rounded-2xl">
+                              <div className="flex items-center gap-2">
+                                <Users size={13} className="text-accent" />
+                                <p className="font-black text-sm text-foreground-main uppercase tracking-wide">{newTeamName}</p>
                               </div>
-                            ) : (
-                              <NewTeamInline
-                                clientId={formData.client_id}
-                                onSelected={(team) => {
-                                  setSelectedTeam(team);
-                                  setNewTeamName(team.name);
-                                  if (team.id) setFormData(prev => ({ ...prev, team_id: team.id }));
-                                }}
-                              />
-                            )}
-                          </div>
-                        )
-                      )}
+                              <button
+                                type="button"
+                                onClick={() => { setNewTeamName(null); setSelectedTeam(null); }}
+                                className="text-foreground-muted hover:text-accent transition-colors"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ) : (
+                            <NewTeamInline
+                              clientId={formData.client_id}
+                              onSelected={(team) => {
+                                setSelectedTeam(team);
+                                setNewTeamName(team.name);
+                                if (team.id) setFormData(prev => ({ ...prev, team_id: team.id }));
+                              }}
+                            />
+                          )}
+                        </div>
+                      )
+                    )}
                     <button
                       onClick={() => {
                         setSelectedClient(null);
@@ -2133,36 +2146,35 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                       />
                     </div>
 
-                    {/* ✅ EQUIPO OPCIONAL */}
+                    {/* EQUIPO OPCIONAL */}
                     <div className="md:col-span-2 pt-4 border-t border-border-custom space-y-3">
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted flex items-center gap-2">
                         <Users size={13} className="text-accent" /> Equipo (opcional)
                       </p>
-
                       {newTeamName ? (
-                      <div className="flex items-center justify-between px-5 py-3 bg-accent/10 border border-accent/20 rounded-2xl">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-accent/20 rounded-xl flex items-center justify-center">
-                            <Users size={14} className="text-accent" />
+                        <div className="flex items-center justify-between px-5 py-3 bg-accent/10 border border-accent/20 rounded-2xl">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-accent/20 rounded-xl flex items-center justify-center">
+                              <Users size={14} className="text-accent" />
+                            </div>
+                            <p className="font-black text-sm text-foreground-main uppercase tracking-wide">{newTeamName}</p>
                           </div>
-                          <p className="font-black text-sm text-foreground-main uppercase tracking-wide">{newTeamName}</p>
+                          <button
+                            type="button"
+                            onClick={() => { setNewTeamName(null); setSelectedTeam(null); }}
+                            className="text-foreground-muted hover:text-accent transition-colors p-1"
+                          >
+                            <X size={16} />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => { setNewTeamName(null); setSelectedTeam(null); }}
-                          className="text-foreground-muted hover:text-accent transition-colors p-1"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    ) : (
-                      <NewTeamInline
-                        onSelected={(team) => {
-                          setSelectedTeam(team);
-                          setNewTeamName(team.name);
-                        }}
-                      />
-                    )}
+                      ) : (
+                        <NewTeamInline
+                          onSelected={(team) => {
+                            setSelectedTeam(team);
+                            setNewTeamName(team.name);
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
                 )}
@@ -2170,25 +2182,128 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                 {/* CANTIDADES */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-border-custom">
                   <div className="space-y-6">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted mb-4">Cantidades por Prenda</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {Object.keys(quantities).map(type => (
-                        <div key={type} className="bg-surface-hover p-4 rounded-2xl border border-border-custom flex items-center justify-between">
-                          <span className="text-xs font-bold text-foreground-main">{type}</span>
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => setQuantities(prev => ({ ...prev, [type]: Math.max(0, prev[type] - 1) }))}
-                              className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-foreground-muted hover:text-accent transition-colors"
-                            >-</button>
-                            <span className="w-8 text-center font-black text-foreground-main">{quantities[type]}</span>
-                            <button
-                              onClick={() => setQuantities(prev => ({ ...prev, [type]: prev[type] + 1 }))}
-                              className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-foreground-muted hover:text-accent transition-colors"
-                            >+</button>
-                          </div>
-                        </div>
-                      ))}
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted mb-2">Cantidades por Prenda</h4>
+
+                    {/* Buscador de productos */}
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted" size={16} />
+                      <input
+                        type="text"
+                        value={productSearch}
+                        onChange={e => { setProductSearch(e.target.value); setProductPage(1); }}
+                        placeholder="Filtrar por nombre o código..."
+                        className="w-full pl-10 pr-10 py-3 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main text-sm placeholder:text-foreground-muted/30 transition-all"
+                      />
+                      {productSearch && (
+                        <button
+                          onClick={() => { setProductSearch(''); setProductPage(1); }}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
                     </div>
+
+                    {/* Grid de productos paginados */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {paginatedProductKeys.map(type => {
+                        const product = products.find(p => p.name === type) as any;
+                        const code = product?.code || '';
+                        return (
+                          <div
+                            key={type}
+                            className={cn(
+                              "bg-surface-hover p-4 rounded-2xl border transition-all space-y-3",
+                              quantities[type] > 0
+                                ? "border-accent/30 bg-accent/5"
+                                : "border-border-custom"
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-2 min-w-0">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-black text-foreground-main leading-tight">{type}</p>
+                                {code && (
+                                  <p className="text-[9px] font-black uppercase tracking-widest text-accent mt-0.5">{code}</p>
+                                )}
+                              </div>
+                              {quantities[type] > 0 && (
+                                <span className="shrink-0 text-[9px] font-black bg-accent text-white px-2 py-0.5 rounded-full">
+                                  {quantities[type]}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 justify-end">
+                              <button
+                                onClick={() => setQuantities(prev => ({ ...prev, [type]: Math.max(0, prev[type] - 1) }))}
+                                className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-foreground-muted hover:text-accent transition-colors border border-border-custom font-black"
+                              >−</button>
+                              <span className="w-8 text-center font-black text-foreground-main">{quantities[type]}</span>
+                              <button
+                                onClick={() => setQuantities(prev => ({ ...prev, [type]: prev[type] + 1 }))}
+                                className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-foreground-muted hover:text-accent transition-colors border border-border-custom font-black"
+                              >+</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {paginatedProductKeys.length === 0 && (
+                        <div className="col-span-2 text-center py-10 bg-surface-hover rounded-2xl border border-dashed border-border-custom">
+                          <Search size={28} className="mx-auto text-foreground-muted/20 mb-3" />
+                          <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted/50">
+                            Sin resultados para "{productSearch}"
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Paginación */}
+                    {totalProductPages > 1 && (
+                      <div className="flex items-center justify-between pt-2">
+                        <button
+                          onClick={() => setProductPage(p => Math.max(1, p - 1))}
+                          disabled={productPage === 1}
+                          className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-border-custom text-foreground-muted hover:text-foreground-main hover:border-accent/40 disabled:opacity-30 transition-all"
+                        >
+                          ← Ant.
+                        </button>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+                          Pág. {productPage} / {totalProductPages}
+                          <span className="text-foreground-muted/50 ml-2">({filteredProductKeys.length} productos)</span>
+                        </span>
+                        <button
+                          onClick={() => setProductPage(p => Math.min(totalProductPages, p + 1))}
+                          disabled={productPage === totalProductPages}
+                          className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-border-custom text-foreground-muted hover:text-foreground-main hover:border-accent/40 disabled:opacity-30 transition-all"
+                        >
+                          Sig. →
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Resumen de seleccionados */}
+                    {Object.values(quantities).some(q => (q as number) > 0) && (
+                      <div className="pt-4 border-t border-border-custom space-y-2">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Seleccionados</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(quantities)
+                            .filter(([_, qty]) => (qty as number) > 0)
+                            .map(([name, qty]) => {
+                              const product = products.find(p => p.name === name) as any;
+                              return (
+                                <div key={name} className="flex items-center gap-2 px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-full">
+                                  <span className="text-[10px] font-black text-foreground-main">{name}</span>
+                                  {product?.code && (
+                                    <span className="text-[9px] font-black text-accent">{product.code}</span>
+                                  )}
+                                  <span className="text-[10px] font-black text-white bg-accent rounded-full w-5 h-5 flex items-center justify-center">{qty}</span>
+                                </div>
+                              );
+                            })
+                          }
+                        </div>
+                      </div>
+                    )}
 
                     {/* COSTOS EN TIEMPO REAL */}
                     {Object.values(quantities).some(q => (q as number) > 0) && (() => {
@@ -2356,20 +2471,27 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
                     <thead>
                       <tr className="bg-surface-hover text-[9px] uppercase font-black tracking-[0.2em] text-foreground-muted">
                         <th className="py-5 px-6">Prenda</th>
+                        <th className="py-5 px-6">Código</th>
                         <th className="py-5 px-6 text-center">Cant.</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-custom">
-                      {groupedList.map((group, idx) => (
-                        <tr key={idx} className="hover:bg-surface-hover transition-colors">
-                          <td className="py-4 px-6 whitespace-nowrap">
-                            <span className="text-foreground-muted font-bold text-[10px] uppercase">{group.garment_type}</span>
-                          </td>
-                          <td className="py-4 px-6 text-center whitespace-nowrap">
-                            <span className="font-black text-foreground-main text-[10px]">{group.quantity}</span>
-                          </td>
-                        </tr>
-                      ))}
+                      {groupedList.map((group, idx) => {
+                        const product = products.find(p => p.name === group.garment_type) as any;
+                        return (
+                          <tr key={idx} className="hover:bg-surface-hover transition-colors">
+                            <td className="py-4 px-6 whitespace-nowrap">
+                              <span className="text-foreground-muted font-bold text-[10px] uppercase">{group.garment_type}</span>
+                            </td>
+                            <td className="py-4 px-6 whitespace-nowrap">
+                              <span className="text-accent font-black text-[10px] uppercase tracking-widest">{product?.code || '—'}</span>
+                            </td>
+                            <td className="py-4 px-6 text-center whitespace-nowrap">
+                              <span className="font-black text-foreground-main text-[10px]">{group.quantity}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
