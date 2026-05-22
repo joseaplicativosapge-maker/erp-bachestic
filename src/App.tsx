@@ -2545,10 +2545,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
               <h4 className="font-black text-2xl tracking-tight text-foreground-main">
                 Uniformes
               </h4>
-
-              <p className="text-[10px] uppercase tracking-[0.3em] font-black text-foreground-muted mt-1">
-                Gestión de prendas del pedido
-              </p>
             </div>
 
             <button
