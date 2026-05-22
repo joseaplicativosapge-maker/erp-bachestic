@@ -6697,13 +6697,17 @@ function ProductManagement({}: { key?: string }) {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [includeInactive, setIncludeInactive] = useState(false);
 
-  // ✅ CONFIRMACIÓN
   const [showConfirmToggle, setShowConfirmToggle] = useState(false);
   const [productToToggle, setProductToToggle] = useState<Product | null>(null);
 
-  // PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 9;
+
+  const [errors, setErrors] = useState({
+    code: '',
+    name: '',
+    confeccion: '',
+  });
 
   const [newProduct, setNewProduct] = useState({
     code: '',
@@ -6713,13 +6717,11 @@ function ProductManagement({}: { key?: string }) {
     sewing_cost: 0,
     active: true,
 
-    // CAMISETA
     price_filetes: 0,
     price_despuntes: 0,
     price_collarin: 0,
     price_dobladillo_remate: 0,
 
-    // PANTALONETA
     price_filete_p: 0,
     price_despuntes_p: 0,
     price_caucho: 0,
@@ -6732,7 +6734,6 @@ function ProductManagement({}: { key?: string }) {
     loadProducts(includeInactive);
   }, [includeInactive]);
 
-  // ✅ SUMATORIA AUTOMÁTICA
   useEffect(() => {
     const camisetaTotal =
       Number(newProduct.price_filetes || 0) +
@@ -6748,11 +6749,8 @@ function ProductManagement({}: { key?: string }) {
       Number(newProduct.price_collarin_p || 0) +
       Number(newProduct.price_remate || 0);
 
-    // ✅ TOTAL GENERAL
-    const totalGeneral =
-      camisetaTotal + pantalonetaTotal;
+    const totalGeneral = camisetaTotal + pantalonetaTotal;
 
-    // ✅ evitar loop infinito
     if (newProduct.sewing_cost !== totalGeneral) {
       setNewProduct((prev) => ({
         ...prev,
@@ -6764,7 +6762,6 @@ function ProductManagement({}: { key?: string }) {
     newProduct.price_despuntes,
     newProduct.price_collarin,
     newProduct.price_dobladillo_remate,
-
     newProduct.price_filete_p,
     newProduct.price_despuntes_p,
     newProduct.price_caucho,
@@ -6784,6 +6781,14 @@ function ProductManagement({}: { key?: string }) {
       setLoading(false);
     }
   };
+
+  const ErrorMessage = ({ message }: { message: string }) => (
+    <div className="mt-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20">
+      <p className="text-[10px] font-black uppercase tracking-widest text-red-500">
+        {message}
+      </p>
+    </div>
+  );
 
   const resetForm = () => {
     setNewProduct({
@@ -6806,10 +6811,60 @@ function ProductManagement({}: { key?: string }) {
       price_collarin_p: 0,
       price_remate: 0,
     });
+
+    setErrors({ code: '', name: '', confeccion: '' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const newErrors = {
+      code: '',
+      name: '',
+      confeccion: '',
+    };
+
+    // VALIDACIONES BÁSICAS
+    if (!newProduct.code.trim()) newErrors.code = 'Campo obligatorio';
+    if (!newProduct.name.trim()) newErrors.name = 'Campo obligatorio';
+
+    const codeExists = products.some(
+      (p) =>
+        (p as any).code?.toLowerCase().trim() === newProduct.code.toLowerCase().trim() &&
+        p.id !== editingProduct?.id
+    );
+
+    if (codeExists) newErrors.code = 'Código ya registrado';
+
+    const nameExists = products.some(
+      (p) =>
+        p.name?.toLowerCase().trim() === newProduct.name.toLowerCase().trim() &&
+        p.id !== editingProduct?.id
+    );
+
+    if (nameExists) newErrors.name = 'Producto ya existe';
+
+    // 🔥 VALIDACIÓN CONFECCIÓN > 0
+    const confeccionFields = [
+      newProduct.price_filetes,
+      newProduct.price_despuntes,
+      newProduct.price_collarin,
+      newProduct.price_dobladillo_remate,
+      newProduct.price_filete_p,
+      newProduct.price_despuntes_p,
+      newProduct.price_caucho,
+      newProduct.price_sentar_caucho,
+      newProduct.price_collarin_p,
+      newProduct.price_remate,
+    ];
+
+    if (confeccionFields.some((v) => Number(v) <= 0)) {
+      newErrors.confeccion = 'Todos los costos de confección deben ser mayores a 0';
+    }
+
+    setErrors(newErrors);
+
+    if (newErrors.code || newErrors.name || newErrors.confeccion) return;
 
     try {
       if (editingProduct) {
@@ -6823,7 +6878,6 @@ function ProductManagement({}: { key?: string }) {
       setShowAdd(false);
       setEditingProduct(null);
       resetForm();
-
       loadProducts(includeInactive);
     } catch (error) {
       console.error(error);
@@ -6845,18 +6899,16 @@ function ProductManagement({}: { key?: string }) {
       price_filetes: (product as any).price_filetes || 0,
       price_despuntes: (product as any).price_despuntes || 0,
       price_collarin: (product as any).price_collarin || 0,
-      price_dobladillo_remate:
-        (product as any).price_dobladillo_remate || 0,
-
+      price_dobladillo_remate: (product as any).price_dobladillo_remate || 0,
       price_filete_p: (product as any).price_filete_p || 0,
       price_despuntes_p: (product as any).price_despuntes_p || 0,
       price_caucho: (product as any).price_caucho || 0,
-      price_sentar_caucho:
-        (product as any).price_sentar_caucho || 0,
+      price_sentar_caucho: (product as any).price_sentar_caucho || 0,
       price_collarin_p: (product as any).price_collarin_p || 0,
       price_remate: (product as any).price_remate || 0,
     });
 
+    setErrors({ code: '', name: '', confeccion: '' });
     setShowAdd(true);
   };
 
@@ -6876,37 +6928,22 @@ function ProductManagement({}: { key?: string }) {
         active: newStatus,
       });
 
-      toast.success(
-        `Producto ${
-          productToToggle.active ? 'desactivado' : 'activado'
-        } correctamente`
-      );
+      toast.success(`Producto ${productToToggle.active ? 'desactivado' : 'activado'} correctamente`);
 
       setShowConfirmToggle(false);
       setProductToToggle(null);
       setCurrentPage(1);
-
-      if (!newStatus) {
-        setIncludeInactive(true);
-      } else {
-        setIncludeInactive(false);
-      }
+      setIncludeInactive(!newStatus ? true : false);
     } catch (error) {
       console.error(error);
       toast.error('Error al cambiar estado');
     }
   };
 
-  if (loading) {
-    return <LoadingState message="Cargando Productos" />;
-  }
+  if (loading) return <LoadingState message="Cargando Productos" />;
 
   const filteredProducts = products.filter((p) =>
     includeInactive ? !p.active : p.active
-  );
-
-  const totalPages = Math.ceil(
-    filteredProducts.length / productsPerPage
   );
 
   const startIndex = (currentPage - 1) * productsPerPage;
@@ -6916,7 +6953,6 @@ function ProductManagement({}: { key?: string }) {
     startIndex + productsPerPage
   );
 
-  // ✅ TOTALES
   const camisetaTotal =
     Number(newProduct.price_filetes || 0) +
     Number(newProduct.price_despuntes || 0) +
@@ -6932,6 +6968,7 @@ function ProductManagement({}: { key?: string }) {
     Number(newProduct.price_remate || 0);
 
   return (
+
     <div className="space-y-8">
       {/* HEADER */}
       <div className="flex items-center justify-between">
@@ -6990,89 +7027,105 @@ function ProductManagement({}: { key?: string }) {
 
       {/* GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {paginatedProducts.map((product) => (
-          <Card
-            key={product.id}
-            className={cn(
-              "group hover:border-accent/30 transition-all relative overflow-hidden",
-              !product.active && "opacity-60 grayscale-[0.5]"
-            )}
-          >
-            {!product.active && (
-              <div className="absolute top-0 right-0 bg-accent text-white text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-bl-xl">
-                Inactivo
-              </div>
-            )}
+        {paginatedProducts.map(
+          (product) => (
+            <Card
+              key={product.id}
+              className={cn(
+                "group hover:border-accent/30 transition-all relative overflow-hidden",
+                !product.active &&
+                  "opacity-60 grayscale-[0.5]"
+              )}
+            >
+              {!product.active && (
+                <div className="absolute top-0 right-0 bg-accent text-white text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-bl-xl">
+                  Inactivo
+                </div>
+              )}
 
-            <div className="flex justify-between items-start mb-6">
-              <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent group-hover:scale-110 transition-transform">
-                <Package size={24} />
-              </div>
+              <div className="flex justify-between items-start mb-6">
+                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent group-hover:scale-110 transition-transform">
+                  <Package size={24} />
+                </div>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleEdit(product)}
-                  className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
-                  title="Editar producto"
-                >
-                  <Edit2 size={18} />
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() =>
+                      handleEdit(product)
+                    }
+                    className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
+                    title="Editar producto"
+                  >
+                    <Edit2 size={18} />
+                  </button>
 
-                <button
-                  onClick={() => confirmToggleActive(product)}
-                  className={cn(
-                    "p-3 rounded-xl transition-all",
-                    product.active
-                      ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent"
-                      : "bg-accent text-white"
-                  )}
-                  title={
-                    product.active
-                      ? "Desactivar producto"
-                      : "Activar producto"
-                  }
-                >
-                  {product.active ? (
-                    <Trash2 size={18} />
-                  ) : (
-                    <RefreshCw size={18} />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <p className="text-[10px] font-bold text-accent uppercase tracking-widest">
-                  {(product as any).code}
-                </p>
-
-                <h4 className="text-xl font-black text-foreground-main tracking-tight uppercase">
-                  {product.name}
-                </h4>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-custom">
-                <div>
-                  <p className="text-[9px] font-black text-foreground-muted uppercase tracking-widest mb-1">
-                    Costo Costura
-                  </p>
-
-                  <p className="text-lg font-black text-foreground-main">
-                    $
-                    {(product.sewing_cost || 0).toLocaleString()}
-                  </p>
+                  <button
+                    onClick={() =>
+                      confirmToggleActive(
+                        product
+                      )
+                    }
+                    className={cn(
+                      "p-3 rounded-xl transition-all",
+                      product.active
+                        ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent"
+                        : "bg-accent text-white"
+                    )}
+                    title={
+                      product.active
+                        ? "Desactivar producto"
+                        : "Activar producto"
+                    }
+                  >
+                    {product.active ? (
+                      <Trash2 size={18} />
+                    ) : (
+                      <RefreshCw size={18} />
+                    )}
+                  </button>
                 </div>
               </div>
-            </div>
-          </Card>
-        ))}
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                    {(product as any).code}
+                  </p>
+
+                  <h4 className="text-xl font-black text-foreground-main tracking-tight uppercase">
+                    {product.name}
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-custom">
+                  <div>
+                    <p className="text-[9px] font-black text-foreground-muted uppercase tracking-widest mb-1">
+                      Costo Costura
+                    </p>
+
+                    <p className="text-lg font-black text-foreground-main">
+                      $
+                      {(
+                        product.sewing_cost ||
+                        0
+                      ).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )
+        )}
       </div>
 
       {/* MODAL */}
       <Modal
         isOpen={showAdd}
-        onClose={() => setShowAdd(false)}
+        onClose={() => {
+          setShowAdd(false);
+          setEditingProduct(null);
+          resetForm();
+        }}
         title={
           editingProduct
             ? 'Editar Producto'
@@ -7082,58 +7135,105 @@ function ProductManagement({}: { key?: string }) {
         <form
           onSubmit={handleSubmit}
           className="space-y-6"
+          noValidate
         >
-          <Input
-            label="Código"
-            value={newProduct.code}
-            onChange={(e) =>
-              setNewProduct({
-                ...newProduct,
-                code: e.target.value,
-              })
-            }
-          />
+          {/* CÓDIGO */}
+          <div>
+            <Input
+              label="Código"
+              value={newProduct.code}
+              onChange={(e) => {
+                setNewProduct({
+                  ...newProduct,
+                  code: e.target.value,
+                });
 
-          <Input
-            label="Nombre"
-            value={newProduct.name}
-            onChange={(e) =>
-              setNewProduct({
-                ...newProduct,
-                name: e.target.value,
-              })
-            }
-            required
-          />
+                setErrors((prev) => ({
+                  ...prev,
+                  code: '',
+                }));
+              }}
+            />
+
+            {errors.code && (
+              <ErrorMessage
+                message={errors.code}
+              />
+            )}
+          </div>
+
+          {/* NOMBRE */}
+          <div>
+            <Input
+              label="Nombre"
+              value={newProduct.name}
+              onChange={(e) => {
+                setNewProduct({
+                  ...newProduct,
+                  name: e.target.value,
+                });
+
+                setErrors((prev) => ({
+                  ...prev,
+                  name: '',
+                }));
+              }}
+            />
+
+            {errors.name && (
+              <ErrorMessage
+                message={errors.name}
+              />
+            )}
+          </div>
 
           {/* CAMISETA */}
           <div className="space-y-3">
             <p className="text-xs font-black uppercase">
-              Costos de Confección — Camiseta
+              Costos de Confección —
+              Camiseta
             </p>
-
+            
             {[
-              { key: 'price_filetes', label: 'Filetes' },
-              { key: 'price_despuntes', label: 'Despuntes' },
-              { key: 'price_collarin', label: 'Collarín' },
+              {
+                key: 'price_filetes',
+                label: 'Filetes',
+              },
+              {
+                key: 'price_despuntes',
+                label: 'Despuntes',
+              },
+              {
+                key: 'price_collarin',
+                label: 'Collarín',
+              },
               {
                 key: 'price_dobladillo_remate',
-                label: 'Dobladillo y Remate',
+                label:
+                  'Dobladillo y Remate',
               },
-            ].map(({ key, label }) => (
-              <Input
-                key={key}
-                label={label}
-                type="number"
-                value={(newProduct as any)[key]}
-                onChange={(e) =>
-                  setNewProduct({
-                    ...newProduct,
-                    [key]: Number(e.target.value),
-                  })
-                }
-              />
-            ))}
+            ].map(
+              ({ key, label }) => (
+                <Input
+                  key={key}
+                  label={label}
+                  type="number"
+                  value={
+                    (newProduct as any)[
+                      key
+                    ]
+                  }
+                  onChange={(e) =>
+                    setNewProduct({
+                      ...newProduct,
+                      [key]: Number(
+                        e.target.value
+                      ),
+                    })
+                  }
+                />
+              )
+            )}
 
             <div className="bg-accent/10 rounded-2xl p-4 border border-accent/20">
               <p className="text-[10px] font-black uppercase tracking-widest text-accent">
@@ -7150,37 +7250,63 @@ function ProductManagement({}: { key?: string }) {
           {/* PANTALONETA */}
           <div className="space-y-3">
             <p className="text-xs font-black uppercase">
-              Costos de Confección — Pantaloneta
+              Costos de Confección —
+              Pantaloneta
             </p>
 
             {[
-              { key: 'price_filete_p', label: 'Filete' },
-              { key: 'price_despuntes_p', label: 'Despuntes' },
-              { key: 'price_caucho', label: 'Caucho' },
+              {
+                key: 'price_filete_p',
+                label: 'Filete',
+              },
+              {
+                key: 'price_despuntes_p',
+                label: 'Despuntes',
+              },
+              {
+                key: 'price_caucho',
+                label: 'Caucho',
+              },
               {
                 key: 'price_sentar_caucho',
-                label: 'Sentar Caucho',
+                label:
+                  'Sentar Caucho',
               },
-              { key: 'price_collarin_p', label: 'Collarín' },
-              { key: 'price_remate', label: 'Remate' },
-            ].map(({ key, label }) => (
-              <Input
-                key={key}
-                label={label}
-                type="number"
-                value={(newProduct as any)[key]}
-                onChange={(e) =>
-                  setNewProduct({
-                    ...newProduct,
-                    [key]: Number(e.target.value),
-                  })
-                }
-              />
-            ))}
+              {
+                key: 'price_collarin_p',
+                label: 'Collarín',
+              },
+              {
+                key: 'price_remate',
+                label: 'Remate',
+              },
+            ].map(
+              ({ key, label }) => (
+                <Input
+                  key={key}
+                  label={label}
+                  type="number"
+                  value={
+                    (newProduct as any)[
+                      key
+                    ]
+                  }
+                  onChange={(e) =>
+                    setNewProduct({
+                      ...newProduct,
+                      [key]: Number(
+                        e.target.value
+                      ),
+                    })
+                  }
+                />
+              )
+            )}
 
             <div className="bg-accent/10 rounded-2xl p-4 border border-accent/20">
               <p className="text-[10px] font-black uppercase tracking-widest text-accent">
-                Total Costura Pantaloneta
+                Total Costura
+                Pantaloneta
               </p>
 
               <p className="text-2xl font-black text-foreground-main">
@@ -7193,7 +7319,8 @@ function ProductManagement({}: { key?: string }) {
           {/* TOTAL FINAL */}
           <div className="bg-surface-hover rounded-3xl p-6 border border-border-custom">
             <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted mb-2">
-              Costo Total de Confección
+              Costo Total de
+              Confección
             </p>
 
             <p className="text-4xl font-black text-accent">
