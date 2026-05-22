@@ -5609,6 +5609,7 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
   const [showImageModal, setShowImageModal] = useState(false);
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState('');
+  const [showAllHistory, setShowAllHistory] = useState(false);
  
   const handleConfirmOrder = async () => {
     if (!foundOrder) return;
@@ -6380,15 +6381,28 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
             {/* Registro de Actividad */}
             <Card className="w-full col-span-full p-8 rounded-[2rem] border border-border-custom bg-surface shadow-xl shadow-black/5">
               <div className="space-y-8 w-full">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
-                    <History className="text-accent" size={24} />
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                      <History className="text-accent" size={24} />
+                    </div>
+                    <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">Registro de Actividad</h4>
                   </div>
-                  <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">Registro de Actividad</h4>
+                  {foundOrder?.history && foundOrder.history.length > 3 && (
+                    <button
+                      onClick={() => setShowAllHistory(prev => !prev)}
+                      className="text-accent text-[10px] font-black uppercase tracking-widest hover:opacity-70 transition-opacity"
+                    >
+                      {showAllHistory ? 'Ver menos' : 'Ver todo'}
+                    </button>
+                  )}
                 </div>
                 <div className="w-full">
                   <div className="space-y-8 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-border-custom">
-                    {foundOrder?.history?.slice(0, 5).map((h, i) => {
+                    {(showAllHistory
+                      ? foundOrder?.history
+                      : foundOrder?.history?.slice(0, 3)
+                    )?.map((h, i) => {
                       const isQualityReject = h.details?.includes('Rechazo de calidad');
                       return (
                         <div key={i} className="relative pl-8 group w-full">
