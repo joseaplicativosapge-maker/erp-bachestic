@@ -3496,12 +3496,15 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             {order.status}
           </span>
 
-          <button 
-            onClick={exportToExcel}
-            className="bg-surface-hover text-foreground-main px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-surface-hover/80 transition-all border border-border-custom flex items-center gap-2"
-          >
-            <Download size={14} /> Exportar Excel
-          </button>
+          {['En cuadro', 'En montaje', 'En impresión', 'En sublimación', 'En corte',
+            'En confección', 'En empaque', 'En despacho', 'Entregado'].includes(order.status) && (
+            <button 
+              onClick={exportToExcel}
+              className="bg-surface-hover text-foreground-main px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-surface-hover/80 transition-all border border-border-custom flex items-center gap-2"
+            >
+              <Download size={14} /> Exportar Excel
+            </button>
+          )}
         </div>
       </div>
 
