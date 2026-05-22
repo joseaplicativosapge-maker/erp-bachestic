@@ -6712,10 +6712,14 @@ function ProductManagement({}: { key?: string }) {
     sale_price: 0,
     sewing_cost: 0,
     active: true,
+
+    // CAMISETA
     price_filetes: 0,
     price_despuntes: 0,
     price_collarin: 0,
     price_dobladillo_remate: 0,
+
+    // PANTALONETA
     price_filete_p: 0,
     price_despuntes_p: 0,
     price_caucho: 0,
@@ -6727,6 +6731,47 @@ function ProductManagement({}: { key?: string }) {
   useEffect(() => {
     loadProducts(includeInactive);
   }, [includeInactive]);
+
+  // ✅ SUMATORIA AUTOMÁTICA
+  useEffect(() => {
+    const camisetaTotal =
+      Number(newProduct.price_filetes || 0) +
+      Number(newProduct.price_despuntes || 0) +
+      Number(newProduct.price_collarin || 0) +
+      Number(newProduct.price_dobladillo_remate || 0);
+
+    const pantalonetaTotal =
+      Number(newProduct.price_filete_p || 0) +
+      Number(newProduct.price_despuntes_p || 0) +
+      Number(newProduct.price_caucho || 0) +
+      Number(newProduct.price_sentar_caucho || 0) +
+      Number(newProduct.price_collarin_p || 0) +
+      Number(newProduct.price_remate || 0);
+
+    // ✅ TOTAL GENERAL
+    const totalGeneral =
+      camisetaTotal + pantalonetaTotal;
+
+    // ✅ evitar loop infinito
+    if (newProduct.sewing_cost !== totalGeneral) {
+      setNewProduct((prev) => ({
+        ...prev,
+        sewing_cost: totalGeneral,
+      }));
+    }
+  }, [
+    newProduct.price_filetes,
+    newProduct.price_despuntes,
+    newProduct.price_collarin,
+    newProduct.price_dobladillo_remate,
+
+    newProduct.price_filete_p,
+    newProduct.price_despuntes_p,
+    newProduct.price_caucho,
+    newProduct.price_sentar_caucho,
+    newProduct.price_collarin_p,
+    newProduct.price_remate,
+  ]);
 
   const loadProducts = async (inactive: boolean = false) => {
     try {
@@ -6740,8 +6785,32 @@ function ProductManagement({}: { key?: string }) {
     }
   };
 
+  const resetForm = () => {
+    setNewProduct({
+      code: '',
+      name: '',
+      category: 'Camiseta',
+      sale_price: 0,
+      sewing_cost: 0,
+      active: true,
+
+      price_filetes: 0,
+      price_despuntes: 0,
+      price_collarin: 0,
+      price_dobladillo_remate: 0,
+
+      price_filete_p: 0,
+      price_despuntes_p: 0,
+      price_caucho: 0,
+      price_sentar_caucho: 0,
+      price_collarin_p: 0,
+      price_remate: 0,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
       if (editingProduct) {
         await api.updateProduct(editingProduct.id, newProduct);
@@ -6753,32 +6822,18 @@ function ProductManagement({}: { key?: string }) {
 
       setShowAdd(false);
       setEditingProduct(null);
-      setNewProduct({
-        code: '',
-        name: '',
-        category: 'Camiseta',
-        sale_price: 0,
-        sewing_cost: 0,
-        active: true,
-        price_filetes: 0,
-        price_despuntes: 0,
-        price_collarin: 0,
-        price_dobladillo_remate: 0,
-        price_filete_p: 0,
-        price_despuntes_p: 0,
-        price_caucho: 0,
-        price_sentar_caucho: 0,
-        price_collarin_p: 0,
-        price_remate: 0,
-      });
+      resetForm();
+
       loadProducts(includeInactive);
     } catch (error) {
       console.error(error);
+      toast.error('Error al guardar producto');
     }
   };
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
+
     setNewProduct({
       code: (product as any).code || '',
       name: product.name,
@@ -6786,21 +6841,25 @@ function ProductManagement({}: { key?: string }) {
       sale_price: product.sale_price,
       sewing_cost: product.sewing_cost,
       active: product.active,
+
       price_filetes: (product as any).price_filetes || 0,
       price_despuntes: (product as any).price_despuntes || 0,
       price_collarin: (product as any).price_collarin || 0,
-      price_dobladillo_remate: (product as any).price_dobladillo_remate || 0,
+      price_dobladillo_remate:
+        (product as any).price_dobladillo_remate || 0,
+
       price_filete_p: (product as any).price_filete_p || 0,
       price_despuntes_p: (product as any).price_despuntes_p || 0,
       price_caucho: (product as any).price_caucho || 0,
-      price_sentar_caucho: (product as any).price_sentar_caucho || 0,
+      price_sentar_caucho:
+        (product as any).price_sentar_caucho || 0,
       price_collarin_p: (product as any).price_collarin_p || 0,
       price_remate: (product as any).price_remate || 0,
     });
+
     setShowAdd(true);
   };
 
-  // ✅ FIX: separar confirmación de ejecución
   const confirmToggleActive = (product: Product) => {
     setProductToToggle(product);
     setShowConfirmToggle(true);
@@ -6808,48 +6867,73 @@ function ProductManagement({}: { key?: string }) {
 
   const handleToggleActive = async () => {
     if (!productToToggle) return;
+
     try {
       const newStatus = !productToToggle.active;
+
       await api.updateProduct(productToToggle.id, {
         ...productToToggle,
         active: newStatus,
       });
+
       toast.success(
-        `Producto ${productToToggle.active ? 'desactivado' : 'activado'} correctamente`
+        `Producto ${
+          productToToggle.active ? 'desactivado' : 'activado'
+        } correctamente`
       );
+
       setShowConfirmToggle(false);
       setProductToToggle(null);
       setCurrentPage(1);
 
       if (!newStatus) {
-        // Al desactivar: cambiar a pestaña Desactivados
-        // El useEffect se encarga de recargar automáticamente
         setIncludeInactive(true);
       } else {
-        // Al activar: cambiar a pestaña Activos
         setIncludeInactive(false);
       }
-      // NO llamar loadProducts() aquí — el useEffect lo hará
     } catch (error) {
       console.error(error);
       toast.error('Error al cambiar estado');
     }
   };
 
-  if (loading) return <LoadingState message="Cargando Productos" />;
+  if (loading) {
+    return <LoadingState message="Cargando Productos" />;
+  }
 
-  // FILTRADO
   const filteredProducts = products.filter((p) =>
     includeInactive ? !p.active : p.active
   );
 
-  // PAGINACIÓN
-  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+  const totalPages = Math.ceil(
+    filteredProducts.length / productsPerPage
+  );
+
   const startIndex = (currentPage - 1) * productsPerPage;
-  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + productsPerPage);
+
+  const paginatedProducts = filteredProducts.slice(
+    startIndex,
+    startIndex + productsPerPage
+  );
+
+  // ✅ TOTALES
+  const camisetaTotal =
+    Number(newProduct.price_filetes || 0) +
+    Number(newProduct.price_despuntes || 0) +
+    Number(newProduct.price_collarin || 0) +
+    Number(newProduct.price_dobladillo_remate || 0);
+
+  const pantalonetaTotal =
+    Number(newProduct.price_filete_p || 0) +
+    Number(newProduct.price_despuntes_p || 0) +
+    Number(newProduct.price_caucho || 0) +
+    Number(newProduct.price_sentar_caucho || 0) +
+    Number(newProduct.price_collarin_p || 0) +
+    Number(newProduct.price_remate || 0);
 
   return (
     <div className="space-y-8">
+      {/* HEADER */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
           <div>
@@ -6860,7 +6944,10 @@ function ProductManagement({}: { key?: string }) {
 
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button
-              onClick={() => { setIncludeInactive(false); setCurrentPage(1); }}
+              onClick={() => {
+                setIncludeInactive(false);
+                setCurrentPage(1);
+              }}
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                 !includeInactive
@@ -6870,8 +6957,12 @@ function ProductManagement({}: { key?: string }) {
             >
               Activos
             </button>
+
             <button
-              onClick={() => { setIncludeInactive(true); setCurrentPage(1); }}
+              onClick={() => {
+                setIncludeInactive(true);
+                setCurrentPage(1);
+              }}
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                 includeInactive
@@ -6887,289 +6978,237 @@ function ProductManagement({}: { key?: string }) {
         <button
           onClick={() => {
             setEditingProduct(null);
-            setNewProduct({
-              code: '',
-              name: '',
-              category: 'Camiseta',
-              sale_price: 0,
-              sewing_cost: 0,
-              active: true,
-              price_filetes: 0,
-              price_despuntes: 0,
-              price_collarin: 0,
-              price_dobladillo_remate: 0,
-              price_filete_p: 0,
-              price_despuntes_p: 0,
-              price_caucho: 0,
-              price_sentar_caucho: 0,
-              price_collarin_p: 0,
-              price_remate: 0,
-            });
+            resetForm();
             setShowAdd(true);
           }}
           className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
         >
-          <Plus size={18} /> Nuevo Producto
+          <Plus size={18} />
+          Nuevo Producto
         </button>
       </div>
 
-      {filteredProducts.length === 0 ? (
-        <EmptyState
-          icon={Package}
-          title={includeInactive ? "No hay productos desactivados" : "Sin productos"}
-          message={
-            includeInactive
-              ? "No se han encontrado productos en el archivo."
-              : "Aún no has registrado productos en tu catálogo. Agrega uno para empezar a cotizar."
-          }
-          actionLabel={!includeInactive ? "Agregar Producto" : undefined}
-          onAction={() => setShowAdd(true)}
-        />
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {paginatedProducts.map((product) => (
-              <Card
-                key={product.id}
-                className={cn(
-                  "group hover:border-accent/30 transition-all relative overflow-hidden",
-                  !product.active && "opacity-60 grayscale-[0.5]"
-                )}
-              >
-                {!product.active && (
-                  <div className="absolute top-0 right-0 bg-accent text-white text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-bl-xl">
-                    Inactivo
-                  </div>
-                )}
-
-                <div className="flex justify-between items-start mb-6">
-                  <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent group-hover:scale-110 transition-transform">
-                    <Package size={24} />
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => handleEdit(product)}
-                      className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
-                      title="Editar producto"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                    {/* ✅ FIX: llama a confirmToggleActive, no directo */}
-                    <button
-                      onClick={() => confirmToggleActive(product)}
-                      className={cn(
-                        "p-3 rounded-xl transition-all",
-                        product.active
-                          ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent"
-                          : "bg-accent text-white"
-                      )}
-                      title={product.active ? "Desactivar producto" : "Activar producto"}
-                    >
-                      {product.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-[10px] font-bold text-accent uppercase tracking-widest">
-                      {product.code}
-                    </p>
-                    <h4 className="text-xl font-black text-foreground-main tracking-tight uppercase">
-                      {product.name}
-                    </h4>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-custom">
-                    <div>
-                      <p className="text-[9px] font-black text-foreground-muted uppercase tracking-widest mb-1">
-                        Costo Costura
-                      </p>
-                      <p className="text-lg font-black text-foreground-main">
-                        ${(product.sewing_cost || 0).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-3 pt-6">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((prev) => prev - 1)}
-                className="px-4 py-2 rounded-xl border border-border-custom bg-surface-hover text-sm font-black uppercase tracking-widest disabled:opacity-40"
-              >
-                Anterior
-              </button>
-              <div className="px-4 py-2 rounded-xl bg-accent text-white text-sm font-black">
-                {currentPage} / {totalPages}
+      {/* GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {paginatedProducts.map((product) => (
+          <Card
+            key={product.id}
+            className={cn(
+              "group hover:border-accent/30 transition-all relative overflow-hidden",
+              !product.active && "opacity-60 grayscale-[0.5]"
+            )}
+          >
+            {!product.active && (
+              <div className="absolute top-0 right-0 bg-accent text-white text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-bl-xl">
+                Inactivo
               </div>
-              <button
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((prev) => prev + 1)}
-                className="px-4 py-2 rounded-xl border border-border-custom bg-surface-hover text-sm font-black uppercase tracking-widest disabled:opacity-40"
-              >
-                Siguiente
-              </button>
+            )}
+
+            <div className="flex justify-between items-start mb-6">
+              <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent group-hover:scale-110 transition-transform">
+                <Package size={24} />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleEdit(product)}
+                  className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
+                  title="Editar producto"
+                >
+                  <Edit2 size={18} />
+                </button>
+
+                <button
+                  onClick={() => confirmToggleActive(product)}
+                  className={cn(
+                    "p-3 rounded-xl transition-all",
+                    product.active
+                      ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent"
+                      : "bg-accent text-white"
+                  )}
+                  title={
+                    product.active
+                      ? "Desactivar producto"
+                      : "Activar producto"
+                  }
+                >
+                  {product.active ? (
+                    <Trash2 size={18} />
+                  ) : (
+                    <RefreshCw size={18} />
+                  )}
+                </button>
+              </div>
             </div>
-          )}
-        </>
-      )}
 
-      {/* MODAL CONFIRMAR ACTIVAR/DESACTIVAR */}
-      <Modal
-        isOpen={showConfirmToggle}
-        onClose={() => {
-          setShowConfirmToggle(false);
-          setProductToToggle(null);
-        }}
-        title={productToToggle?.active ? 'Desactivar Producto' : 'Activar Producto'}
-        maxWidth="max-w-md"
-      >
-        <div className="space-y-6">
-          <p className="text-sm font-bold text-foreground-muted">
-            ¿Estás seguro de que deseas{' '}
-            {productToToggle?.active ? 'desactivar' : 'activar'} el producto{' '}
-            <span className="text-foreground-main">{productToToggle?.name}</span>?
-          </p>
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => {
-                setShowConfirmToggle(false);
-                setProductToToggle(null);
-              }}
-              className="px-6 py-3 rounded-2xl border border-border-custom text-[10px] font-black uppercase tracking-widest"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleToggleActive}
-              className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20"
-            >
-              {productToToggle?.active ? 'Desactivar' : 'Activar'}
-            </button>
-          </div>
-        </div>
-      </Modal>
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                  {(product as any).code}
+                </p>
 
-      {/* MODAL CREAR / EDITAR */}
+                <h4 className="text-xl font-black text-foreground-main tracking-tight uppercase">
+                  {product.name}
+                </h4>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-custom">
+                <div>
+                  <p className="text-[9px] font-black text-foreground-muted uppercase tracking-widest mb-1">
+                    Costo Costura
+                  </p>
+
+                  <p className="text-lg font-black text-foreground-main">
+                    $
+                    {(product.sewing_cost || 0).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* MODAL */}
       <Modal
         isOpen={showAdd}
         onClose={() => setShowAdd(false)}
-        title={editingProduct ? "Editar Producto" : "Nuevo Producto"}
-        subtitle="Configuración de precios y costos"
+        title={
+          editingProduct
+            ? 'Editar Producto'
+            : 'Nuevo Producto'
+        }
       >
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6"
+        >
           <Input
-            label="Código del Producto"
-            value={newProduct.code || ''}
-            onChange={(e) => setNewProduct({ ...newProduct, code: e.target.value })}
-            placeholder="Ej. PROD-001"
-            className="bg-background"
+            label="Código"
+            value={newProduct.code}
+            onChange={(e) =>
+              setNewProduct({
+                ...newProduct,
+                code: e.target.value,
+              })
+            }
           />
 
           <Input
-            label="Nombre del Producto"
+            label="Nombre"
             value={newProduct.name}
-            onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-            placeholder="Ej. Uniforme Completo"
-            className="bg-background"
-            required
-          />
-
-          <Input
-            label="Costo de Costura"
-            type="number"
-            value={newProduct.sewing_cost.toString()}
-            onChange={(e) => setNewProduct({ ...newProduct, sewing_cost: Number(e.target.value) })}
+            onChange={(e) =>
+              setNewProduct({
+                ...newProduct,
+                name: e.target.value,
+              })
+            }
             required
           />
 
           {/* CAMISETA */}
-          <div className="space-y-3 pt-4 border-t border-border-custom">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted flex items-center gap-2">
-              <Shirt size={14} className="text-accent" />
-              Precios Confección — Camiseta
+          <div className="space-y-3">
+            <p className="text-xs font-black uppercase">
+              Costos de Confección — Camiseta
             </p>
-            <div className="bg-surface-hover rounded-[20px] border border-border-custom overflow-hidden">
-              <div className="grid grid-cols-[1fr_120px] gap-4 px-5 py-2.5 border-b border-border-custom bg-surface">
-                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Tarea</p>
-                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">$ x Prenda</p>
-              </div>
-              {[
-                { key: 'price_filetes', label: 'Filetes' },
-                { key: 'price_despuntes', label: 'Despuntes' },
-                { key: 'price_collarin', label: 'Collarín' },
-                { key: 'price_dobladillo_remate', label: 'Dobladillo y Remate' },
-              ].map(({ key, label }) => (
-                <div key={key} className="grid grid-cols-[1fr_120px] gap-4 items-center px-5 py-2.5 border-b border-border-custom last:border-0">
-                  <p className="text-[11px] font-black uppercase tracking-wider text-foreground-main">{label}</p>
-                  <input
-                    type="number"
-                    min={0}
-                    value={(newProduct as any)[key] || ''}
-                    onChange={(e) => setNewProduct({ ...newProduct, [key]: Number(e.target.value) })}
-                    placeholder="$0"
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm focus:border-accent/50"
-                  />
-                </div>
-              ))}
+
+            {[
+              { key: 'price_filetes', label: 'Filetes' },
+              { key: 'price_despuntes', label: 'Despuntes' },
+              { key: 'price_collarin', label: 'Collarín' },
+              {
+                key: 'price_dobladillo_remate',
+                label: 'Dobladillo y Remate',
+              },
+            ].map(({ key, label }) => (
+              <Input
+                key={key}
+                label={label}
+                type="number"
+                value={(newProduct as any)[key]}
+                onChange={(e) =>
+                  setNewProduct({
+                    ...newProduct,
+                    [key]: Number(e.target.value),
+                  })
+                }
+              />
+            ))}
+
+            <div className="bg-accent/10 rounded-2xl p-4 border border-accent/20">
+              <p className="text-[10px] font-black uppercase tracking-widest text-accent">
+                Total Costura Camiseta
+              </p>
+
+              <p className="text-2xl font-black text-foreground-main">
+                $
+                {camisetaTotal.toLocaleString()}
+              </p>
             </div>
           </div>
 
           {/* PANTALONETA */}
           <div className="space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted flex items-center gap-2">
-              <Shirt size={14} className="text-accent" />
-              Precios Confección — Pantaloneta
+            <p className="text-xs font-black uppercase">
+              Costos de Confección — Pantaloneta
             </p>
-            <div className="bg-surface-hover rounded-[20px] border border-border-custom overflow-hidden">
-              <div className="grid grid-cols-[1fr_120px] gap-4 px-5 py-2.5 border-b border-border-custom bg-surface">
-                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">Tarea</p>
-                <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted text-center">$ x Prenda</p>
-              </div>
-              {[
-                { key: 'price_filete_p', label: 'Filete' },
-                { key: 'price_despuntes_p', label: 'Despuntes' },
-                { key: 'price_caucho', label: 'Caucho' },
-                { key: 'price_sentar_caucho', label: 'Sentar Caucho' },
-                { key: 'price_collarin_p', label: 'Collarín' },
-                { key: 'price_remate', label: 'Remate' },
-              ].map(({ key, label }) => (
-                <div key={key} className="grid grid-cols-[1fr_120px] gap-4 items-center px-5 py-2.5 border-b border-border-custom last:border-0">
-                  <p className="text-[11px] font-black uppercase tracking-wider text-foreground-main">{label}</p>
-                  <input
-                    type="number"
-                    min={0}
-                    value={(newProduct as any)[key] || ''}
-                    onChange={(e) => setNewProduct({ ...newProduct, [key]: Number(e.target.value) })}
-                    placeholder="$0"
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border-custom outline-none text-foreground-main font-black text-center text-sm focus:border-accent/50"
-                  />
-                </div>
-              ))}
+
+            {[
+              { key: 'price_filete_p', label: 'Filete' },
+              { key: 'price_despuntes_p', label: 'Despuntes' },
+              { key: 'price_caucho', label: 'Caucho' },
+              {
+                key: 'price_sentar_caucho',
+                label: 'Sentar Caucho',
+              },
+              { key: 'price_collarin_p', label: 'Collarín' },
+              { key: 'price_remate', label: 'Remate' },
+            ].map(({ key, label }) => (
+              <Input
+                key={key}
+                label={label}
+                type="number"
+                value={(newProduct as any)[key]}
+                onChange={(e) =>
+                  setNewProduct({
+                    ...newProduct,
+                    [key]: Number(e.target.value),
+                  })
+                }
+              />
+            ))}
+
+            <div className="bg-accent/10 rounded-2xl p-4 border border-accent/20">
+              <p className="text-[10px] font-black uppercase tracking-widest text-accent">
+                Total Costura Pantaloneta
+              </p>
+
+              <p className="text-2xl font-black text-foreground-main">
+                $
+                {pantalonetaTotal.toLocaleString()}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pt-2">
-            <input
-              type="checkbox"
-              checked={newProduct.active}
-              onChange={(e) => setNewProduct({ ...newProduct, active: e.target.checked })}
-              className="w-5 h-5 rounded-lg accent-accent"
-            />
-            <label className="text-xs font-bold text-foreground-main uppercase tracking-widest">
-              Producto Activo
-            </label>
+          {/* TOTAL FINAL */}
+          <div className="bg-surface-hover rounded-3xl p-6 border border-border-custom">
+            <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted mb-2">
+              Costo Total de Confección
+            </p>
+
+            <p className="text-4xl font-black text-accent">
+              $
+              {newProduct.sewing_cost.toLocaleString()}
+            </p>
           </div>
 
           <button
             type="submit"
-            className="w-full bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-accent/20 hover:scale-[1.02] transition-all"
+            className="w-full bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs"
           >
-            {editingProduct ? 'Actualizar Producto' : 'Guardar Producto'}
+            {editingProduct
+              ? 'Actualizar Producto'
+              : 'Guardar Producto'}
           </button>
         </form>
       </Modal>
@@ -7357,6 +7396,16 @@ function ClientManagement({}: { key?: string }) {
     active: true
   });
 
+  // ✅ ERRORES
+  const [errors, setErrors] = useState({
+    name: '',
+    doc: '',
+    phone: '',
+    email: '',
+    city: '',
+    address: ''
+  });
+
   useEffect(() => {
     fetchClients();
   }, []);
@@ -7377,40 +7426,155 @@ function ClientManagement({}: { key?: string }) {
     }
   };
 
-  // ✅ FIX 1: al editar no se toca el campo "active"
+  // ✅ COMPONENTE ERROR
+  const ErrorMessage = ({
+    message
+  }: {
+    message: string;
+  }) => (
+    <div className="mt-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20">
+      <p className="text-[10px] font-black uppercase tracking-widest text-red-500">
+        {message}
+      </p>
+    </div>
+  );
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      doc: '',
+      doc_type: 'CC',
+      phone: '',
+      address: '',
+      city: '',
+      email: '',
+      active: true
+    });
+
+    setErrors({
+      name: '',
+      doc: '',
+      phone: '',
+      email: '',
+      city: '',
+      address: ''
+    });
+  };
+
+  // ✅ VALIDACIONES
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const newErrors = {
+      name: '',
+      doc: '',
+      phone: '',
+      email: '',
+      city: '',
+      address: ''
+    };
+
+    // NOMBRE
+    if (!formData.name.trim()) {
+      newErrors.name = 'Este campo es obligatorio';
+    }
+
+    // DOCUMENTO
+    if (!formData.doc.trim()) {
+      newErrors.doc = 'Este campo es obligatorio';
+    }
+
+    // TELÉFONO
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Este campo es obligatorio';
+    }
+
+    // CIUDAD
+    if (!formData.city.trim()) {
+      newErrors.city = 'Este campo es obligatorio';
+    }
+
+    // DIRECCIÓN
+    if (!formData.address.trim()) {
+      newErrors.address = 'Este campo es obligatorio';
+    }
+
+    // EMAIL
+    if (formData.email.trim()) {
+      const emailRegex =
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!emailRegex.test(formData.email)) {
+        newErrors.email =
+          'Ingrese un correo válido';
+      }
+    }
+
+    // DOCUMENTO DUPLICADO
+    const docExists = clients.some(
+      client =>
+        client.doc === formData.doc &&
+        client.id !== editingClient?.id
+    );
+
+    if (docExists) {
+      newErrors.doc =
+        'Este documento ya está registrado';
+    }
+
+    setErrors(newErrors);
+
+    // DETENER SI HAY ERRORES
+    if (
+      newErrors.name ||
+      newErrors.doc ||
+      newErrors.phone ||
+      newErrors.email ||
+      newErrors.city ||
+      newErrors.address
+    ) {
+      return;
+    }
+
     try {
       if (editingClient) {
-        const { active, ...updatePayload } = formData;
-        await api.updateClient(editingClient.id, updatePayload);
-        toast.success('Cliente actualizado correctamente');
+        const { active, ...updatePayload } =
+          formData;
+
+        await api.updateClient(
+          editingClient.id,
+          updatePayload
+        );
+
+        toast.success(
+          'Cliente actualizado correctamente'
+        );
       } else {
         await api.createClient(formData);
-        toast.success('Cliente registrado correctamente');
+
+        toast.success(
+          'Cliente registrado correctamente'
+        );
       }
 
       setIsAdding(false);
       setEditingClient(null);
-      setFormData({
-        name: '',
-        doc: '',
-        doc_type: 'CC',
-        phone: '',
-        address: '',
-        city: '',
-        email: '',
-        active: true
-      });
+
+      resetForm();
 
       fetchClients();
     } catch (error) {
       console.error(error);
+
+      toast.error(
+        'Error al guardar cliente'
+      );
     }
   };
 
   const handleEdit = (client: Client) => {
     setEditingClient(client);
+
     setFormData({
       name: client.name,
       doc: client.doc,
@@ -7421,76 +7585,143 @@ function ClientManagement({}: { key?: string }) {
       email: client.email || '',
       active: client.active
     });
+
+    setErrors({
+      name: '',
+      doc: '',
+      phone: '',
+      email: '',
+      city: '',
+      address: ''
+    });
+
     setIsAdding(true);
   };
 
-  // ✅ FIX 2: ahora sí se ejecuta porque hay un modal que lo llama
   const handleToggleActive = async () => {
     if (!clientToToggle) return;
+
     try {
-      const newStatus = !clientToToggle.active;
-      await api.updateClient(clientToToggle.id, { active: newStatus });
-      toast.success(
-        `Cliente ${clientToToggle.active ? 'desactivado' : 'activado'} correctamente`
+      const newStatus =
+        !clientToToggle.active;
+
+      await api.updateClient(
+        clientToToggle.id,
+        {
+          active: newStatus
+        }
       );
+
+      toast.success(
+        `Cliente ${
+          clientToToggle.active
+            ? 'desactivado'
+            : 'activado'
+        } correctamente`
+      );
+
       setShowConfirmToggle(false);
       setClientToToggle(null);
+
       if (!newStatus) {
         setIncludeInactive(true);
       }
+
       fetchClients();
     } catch (error) {
       console.error(error);
-      toast.error('Error al cambiar estado');
+
+      toast.error(
+        'Error al cambiar estado'
+      );
     }
   };
 
-  const confirmToggleActive = (client: Client) => {
+  const confirmToggleActive = (
+    client: Client
+  ) => {
     setClientToToggle(client);
     setShowConfirmToggle(true);
   };
 
   if (loading) {
-    return <LoadingState message="Cargando Clientes" />;
+    return (
+      <LoadingState message="Cargando Clientes" />
+    );
   }
 
   // FILTRADO
-  const filteredClients = clients.filter(client => {
-    const clientName = client.name?.toLowerCase() || '';
-    const clientDoc = client.doc?.toLowerCase() || '';
-    const teams = Array.isArray(client.teams) ? client.teams : [];
+  const filteredClients = clients.filter(
+    client => {
+      const clientName =
+        client.name?.toLowerCase() || '';
 
-    const matchesClient =
-      clientName.includes(searchTerm.toLowerCase()) ||
-      clientDoc.includes(searchTerm.toLowerCase());
+      const clientDoc =
+        client.doc?.toLowerCase() || '';
 
-    const normalizedTeamFilter = teamFilter.trim().toLowerCase();
-    let matchesTeam = true;
+      const teams = Array.isArray(
+        client.teams
+      )
+        ? client.teams
+        : [];
 
-    if (normalizedTeamFilter) {
-      if (
-        normalizedTeamFilter === 'sin equipo' ||
-        normalizedTeamFilter === 'sin equipos'
-      ) {
-        matchesTeam = teams.length === 0;
-      } else {
-        matchesTeam = teams.some((team: any) =>
-          team?.name?.toLowerCase().includes(normalizedTeamFilter)
+      const matchesClient =
+        clientName.includes(
+          searchTerm.toLowerCase()
+        ) ||
+        clientDoc.includes(
+          searchTerm.toLowerCase()
         );
+
+      const normalizedTeamFilter =
+        teamFilter.trim().toLowerCase();
+
+      let matchesTeam = true;
+
+      if (normalizedTeamFilter) {
+        if (
+          normalizedTeamFilter ===
+            'sin equipo' ||
+          normalizedTeamFilter ===
+            'sin equipos'
+        ) {
+          matchesTeam = teams.length === 0;
+        } else {
+          matchesTeam = teams.some(
+            (team: any) =>
+              team?.name
+                ?.toLowerCase()
+                .includes(
+                  normalizedTeamFilter
+                )
+          );
+        }
       }
+
+      const matchesStatus =
+        includeInactive
+          ? !client.active
+          : client.active;
+
+      return (
+        matchesClient &&
+        matchesTeam &&
+        matchesStatus
+      );
     }
-
-    const matchesStatus = includeInactive ? !client.active : client.active;
-
-    return matchesClient && matchesTeam && matchesStatus;
-  });
-
-  const totalPages = Math.ceil(filteredClients.length / CLIENTS_PER_PAGE);
-
-  const paginatedClients = filteredClients.slice(
-    (currentPage - 1) * CLIENTS_PER_PAGE,
-    currentPage * CLIENTS_PER_PAGE
   );
+
+  const totalPages = Math.ceil(
+    filteredClients.length /
+      CLIENTS_PER_PAGE
+  );
+
+  const paginatedClients =
+    filteredClients.slice(
+      (currentPage - 1) *
+        CLIENTS_PER_PAGE,
+      currentPage * CLIENTS_PER_PAGE
+    );
 
   return (
     <div className="space-y-8">
@@ -7519,6 +7750,7 @@ function ClientManagement({}: { key?: string }) {
             >
               Activos
             </button>
+
             <button
               onClick={() => setIncludeInactive(true)}
               className={cn(
@@ -7542,6 +7774,7 @@ function ClientManagement({}: { key?: string }) {
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted"
             />
+
             <input
               type="text"
               placeholder="Buscar cliente o documento..."
@@ -7557,6 +7790,7 @@ function ClientManagement({}: { key?: string }) {
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted"
             />
+
             <input
               type="text"
               placeholder='Buscar equipo o escribir "sin equipos"'
@@ -7571,16 +7805,7 @@ function ClientManagement({}: { key?: string }) {
             onClick={() => {
               setIsAdding(true);
               setEditingClient(null);
-              setFormData({
-                name: '',
-                doc: '',
-                doc_type: 'CC',
-                phone: '',
-                address: '',
-                city: '',
-                email: '',
-                active: true
-              });
+              resetForm();
             }}
             className="h-14 px-8 rounded-2xl bg-accent text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:scale-[1.03] transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
           >
@@ -7620,6 +7845,7 @@ function ClientManagement({}: { key?: string }) {
                 <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
                   <Contact size={24} />
                 </div>
+
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
@@ -7630,12 +7856,14 @@ function ClientManagement({}: { key?: string }) {
                   >
                     <Users size={18} />
                   </button>
+
                   <button
                     onClick={() => handleEdit(client)}
                     className="p-3 rounded-xl bg-surface-hover hover:bg-accent/10 transition-all"
                   >
                     <Edit2 size={18} />
                   </button>
+
                   <button
                     onClick={() => confirmToggleActive(client)}
                     className={cn(
@@ -7645,7 +7873,11 @@ function ClientManagement({}: { key?: string }) {
                         : 'bg-accent text-white'
                     )}
                   >
-                    {client.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
+                    {client.active ? (
+                      <Trash2 size={18} />
+                    ) : (
+                      <RefreshCw size={18} />
+                    )}
                   </button>
                 </div>
               </div>
@@ -7654,13 +7886,15 @@ function ClientManagement({}: { key?: string }) {
               <h4 className="text-lg font-black tracking-tight text-foreground-main">
                 {client.name}
               </h4>
+
               <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted mt-1 mb-5">
                 {client.doc_type || 'CC'} {client.doc}
               </p>
 
               {/* EQUIPOS */}
               <div className="flex flex-wrap gap-2 mb-5 min-h-[44px]">
-                {Array.isArray(client.teams) && client.teams.length > 0 ? (
+                {Array.isArray(client.teams) &&
+                client.teams.length > 0 ? (
                   client.teams.map((team: any) => (
                     <div
                       key={team.id}
@@ -7683,25 +7917,40 @@ function ClientManagement({}: { key?: string }) {
                   <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
                     <Phone size={14} />
                   </div>
-                  <span className="font-bold">{client.phone || 'Sin teléfono'}</span>
+
+                  <span className="font-bold">
+                    {client.phone || 'Sin teléfono'}
+                  </span>
                 </div>
+
                 <div className="flex items-center gap-3 text-sm text-foreground-muted">
                   <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
                     <Mail size={14} />
                   </div>
-                  <span className="font-bold">{client.email || 'Sin email'}</span>
+
+                  <span className="font-bold">
+                    {client.email || 'Sin email'}
+                  </span>
                 </div>
+
                 <div className="flex items-center gap-3 text-sm text-foreground-muted">
                   <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
                     <LayoutDashboard size={14} />
                   </div>
-                  <span className="font-bold">{client.city || 'Sin ciudad'}</span>
+
+                  <span className="font-bold">
+                    {client.city || 'Sin ciudad'}
+                  </span>
                 </div>
+
                 <div className="flex items-center gap-3 text-sm text-foreground-muted">
                   <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
                     <Locate size={14} />
                   </div>
-                  <span className="font-bold">{client.address || 'Sin dirección'}</span>
+
+                  <span className="font-bold">
+                    {client.address || 'Sin dirección'}
+                  </span>
                 </div>
               </div>
             </Card>
@@ -7713,18 +7962,28 @@ function ClientManagement({}: { key?: string }) {
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 flex-wrap pt-6">
           <button
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            onClick={() =>
+              setCurrentPage(prev =>
+                Math.max(prev - 1, 1)
+              )
+            }
             disabled={currentPage === 1}
             className="px-5 py-3 rounded-2xl border border-border-custom bg-surface text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
           >
             Anterior
           </button>
-          {Array.from({ length: totalPages }).map((_, index) => {
+
+          {Array.from({
+            length: totalPages
+          }).map((_, index) => {
             const page = index + 1;
+
             return (
               <button
                 key={page}
-                onClick={() => setCurrentPage(page)}
+                onClick={() =>
+                  setCurrentPage(page)
+                }
                 className={cn(
                   'w-12 h-12 rounded-2xl text-[10px] font-black transition-all',
                   currentPage === page
@@ -7736,8 +7995,16 @@ function ClientManagement({}: { key?: string }) {
               </button>
             );
           })}
+
           <button
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            onClick={() =>
+              setCurrentPage(prev =>
+                Math.min(
+                  prev + 1,
+                  totalPages
+                )
+              )
+            }
             disabled={currentPage === totalPages}
             className="px-5 py-3 rounded-2xl border border-border-custom bg-surface text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
           >
@@ -7746,22 +8013,33 @@ function ClientManagement({}: { key?: string }) {
         </div>
       )}
 
-      {/* MODAL CONFIRMAR ACTIVAR/DESACTIVAR */}
+      {/* MODAL CONFIRMAR */}
       <Modal
         isOpen={showConfirmToggle}
         onClose={() => {
           setShowConfirmToggle(false);
           setClientToToggle(null);
         }}
-        title={clientToToggle?.active ? 'Desactivar Cliente' : 'Activar Cliente'}
+        title={
+          clientToToggle?.active
+            ? 'Desactivar Cliente'
+            : 'Activar Cliente'
+        }
         maxWidth="max-w-md"
       >
         <div className="space-y-6">
           <p className="text-sm font-bold text-foreground-muted">
             ¿Estás seguro de que deseas{' '}
-            {clientToToggle?.active ? 'desactivar' : 'activar'} a{' '}
-            <span className="text-foreground-main">{clientToToggle?.name}</span>?
+            {clientToToggle?.active
+              ? 'desactivar'
+              : 'activar'}{' '}
+            a{' '}
+            <span className="text-foreground-main">
+              {clientToToggle?.name}
+            </span>
+            ?
           </p>
+
           <div className="flex justify-end gap-3">
             <button
               onClick={() => {
@@ -7772,11 +8050,14 @@ function ClientManagement({}: { key?: string }) {
             >
               Cancelar
             </button>
+
             <button
               onClick={handleToggleActive}
               className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20"
             >
-              {clientToToggle?.active ? 'Desactivar' : 'Activar'}
+              {clientToToggle?.active
+                ? 'Desactivar'
+                : 'Activar'}
             </button>
           </div>
         </div>
@@ -7809,132 +8090,289 @@ function ClientManagement({}: { key?: string }) {
         onClose={() => {
           setIsAdding(false);
           setEditingClient(null);
-          setFormData({
-            name: '',
-            doc: '',
-            doc_type: 'CC',
-            phone: '',
-            address: '',
-            city: '',
-            email: '',
-            active: true
-          });
+          resetForm();
         }}
-        title={editingClient ? 'Editar Cliente' : 'Nuevo Cliente'}
+        title={
+          editingClient
+            ? 'Editar Cliente'
+            : 'Nuevo Cliente'
+        }
         maxWidth="max-w-2xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+          noValidate
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* NOMBRE */}
             <div>
               <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
                 Nombre
               </label>
+
               <input
                 type="text"
-                required
                 value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+                onChange={e => {
+                  setFormData({
+                    ...formData,
+                    name: e.target.value
+                  });
+
+                  setErrors(prev => ({
+                    ...prev,
+                    name: ''
+                  }));
+                }}
+                className={cn(
+                  "w-full h-12 rounded-2xl border bg-surface-hover px-4 text-sm font-bold outline-none transition-all focus:ring-2",
+                  errors.name
+                    ? "border-red-500 focus:ring-red-500/20"
+                    : "border-border-custom focus:ring-accent/20"
+                )}
               />
+
+              {errors.name && (
+                <ErrorMessage
+                  message={errors.name}
+                />
+              )}
             </div>
+
+            {/* TIPO DOC */}
             <div>
               <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
                 Tipo Doc
               </label>
+
               <select
-                  value={formData.doc_type}
-                  onChange={e =>
-                    setFormData({ ...formData, doc_type: e.target.value })
-                  }
-                  className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
-                >
-                  <option value="CC">Cédula de Ciudadanía (CC)</option>
-                  <option value="TI">Tarjeta de Identidad (TI)</option>
-                  <option value="CE">Cédula de Extranjería (CE)</option>
-                  <option value="NIT">NIT</option>
-                  <option value="RUT">RUT</option>
-                  <option value="PAS">Pasaporte</option>
-                  <option value="PEP">Permiso Especial de Permanencia (PEP)</option>
-                  <option value="PPT">Permiso por Protección Temporal (PPT)</option>
-                  <option value="RC">Registro Civil (RC)</option>
-                  <option value="NUIP">NUIP</option>
-                  <option value="CD">Carné Diplomático (CD)</option>
-                  <option value="SC">Salvoconducto (SC)</option>
-                </select>
+                value={formData.doc_type}
+                onChange={e =>
+                  setFormData({
+                    ...formData,
+                    doc_type:
+                      e.target.value
+                  })
+                }
+                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+              >
+                <option value="CC">
+                  Cédula de Ciudadanía
+                </option>
+                <option value="TI">
+                  Tarjeta de Identidad
+                </option>
+                <option value="CE">
+                  Cédula de Extranjería
+                </option>
+                <option value="NIT">
+                  NIT
+                </option>
+                <option value="PAS">
+                  Pasaporte
+                </option>
+              </select>
             </div>
+
+            {/* DOCUMENTO */}
             <div>
               <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
                 Documento
               </label>
+
               <input
                 type="text"
-                required
                 value={formData.doc}
-                onChange={e => setFormData({ ...formData, doc: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+                onChange={e => {
+                  setFormData({
+                    ...formData,
+                    doc: e.target.value
+                  });
+
+                  setErrors(prev => ({
+                    ...prev,
+                    doc: ''
+                  }));
+                }}
+                className={cn(
+                  "w-full h-12 rounded-2xl border bg-surface-hover px-4 text-sm font-bold outline-none transition-all focus:ring-2",
+                  errors.doc
+                    ? "border-red-500 focus:ring-red-500/20"
+                    : "border-border-custom focus:ring-accent/20"
+                )}
               />
+
+              {errors.doc && (
+                <ErrorMessage
+                  message={errors.doc}
+                />
+              )}
             </div>
+
+            {/* TELÉFONO */}
             <div>
               <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
                 Teléfono
               </label>
+
               <input
                 type="text"
                 value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+                onChange={e => {
+                  setFormData({
+                    ...formData,
+                    phone: e.target.value
+                  });
+
+                  setErrors(prev => ({
+                    ...prev,
+                    phone: ''
+                  }));
+                }}
+                className={cn(
+                  "w-full h-12 rounded-2xl border bg-surface-hover px-4 text-sm font-bold outline-none transition-all focus:ring-2",
+                  errors.phone
+                    ? "border-red-500 focus:ring-red-500/20"
+                    : "border-border-custom focus:ring-accent/20"
+                )}
               />
+
+              {errors.phone && (
+                <ErrorMessage
+                  message={errors.phone}
+                />
+              )}
             </div>
+
+            {/* EMAIL */}
             <div>
               <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
                 Email
               </label>
+
               <input
-                type="email"
+                type="text"
                 value={formData.email}
-                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+                onChange={e => {
+                  setFormData({
+                    ...formData,
+                    email: e.target.value
+                  });
+
+                  setErrors(prev => ({
+                    ...prev,
+                    email: ''
+                  }));
+                }}
+                className={cn(
+                  "w-full h-12 rounded-2xl border bg-surface-hover px-4 text-sm font-bold outline-none transition-all focus:ring-2",
+                  errors.email
+                    ? "border-red-500 focus:ring-red-500/20"
+                    : "border-border-custom focus:ring-accent/20"
+                )}
               />
+
+              {errors.email && (
+                <ErrorMessage
+                  message={errors.email}
+                />
+              )}
             </div>
+
+            {/* CIUDAD */}
             <div>
               <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
                 Ciudad
               </label>
+
               <input
                 type="text"
                 value={formData.city}
-                onChange={e => setFormData({ ...formData, city: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+                onChange={e => {
+                  setFormData({
+                    ...formData,
+                    city: e.target.value
+                  });
+
+                  setErrors(prev => ({
+                    ...prev,
+                    city: ''
+                  }));
+                }}
+                className={cn(
+                  "w-full h-12 rounded-2xl border bg-surface-hover px-4 text-sm font-bold outline-none transition-all focus:ring-2",
+                  errors.city
+                    ? "border-red-500 focus:ring-red-500/20"
+                    : "border-border-custom focus:ring-accent/20"
+                )}
               />
+
+              {errors.city && (
+                <ErrorMessage
+                  message={errors.city}
+                />
+              )}
             </div>
+
+            {/* DIRECCIÓN */}
             <div className="md:col-span-2">
               <label className="text-xs font-black uppercase tracking-widest text-foreground-muted">
                 Dirección
               </label>
+
               <input
                 type="text"
                 value={formData.address}
-                onChange={e => setFormData({ ...formData, address: e.target.value })}
-                className="w-full h-12 rounded-2xl border border-border-custom bg-surface-hover px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20"
+                onChange={e => {
+                  setFormData({
+                    ...formData,
+                    address:
+                      e.target.value
+                  });
+
+                  setErrors(prev => ({
+                    ...prev,
+                    address: ''
+                  }));
+                }}
+                className={cn(
+                  "w-full h-12 rounded-2xl border bg-surface-hover px-4 text-sm font-bold outline-none transition-all focus:ring-2",
+                  errors.address
+                    ? "border-red-500 focus:ring-red-500/20"
+                    : "border-border-custom focus:ring-accent/20"
+                )}
               />
+
+              {errors.address && (
+                <ErrorMessage
+                  message={errors.address}
+                />
+              )}
             </div>
           </div>
+
           <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={() => {
                 setIsAdding(false);
                 setEditingClient(null);
+                resetForm();
               }}
               className="px-6 py-3 rounded-2xl border border-border-custom text-[10px] font-black uppercase tracking-widest"
             >
               Cancelar
             </button>
+
             <button
               type="submit"
               className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20"
             >
-              {editingClient ? 'Guardar Cambios' : 'Registrar Cliente'}
+              {editingClient
+                ? 'Guardar Cambios'
+                : 'Registrar Cliente'}
             </button>
           </div>
         </form>
@@ -7966,8 +8404,12 @@ function EmployeeManagement({}: { key?: string }) {
     pin: ''
   });
 
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  // ERRORES
+  const [errors, setErrors] = useState({
+    name: '',
+    phone: '',
+    pin: ''
+  });
 
   useEffect(() => {
     loadData();
@@ -7984,10 +8426,12 @@ function EmployeeManagement({}: { key?: string }) {
   const loadData = async () => {
     try {
       setLoading(true);
+
       const [empData, reportData] = await Promise.all([
         api.getEmployees(true),
         api.getEmployeeReport()
       ]);
+
       setEmployees(empData);
       setReport(reportData);
     } catch (error) {
@@ -7997,63 +8441,171 @@ function EmployeeManagement({}: { key?: string }) {
     }
   };
 
-  if (loading) return <LoadingState message="Cargando Personal" />;
+  const resetForm = () => {
+    setNewEmployee({
+      name: '',
+      role: 'Confección',
+      phone: '',
+      pin: ''
+    });
+
+    setErrors({
+      name: '',
+      phone: '',
+      pin: ''
+    });
+  };
+
+  const ErrorMessage = ({ message }: { message: string }) => (
+    <div className="mt-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 animate-in fade-in duration-200">
+      <p className="text-[10px] font-black uppercase tracking-widest text-red-500">
+        {message}
+      </p>
+    </div>
+  );
+
+  const validateForm = () => {
+    const newErrors = {
+      name: '',
+      phone: '',
+      pin: ''
+    };
+
+    // NOMBRE
+    if (!newEmployee.name.trim()) {
+      newErrors.name = 'El nombre es obligatorio';
+    }
+
+    // TELÉFONO
+    if (!newEmployee.phone.trim()) {
+      newErrors.phone = 'El teléfono es obligatorio';
+    }
+
+    // PIN
+    if (!editingEmployee || newEmployee.pin) {
+      if (!newEmployee.pin.trim()) {
+        newErrors.pin = 'El PIN es obligatorio';
+      } else if (newEmployee.pin.length !== 4) {
+        newErrors.pin = 'El PIN debe tener 4 dígitos';
+      } else {
+        const pinExists = employees.some(
+          emp =>
+            emp.pin === newEmployee.pin &&
+            emp.id !== editingEmployee?.id
+        );
+
+        if (pinExists) {
+          newErrors.pin = 'Este PIN ya está siendo utilizado';
+        }
+      }
+    }
+
+    setErrors(newErrors);
+
+    return !newErrors.name &&
+      !newErrors.phone &&
+      !newErrors.pin;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const isValid = validateForm();
+
+    if (!isValid) return;
+
     try {
       const formData = new FormData();
+
       formData.append('name', newEmployee.name);
       formData.append('role', newEmployee.role);
       formData.append('phone', newEmployee.phone);
-      if (newEmployee.pin) formData.append('pin', newEmployee.pin);
-      if (photoFile) formData.append('photo', photoFile);
+
+      if (newEmployee.pin) {
+        formData.append('pin', newEmployee.pin);
+      }
 
       if (editingEmployee) {
-        await api.updateEmployee(editingEmployee.id, formData);
-        toast.success('Empleado actualizado correctamente');
+        await api.updateEmployee(
+          editingEmployee.id,
+          formData
+        );
+
+        toast.success(
+          'Empleado actualizado correctamente'
+        );
       } else {
         await api.createEmployee(formData);
-        toast.success('Empleado registrado correctamente');
+
+        toast.success(
+          'Empleado registrado correctamente'
+        );
       }
 
       setShowAdd(false);
       setEditingEmployee(null);
-      setNewEmployee({ name: '', role: 'Confección', phone: '', pin: '' });
-      setPhotoFile(null);
-      setPhotoPreview(null);
+
+      resetForm();
+
       loadData();
     } catch (error) {
       console.error(error);
+      toast.error('Error al guardar empleado');
     }
   };
 
   const handleEdit = (emp: Employee) => {
     setEditingEmployee(emp);
+
     setNewEmployee({
       name: emp.name,
       role: emp.role,
       phone: emp.phone || '',
       pin: ''
     });
-    setPhotoPreview(emp.photo_path ? `/uploads/${emp.photo_path}` : null);
+
+    setErrors({
+      name: '',
+      phone: '',
+      pin: ''
+    });
+
     setShowAdd(true);
   };
 
   const handleToggleStatus = async () => {
     if (!employeeToToggle) return;
+
     const emp = employeeToToggle;
+
     try {
       const formData = new FormData();
-      formData.append('active', (!emp.active).toString());
+
+      formData.append(
+        'active',
+        (!emp.active).toString()
+      );
+
       await api.updateEmployee(emp.id, formData);
-      toast.success(`Empleado ${emp.active ? 'desactivado' : 'activado'} correctamente`);
+
+      toast.success(
+        `Empleado ${
+          emp.active
+            ? 'desactivado'
+            : 'activado'
+        } correctamente`
+      );
+
       setShowConfirmToggle(false);
       setEmployeeToToggle(null);
+
       loadData();
     } catch (error) {
       console.error(error);
-      toast.error('Error al cambiar el estado del empleado');
+
+      toast.error(
+        'Error al cambiar el estado del empleado'
+      );
     }
   };
 
@@ -8062,18 +8614,34 @@ function EmployeeManagement({}: { key?: string }) {
     setShowConfirmToggle(true);
   };
 
+  if (loading) {
+    return (
+      <LoadingState message="Cargando Personal" />
+    );
+  }
+
   // FILTRADO
   const filteredEmployees = employees.filter(emp =>
-    activeTab === 'active' ? emp.active : !emp.active
+    activeTab === 'active'
+      ? emp.active
+      : !emp.active
   );
 
   // PAGINACIÓN
-  const currentPage = activeTab === 'active' ? currentPageActive : currentPageInactive;
-  const totalPages = Math.ceil(filteredEmployees.length / ITEMS_PER_PAGE);
-  const paginatedEmployees = filteredEmployees.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+  const currentPage =
+    activeTab === 'active'
+      ? currentPageActive
+      : currentPageInactive;
+
+  const totalPages = Math.ceil(
+    filteredEmployees.length / ITEMS_PER_PAGE
   );
+
+  const paginatedEmployees =
+    filteredEmployees.slice(
+      (currentPage - 1) * ITEMS_PER_PAGE,
+      currentPage * ITEMS_PER_PAGE
+    );
 
   const changePage = (page: number) => {
     if (activeTab === 'active') {
@@ -8086,7 +8654,7 @@ function EmployeeManagement({}: { key?: string }) {
   return (
     <div className="space-y-8">
 
-      {/* Cabecera */}
+      {/* CABECERA */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
           <div>
@@ -8097,7 +8665,9 @@ function EmployeeManagement({}: { key?: string }) {
 
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button
-              onClick={() => setActiveTab('active')}
+              onClick={() =>
+                setActiveTab('active')
+              }
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                 activeTab === 'active'
@@ -8107,8 +8677,11 @@ function EmployeeManagement({}: { key?: string }) {
             >
               Activos
             </button>
+
             <button
-              onClick={() => setActiveTab('inactive')}
+              onClick={() =>
+                setActiveTab('inactive')
+              }
               className={cn(
                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                 activeTab === 'inactive'
@@ -8124,7 +8697,7 @@ function EmployeeManagement({}: { key?: string }) {
         <button
           onClick={() => {
             setEditingEmployee(null);
-            setNewEmployee({ name: '', role: 'Confección', phone: '', pin: '' });
+            resetForm();
             setShowAdd(true);
           }}
           className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20"
@@ -8134,22 +8707,30 @@ function EmployeeManagement({}: { key?: string }) {
         </button>
       </div>
 
-      {/* Grid de Empleados — 3 columnas */}
+      {/* GRID */}
       {filteredEmployees.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={activeTab === 'active' ? "No hay empleados activos" : "No hay empleados inactivos"}
+          title={
+            activeTab === 'active'
+              ? "No hay empleados activos"
+              : "No hay empleados inactivos"
+          }
           message={
             activeTab === 'active'
               ? "Aún no has registrado ningún empleado activo."
               : "No tienes empleados desactivados en este momento."
           }
-          actionLabel={activeTab === 'active' ? "Registrar Primer Empleado" : undefined}
+          actionLabel={
+            activeTab === 'active'
+              ? "Registrar Primer Empleado"
+              : undefined
+          }
           onAction={
             activeTab === 'active'
               ? () => {
                   setEditingEmployee(null);
-                  setNewEmployee({ name: '', role: 'Confección', phone: '', pin: '' });
+                  resetForm();
                   setShowAdd(true);
                 }
               : undefined
@@ -8163,7 +8744,8 @@ function EmployeeManagement({}: { key?: string }) {
                 key={emp.id}
                 className={cn(
                   "group hover:border-accent/30 transition-all relative overflow-hidden",
-                  !emp.active && "opacity-60 grayscale-[0.5]"
+                  !emp.active &&
+                    "opacity-60 grayscale-[0.5]"
                 )}
               >
                 {!emp.active && (
@@ -8173,47 +8755,42 @@ function EmployeeManagement({}: { key?: string }) {
                 )}
 
                 <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-surface-hover overflow-hidden flex items-center justify-center border border-border-custom shadow-inner">
-                      {emp.photo_path ? (
-                        <img
-                          src={`/uploads/${emp.photo_path}`}
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <Users size={24} className="text-foreground-muted/30" />
-                      )}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-lg text-foreground-main tracking-tight">
-                        {emp.name}
-                      </h4>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-accent bg-accent/5 px-2 py-1 rounded-md">
-                        {emp.role}
-                      </span>
-                    </div>
+                  <div>
+                    <h4 className="font-bold text-lg text-foreground-main tracking-tight">
+                      {emp.name}
+                    </h4>
+
+                    <span className="text-[10px] font-black uppercase tracking-widest text-accent bg-accent/5 px-2 py-1 rounded-md">
+                      {emp.role}
+                    </span>
                   </div>
 
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleEdit(emp)}
+                      onClick={() =>
+                        handleEdit(emp)
+                      }
                       className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
-                      title="Editar empleado"
                     >
                       <Edit2 size={18} />
                     </button>
+
                     <button
-                      onClick={() => confirmToggleStatus(emp)}
+                      onClick={() =>
+                        confirmToggleStatus(emp)
+                      }
                       className={cn(
                         "p-3 rounded-xl transition-all",
                         emp.active
                           ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent"
                           : "bg-accent text-white"
                       )}
-                      title={emp.active ? "Desactivar empleado" : "Activar empleado"}
                     >
-                      {emp.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
+                      {emp.active ? (
+                        <Trash2 size={18} />
+                      ) : (
+                        <RefreshCw size={18} />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -8221,18 +8798,24 @@ function EmployeeManagement({}: { key?: string }) {
                 <div className="space-y-3 pt-4 border-t border-border-custom">
                   <div className="flex items-center gap-3 text-sm text-foreground-muted">
                     <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
-                      <Clock size={14} />
+                      <Phone size={14} />
                     </div>
+
                     <span className="font-bold tracking-tight">
-                      {emp.phone || 'Sin teléfono'}
+                      {emp.phone ||
+                        'Sin teléfono'}
                     </span>
                   </div>
+
                   <div className="flex items-center gap-3 text-sm text-foreground-muted">
                     <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
                       <LayoutDashboard size={14} />
                     </div>
+
                     <span className="font-bold tracking-tight capitalize">
-                      {emp.active ? 'Estado: Activo' : 'Estado: Inactivo'}
+                      {emp.active
+                        ? 'Estado: Activo'
+                        : 'Estado: Inactivo'}
                     </span>
                   </div>
                 </div>
@@ -8244,18 +8827,36 @@ function EmployeeManagement({}: { key?: string }) {
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 pt-6 flex-wrap">
               <button
-                onClick={() => changePage(Math.max(currentPage - 1, 1))}
+                onClick={() =>
+                  changePage(
+                    Math.max(
+                      currentPage - 1,
+                      1
+                    )
+                  )
+                }
                 disabled={currentPage === 1}
                 className="px-4 py-2 rounded-xl border border-border-custom bg-surface-hover text-sm font-black uppercase tracking-widest disabled:opacity-40"
               >
                 Anterior
               </button>
+
               <div className="px-4 py-2 rounded-xl bg-accent text-white text-sm font-black">
                 {currentPage} / {totalPages}
               </div>
+
               <button
-                onClick={() => changePage(Math.min(currentPage + 1, totalPages))}
-                disabled={currentPage === totalPages}
+                onClick={() =>
+                  changePage(
+                    Math.min(
+                      currentPage + 1,
+                      totalPages
+                    )
+                  )
+                }
+                disabled={
+                  currentPage === totalPages
+                }
                 className="px-4 py-2 rounded-xl border border-border-custom bg-surface-hover text-sm font-black uppercase tracking-widest disabled:opacity-40"
               >
                 Siguiente
@@ -8265,135 +8866,166 @@ function EmployeeManagement({}: { key?: string }) {
         </>
       )}
 
-      {/* Modal Confirmar Estado */}
-      <Modal
-        isOpen={showConfirmToggle}
-        onClose={() => {
-          setShowConfirmToggle(false);
-          setEmployeeToToggle(null);
-        }}
-        title={employeeToToggle?.active ? 'Desactivar Empleado' : 'Activar Empleado'}
-        maxWidth="max-w-md"
-      >
-        <div className="space-y-6">
-          <p className="text-sm font-bold text-foreground-muted">
-            ¿Estás seguro de que deseas{' '}
-            {employeeToToggle?.active ? 'desactivar' : 'activar'} a{' '}
-            <span className="text-foreground-main">{employeeToToggle?.name}</span>?
-          </p>
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => {
-                setShowConfirmToggle(false);
-                setEmployeeToToggle(null);
-              }}
-              className="px-6 py-3 rounded-2xl border border-border-custom text-[10px] font-black uppercase tracking-widest"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleToggleStatus}
-              className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20"
-            >
-              {employeeToToggle?.active ? 'Desactivar' : 'Activar'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Modal Formulario */}
+      {/* MODAL */}
       <Modal
         isOpen={showAdd}
         onClose={() => setShowAdd(false)}
-        title={editingEmployee ? 'Editar Empleado' : 'Nuevo Empleado'}
+        title={
+          editingEmployee
+            ? 'Editar Empleado'
+            : 'Nuevo Empleado'
+        }
       >
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="flex justify-center mb-8">
-            <div className="relative group">
-              <div className="w-32 h-32 rounded-[32px] bg-surface-hover border-2 border-dashed border-border-custom flex items-center justify-center overflow-hidden transition-all group-hover:border-accent/50">
-                {photoPreview ? (
-                  <img src={photoPreview} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="text-center p-4">
-                    <Upload size={24} className="mx-auto mb-2 text-foreground-muted" />
-                    <p className="text-[8px] font-black uppercase tracking-widest text-foreground-muted">Subir Foto</p>
-                  </div>
-                )}
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={e => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setPhotoFile(file);
-                    setPhotoPreview(URL.createObjectURL(file));
-                  }
-                }}
-                className="absolute inset-0 opacity-0 cursor-pointer"
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="space-y-6"
+        >
+
+          {/* NOMBRE */}
+          <div>
+            <Input
+              label="Nombre Completo"
+              value={newEmployee.name}
+              onChange={e => {
+                setNewEmployee({
+                  ...newEmployee,
+                  name: e.target.value
+                });
+
+                setErrors(prev => ({
+                  ...prev,
+                  name: ''
+                }));
+              }}
+              placeholder="Ej. Juan Pérez"
+            />
+
+            {errors.name && (
+              <ErrorMessage
+                message={errors.name}
               />
-              {photoPreview && (
-                <button
-                  type="button"
-                  onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
-                  className="absolute -top-2 -right-2 p-2 bg-accent text-white rounded-xl shadow-lg hover:scale-110 transition-all"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+            )}
           </div>
 
-          <Input
-            label="Nombre Completo"
-            required
-            value={newEmployee.name}
-            onChange={e => setNewEmployee({ ...newEmployee, name: e.target.value })}
-            placeholder="Ej. Juan Pérez"
-          />
-
+          {/* DEPARTAMENTO */}
           <Select
             label="Departamento"
             value={newEmployee.role}
-            onChange={e => setNewEmployee({ ...newEmployee, role: e.target.value as any })}
+            onChange={e =>
+              setNewEmployee({
+                ...newEmployee,
+                role:
+                  e.target.value as any
+              })
+            }
             options={[
-              { value: 'Admin', label: 'Admin' },
-              { value: 'Ventas', label: 'Ventas' },
-              { value: 'Diseño', label: 'Diseño' },
-              { value: 'Impresión', label: 'Impresión' },
-              { value: 'Sublimación', label: 'Sublimación' },
-              { value: 'Corte', label: 'Corte' },
-              { value: 'Confección', label: 'Confección' },
-              { value: 'Empaque', label: 'Empaque' }
+              {
+                value: 'Admin',
+                label: 'Admin'
+              },
+              {
+                value: 'Ventas',
+                label: 'Ventas'
+              },
+              {
+                value: 'Diseño',
+                label: 'Diseño'
+              },
+              {
+                value: 'Impresión',
+                label: 'Impresión'
+              },
+              {
+                value: 'Sublimación',
+                label: 'Sublimación'
+              },
+              {
+                value: 'Corte',
+                label: 'Corte'
+              },
+              {
+                value: 'Confección',
+                label: 'Confección'
+              },
+              {
+                value: 'Empaque',
+                label: 'Empaque'
+              }
             ]}
           />
 
-          <Input
-            label="Teléfono"
-            value={newEmployee.phone}
-            onChange={e => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-            placeholder="Ej. 3001234567"
-          />
+          {/* TELÉFONO */}
+          <div>
+            <Input
+              label="Teléfono"
+              value={newEmployee.phone}
+              onChange={e => {
+                setNewEmployee({
+                  ...newEmployee,
+                  phone: e.target.value
+                });
 
-          <Input
-            label={editingEmployee ? "Nuevo PIN (Opcional)" : "PIN de Acceso (4 dígitos)"}
-            type="password"
-            maxLength={4}
-            required={!editingEmployee}
-            value={newEmployee.pin}
-            onChange={e => setNewEmployee({ ...newEmployee, pin: e.target.value.replace(/\D/g, '') })}
-            placeholder="****"
-          />
+                setErrors(prev => ({
+                  ...prev,
+                  phone: ''
+                }));
+              }}
+              placeholder="Ej. 3001234567"
+            />
+
+            {errors.phone && (
+              <ErrorMessage
+                message={errors.phone}
+              />
+            )}
+          </div>
+
+          {/* PIN */}
+          <div>
+            <Input
+              label={
+                editingEmployee
+                  ? "Nuevo PIN (Opcional)"
+                  : "PIN de Acceso"
+              }
+              type="password"
+              maxLength={4}
+              value={newEmployee.pin}
+              onChange={e => {
+                setNewEmployee({
+                  ...newEmployee,
+                  pin: e.target.value.replace(
+                    /\D/g,
+                    ''
+                  )
+                });
+
+                setErrors(prev => ({
+                  ...prev,
+                  pin: ''
+                }));
+              }}
+              placeholder="0000"
+            />
+
+            {errors.pin && (
+              <ErrorMessage
+                message={errors.pin}
+              />
+            )}
+          </div>
 
           <button
             type="submit"
             className="w-full bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-accent/20 hover:scale-[1.02] transition-all mt-4"
           >
-            {editingEmployee ? 'Actualizar Registro' : 'Guardar Registro'}
+            {editingEmployee
+              ? 'Actualizar Registro'
+              : 'Guardar Registro'}
           </button>
         </form>
       </Modal>
-
     </div>
   );
 }
