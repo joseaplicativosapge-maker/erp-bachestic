@@ -6527,62 +6527,119 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
               </div>
             )}
 
-            <div className="space-y-8">
-              
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
-                  <History className="text-accent" size={24} />
-                </div>
-                <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
-                  Registro de Actividad
-                </h4>
-              </div>
+            <Card className="w-full col-span-full p-8 rounded-[2rem] border border-border-custom bg-surface shadow-xl shadow-black/5">
+              <div className="space-y-8 w-full">
 
-              <div className="space-y-8 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-border-custom">
-                {foundOrder.history?.slice(0, 5).map((h, i) => {
-                  const isQualityReject = h.details?.includes('Rechazo de calidad');
-                  return (
-                    <div key={i} className="relative pl-8 group">
-                      <div className={cn(
-                        "absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full border-2 transition-colors",
-                        isQualityReject 
-                          ? "bg-amber-500/20 border-amber-500" 
-                          : "bg-surface border-border-custom group-hover:border-accent"
-                      )} />
-                      <div>
-                        <p className={cn(
-                          "text-[11px] font-black tracking-tight leading-tight mb-1",
-                          isQualityReject ? "text-amber-500" : "text-foreground-main"
-                        )}>
-                          {h.action}
-                        </p>
-                        {isQualityReject ? (
-                          <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 mb-2">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1.5 mb-1">
-                              <AlertTriangle size={10} /> Rechazo de calidad
+                {/* HEADER */}
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                    <History className="text-accent" size={24} />
+                  </div>
+
+                  <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">
+                    Registro de Actividad
+                  </h4>
+                </div>
+
+                {/* TIMELINE */}
+                <div className="w-full">
+
+                  <div className="space-y-8 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-border-custom">
+
+                    {foundOrder?.history?.slice(0, 5).map((h, i) => {
+
+                      const isQualityReject =
+                        h.details?.includes('Rechazo de calidad');
+
+                      return (
+                        <div
+                          key={i}
+                          className="relative pl-8 group w-full"
+                        >
+
+                          {/* DOT */}
+                          <div
+                            className={cn(
+                              "absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full border-2 transition-colors",
+
+                              isQualityReject
+                                ? "bg-amber-500/20 border-amber-500"
+                                : "bg-surface border-border-custom group-hover:border-accent"
+                            )}
+                          />
+
+                          {/* CONTENT */}
+                          <div className="w-full">
+
+                            {/* ACTION */}
+                            <p
+                              className={cn(
+                                "text-[11px] font-black tracking-tight leading-tight mb-1",
+
+                                isQualityReject
+                                  ? "text-amber-500"
+                                  : "text-foreground-main"
+                              )}
+                            >
+                              {h.action}
                             </p>
-                            <p className="text-[10px] text-foreground-main leading-relaxed">
-                              {h.details?.replace('⚠ Rechazo de calidad en impresión — Motivo: ', '')}
+
+                            {/* DETAILS */}
+                            {isQualityReject ? (
+
+                              <div className="w-full bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 mb-2">
+
+                                <p className="text-[9px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1.5 mb-1">
+                                  <AlertTriangle size={10} />
+                                  Rechazo de calidad
+                                </p>
+
+                                <p className="text-[10px] text-foreground-main leading-relaxed break-words">
+                                  {h.details?.replace(
+                                    '⚠ Rechazo de calidad en impresión — Motivo: ',
+                                    ''
+                                  )}
+                                </p>
+                              </div>
+
+                            ) : (
+
+                              <p className="w-full text-[10px] text-foreground-muted leading-relaxed mb-2 break-words">
+                                {h.details}
+                              </p>
+
+                            )}
+
+                            {/* DATE */}
+                            <p className="text-[9px] text-foreground-muted/50 font-black uppercase tracking-widest">
+                              {format(new Date(h.created_at), 'dd MMM, HH:mm')}
                             </p>
                           </div>
-                        ) : (
-                          <p className="text-[10px] text-foreground-muted leading-relaxed mb-2">{h.details}</p>
-                        )}
-                        <p className="text-[9px] text-foreground-muted/50 font-black uppercase tracking-widest">
-                          {format(new Date(h.created_at), 'dd MMM, HH:mm')}
+                        </div>
+                      );
+                    })}
+
+                    {/* EMPTY */}
+                    {(!foundOrder?.history ||
+                      foundOrder?.history?.length === 0) && (
+
+                      <div className="text-center py-12">
+
+                        <History
+                          size={32}
+                          className="mx-auto text-foreground-muted/10 mb-4"
+                        />
+
+                        <p className="text-[10px] text-foreground-muted/50 font-black uppercase tracking-widest italic">
+                          No hay actividad registrada aún
                         </p>
                       </div>
-                    </div>
-                  );
-                })}
-                {(!foundOrder.history || foundOrder.history.length === 0) && (
-                  <div className="text-center py-12">
-                    <History size={32} className="mx-auto text-foreground-muted/10 mb-4" />
-                    <p className="text-[10px] text-foreground-muted/50 font-black uppercase tracking-widest italic">No hay actividad registrada aún</p>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            </Card>
+            
           </div>
         </motion.div>
       ) : search ? (
