@@ -50,6 +50,7 @@ async function startServer() {
       client_address TEXT,
       client_city TEXT,
       contact_method TEXT,
+      total_amount REAL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       delivery_date DATETIME,
       status TEXT DEFAULT 'Cotización',
@@ -481,14 +482,13 @@ async function startServer() {
     const {
       client_id, client_name, client_doc, client_doc_type, client_phone,
       client_address, client_city, contact_method, delivery_date,
-      team_id, user_name, soligem_code, status
+      team_id, user_name, soligem_code, status, total_amount
     } = req.body;
     const order_number = 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-
     const info = db.prepare(`
-      INSERT INTO orders (order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, team_id, soligem_code, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, team_id, soligem_code || null, status);
+      INSERT INTO orders (order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, team_id, soligem_code, status, total_amount)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(order_number, client_id, client_name, client_doc, client_doc_type, client_phone, client_address, client_city, contact_method, delivery_date, team_id, soligem_code || null, status, total_amount || 0);
 
     const order_id = info.lastInsertRowid;
     db.prepare('INSERT INTO order_history (order_id, user_name, action, details) VALUES (?, ?, ?, ?)').run(order_id, user_name || 'Sistema', 'Creación', `Orden ${order_number} creada`);

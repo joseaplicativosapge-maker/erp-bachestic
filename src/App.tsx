@@ -1356,6 +1356,20 @@ function OrdersList({
                     </span>
                   </div>
                 )}
+                
+                {/* COSTO DE COSTURA */}
+                  <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
+                    <DollarSign size={16} className="text-accent" />
+                    <span>
+                      Costura:{' '}
+                      <span className="font-black text-foreground-main">
+                        {order.total_amount && order.total_amount > 0
+                          ? `$${Number(order.total_amount).toLocaleString('es-CO')}`
+                          : 'N/A'}
+                      </span>
+                    </span>
+                  </div>
+
               </div>
 
               <div className="pt-6 border-t border-border-custom flex justify-between items-center">
@@ -1732,17 +1746,30 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
   }, [quantities, products, step]);
 
   useEffect(() => {
-    const camisetaKeys = ['price_filetes', 'price_despuntes', 'price_collarin', 'price_dobladillo_remate'];
-    const pantalonetaKeys = ['price_filete_p', 'price_despuntes_p', 'price_caucho', 'price_sentar_caucho', 'price_collarin_p', 'price_remate'];
-    const allKeys = [...camisetaKeys, ...pantalonetaKeys];
-    const total = Object.entries(quantities).reduce((sum, [name, qty]) => {
-      const product = products.find(p => p.name === name) as any;
-      if (!product || !(qty as number)) return sum;
-      const costoProducto = allKeys.reduce((s, key) => s + (product[key] || 0), 0);
-      return sum + costoProducto * (qty as number);
-    }, 0);
-    setFormData(prev => ({ ...prev, total_amount: total }));
-  }, [quantities, products]);
+      const camisetaKeys = ['price_filetes', 'price_despuntes', 'price_collarin', 'price_dobladillo_remate'];
+      const pantalonetaKeys = ['price_filete_p', 'price_despuntes_p', 'price_caucho', 'price_sentar_caucho', 'price_collarin_p', 'price_remate'];
+      const allKeys = [...camisetaKeys, ...pantalonetaKeys];
+
+      let total = 0;
+
+      Object.entries(quantities).forEach(([name, qty]) => {
+        if (!(qty as number)) return;
+        const product = products.find(p => p.name === name) as any;
+        if (!product) return;
+
+        const costoConfeccion = allKeys.reduce((s, key) => s + (product[key] || 0), 0);
+
+        if (costoConfeccion > 0) {
+          // Tiene precios de confección configurados → usar esos
+          total += costoConfeccion * (qty as number);
+        } else {
+          // Fallback: usar sale_price si existe
+          total += (product.sale_price || 0) * (qty as number);
+        }
+      });
+
+      setFormData(prev => ({ ...prev, total_amount: total }));
+    }, [quantities, products]);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
@@ -1806,6 +1833,24 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
       let finalClientId = formData.client_id;
       let finalTeamId = formData.team_id;
 
+      // ── CALCULAR total_amount en el momento del submit ──
+      const camisetaKeys = ['price_filetes', 'price_despuntes', 'price_collarin', 'price_dobladillo_remate'];
+      const pantalonetaKeys = ['price_filete_p', 'price_despuntes_p', 'price_caucho', 'price_sentar_caucho', 'price_collarin_p', 'price_remate'];
+      const allKeys = [...camisetaKeys, ...pantalonetaKeys];
+
+      let computedTotal = 0;
+      Object.entries(quantities).forEach(([name, qty]) => {
+        if (!(qty as number)) return;
+        const product = products.find(p => p.name === name) as any;
+        if (!product) return;
+        const costoConfeccion = allKeys.reduce((s, key) => s + (product[key] || 0), 0);
+        if (costoConfeccion > 0) {
+          computedTotal += costoConfeccion * (qty as number);
+        } else {
+          computedTotal += (product.sale_price || 0) * (qty as number);
+        }
+      });
+
       if (isCreatingClient) {
         const newClient = await api.createClient({
           name: formData.client_name,
@@ -1839,9 +1884,9 @@ function CreateOrder({ onCancel, onSuccess, user }: { onCancel: () => void, onSu
           }
         }
       }
-
       const { id } = await api.createOrder({
         ...formData,
+        total_amount: computedTotal,
         status: 'Abono confirmado',
         client_id: finalClientId,
         team_id: finalTeamId,
@@ -6696,6 +6741,7 @@ function ProductManagement({}: { key?: string }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [includeInactive, setIncludeInactive] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [showConfirmToggle, setShowConfirmToggle] = useState(false);
   const [productToToggle, setProductToToggle] = useState<Product | null>(null);
@@ -6716,12 +6762,10 @@ function ProductManagement({}: { key?: string }) {
     sale_price: 0,
     sewing_cost: 0,
     active: true,
-
     price_filetes: 0,
     price_despuntes: 0,
     price_collarin: 0,
     price_dobladillo_remate: 0,
-
     price_filete_p: 0,
     price_despuntes_p: 0,
     price_caucho: 0,
@@ -6733,6 +6777,10 @@ function ProductManagement({}: { key?: string }) {
   useEffect(() => {
     loadProducts(includeInactive);
   }, [includeInactive]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, includeInactive]);
 
   useEffect(() => {
     const camisetaTotal =
@@ -6752,10 +6800,7 @@ function ProductManagement({}: { key?: string }) {
     const totalGeneral = camisetaTotal + pantalonetaTotal;
 
     if (newProduct.sewing_cost !== totalGeneral) {
-      setNewProduct((prev) => ({
-        ...prev,
-        sewing_cost: totalGeneral,
-      }));
+      setNewProduct((prev) => ({ ...prev, sewing_cost: totalGeneral }));
     }
   }, [
     newProduct.price_filetes,
@@ -6798,12 +6843,10 @@ function ProductManagement({}: { key?: string }) {
       sale_price: 0,
       sewing_cost: 0,
       active: true,
-
       price_filetes: 0,
       price_despuntes: 0,
       price_collarin: 0,
       price_dobladillo_remate: 0,
-
       price_filete_p: 0,
       price_despuntes_p: 0,
       price_caucho: 0,
@@ -6811,20 +6854,14 @@ function ProductManagement({}: { key?: string }) {
       price_collarin_p: 0,
       price_remate: 0,
     });
-
     setErrors({ code: '', name: '', confeccion: '' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const newErrors = {
-      code: '',
-      name: '',
-      confeccion: '',
-    };
+    const newErrors = { code: '', name: '', confeccion: '' };
 
-    // VALIDACIONES BÁSICAS
     if (!newProduct.code.trim()) newErrors.code = 'Campo obligatorio';
     if (!newProduct.name.trim()) newErrors.name = 'Campo obligatorio';
 
@@ -6833,7 +6870,6 @@ function ProductManagement({}: { key?: string }) {
         (p as any).code?.toLowerCase().trim() === newProduct.code.toLowerCase().trim() &&
         p.id !== editingProduct?.id
     );
-
     if (codeExists) newErrors.code = 'Código ya registrado';
 
     const nameExists = products.some(
@@ -6841,10 +6877,8 @@ function ProductManagement({}: { key?: string }) {
         p.name?.toLowerCase().trim() === newProduct.name.toLowerCase().trim() &&
         p.id !== editingProduct?.id
     );
-
     if (nameExists) newErrors.name = 'Producto ya existe';
 
-    // 🔥 VALIDACIÓN CONFECCIÓN > 0
     const confeccionFields = [
       newProduct.price_filetes,
       newProduct.price_despuntes,
@@ -6857,13 +6891,11 @@ function ProductManagement({}: { key?: string }) {
       newProduct.price_collarin_p,
       newProduct.price_remate,
     ];
-
     if (confeccionFields.some((v) => Number(v) <= 0)) {
       newErrors.confeccion = 'Todos los costos de confección deben ser mayores a 0';
     }
 
     setErrors(newErrors);
-
     if (newErrors.code || newErrors.name || newErrors.confeccion) return;
 
     try {
@@ -6874,7 +6906,6 @@ function ProductManagement({}: { key?: string }) {
         await api.createProduct(newProduct);
         toast.success('Producto creado correctamente');
       }
-
       setShowAdd(false);
       setEditingProduct(null);
       resetForm();
@@ -6887,7 +6918,6 @@ function ProductManagement({}: { key?: string }) {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
-
     setNewProduct({
       code: (product as any).code || '',
       name: product.name,
@@ -6895,7 +6925,6 @@ function ProductManagement({}: { key?: string }) {
       sale_price: product.sale_price,
       sewing_cost: product.sewing_cost,
       active: product.active,
-
       price_filetes: (product as any).price_filetes || 0,
       price_despuntes: (product as any).price_despuntes || 0,
       price_collarin: (product as any).price_collarin || 0,
@@ -6907,7 +6936,6 @@ function ProductManagement({}: { key?: string }) {
       price_collarin_p: (product as any).price_collarin_p || 0,
       price_remate: (product as any).price_remate || 0,
     });
-
     setErrors({ code: '', name: '', confeccion: '' });
     setShowAdd(true);
   };
@@ -6919,17 +6947,15 @@ function ProductManagement({}: { key?: string }) {
 
   const handleToggleActive = async () => {
     if (!productToToggle) return;
-
     try {
       const newStatus = !productToToggle.active;
-
       await api.updateProduct(productToToggle.id, {
         ...productToToggle,
         active: newStatus,
       });
-
-      toast.success(`Producto ${productToToggle.active ? 'desactivado' : 'activado'} correctamente`);
-
+      toast.success(
+        `Producto ${productToToggle.active ? 'desactivado' : 'activado'} correctamente`
+      );
       setShowConfirmToggle(false);
       setProductToToggle(null);
       setCurrentPage(1);
@@ -6942,16 +6968,19 @@ function ProductManagement({}: { key?: string }) {
 
   if (loading) return <LoadingState message="Cargando Productos" />;
 
-  const filteredProducts = products.filter((p) =>
-    includeInactive ? !p.active : p.active
-  );
+  const filteredProducts = products.filter((p) => {
+    const matchesActive = includeInactive ? !p.active : p.active;
+    const term = searchTerm.toLowerCase().trim();
+    const matchesSearch =
+      !term ||
+      p.name.toLowerCase().includes(term) ||
+      ((p as any).code || '').toLowerCase().includes(term);
+    return matchesActive && matchesSearch;
+  });
 
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
   const startIndex = (currentPage - 1) * productsPerPage;
-
-  const paginatedProducts = filteredProducts.slice(
-    startIndex,
-    startIndex + productsPerPage
-  );
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + productsPerPage);
 
   const camisetaTotal =
     Number(newProduct.price_filetes || 0) +
@@ -6968,56 +6997,66 @@ function ProductManagement({}: { key?: string }) {
     Number(newProduct.price_remate || 0);
 
   return (
-
     <div className="space-y-8">
+
       {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-8">
-          <div>
-            <h3 className="text-3xl font-black text-foreground-main tracking-tighter">
-              Productos
-            </h3>
-          </div>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-6 flex-wrap">
+          <h3 className="text-3xl font-black text-foreground-main tracking-tighter">
+            Productos
+          </h3>
 
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             <button
-              onClick={() => {
-                setIncludeInactive(false);
-                setCurrentPage(1);
-              }}
+              onClick={() => { setIncludeInactive(false); setCurrentPage(1); }}
               className={cn(
-                "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                'px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
                 !includeInactive
-                  ? "bg-accent text-white shadow-lg shadow-accent/20"
-                  : "text-foreground-muted hover:text-foreground-main"
+                  ? 'bg-accent text-white shadow-lg shadow-accent/20'
+                  : 'text-foreground-muted hover:text-foreground-main'
               )}
             >
               Activos
             </button>
-
             <button
-              onClick={() => {
-                setIncludeInactive(true);
-                setCurrentPage(1);
-              }}
+              onClick={() => { setIncludeInactive(true); setCurrentPage(1); }}
               className={cn(
-                "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                'px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
                 includeInactive
-                  ? "bg-accent text-white shadow-lg shadow-accent/20"
-                  : "text-foreground-muted hover:text-foreground-main"
+                  ? 'bg-accent text-white shadow-lg shadow-accent/20'
+                  : 'text-foreground-muted hover:text-foreground-main'
               )}
             >
               Desactivados
             </button>
           </div>
+
+          {/* BUSCADOR */}
+          <div className="relative group">
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors duration-300"
+              size={16}
+            />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o código..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-10 pr-10 py-3 rounded-2xl bg-surface border border-border-custom focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none text-foreground-main text-[10px] font-black uppercase tracking-[0.18em] placeholder:text-foreground-muted/40 transition-all duration-300 shadow-sm min-w-[260px]"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
         <button
-          onClick={() => {
-            setEditingProduct(null);
-            resetForm();
-            setShowAdd(true);
-          }}
+          onClick={() => { setEditingProduct(null); resetForm(); setShowAdd(true); }}
           className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
         >
           <Plus size={18} />
@@ -7027,14 +7066,37 @@ function ProductManagement({}: { key?: string }) {
 
       {/* GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {paginatedProducts.map(
-          (product) => (
+        {paginatedProducts.length === 0 ? (
+          <div className="md:col-span-2 lg:col-span-3">
+            <EmptyState
+              icon={Package}
+              title={
+                searchTerm
+                  ? `Sin resultados para "${searchTerm}"`
+                  : includeInactive
+                    ? 'No hay productos desactivados'
+                    : 'No hay productos activos'
+              }
+              message={
+                searchTerm
+                  ? 'Intenta con otro nombre o código.'
+                  : includeInactive
+                    ? 'No se encontraron productos en el archivo.'
+                    : 'Aún no se han registrado productos.'
+              }
+              actionLabel={
+                !searchTerm && !includeInactive ? 'Crear Nuevo Producto' : undefined
+              }
+              onAction={() => { setEditingProduct(null); resetForm(); setShowAdd(true); }}
+            />
+          </div>
+        ) : (
+          paginatedProducts.map((product) => (
             <Card
               key={product.id}
               className={cn(
-                "group hover:border-accent/30 transition-all relative overflow-hidden",
-                !product.active &&
-                  "opacity-60 grayscale-[0.5]"
+                'group hover:border-accent/30 transition-all relative overflow-hidden',
+                !product.active && 'opacity-60 grayscale-[0.5]'
               )}
             >
               {!product.active && (
@@ -7050,9 +7112,7 @@ function ProductManagement({}: { key?: string }) {
 
                 <div className="flex gap-3">
                   <button
-                    onClick={() =>
-                      handleEdit(product)
-                    }
+                    onClick={() => handleEdit(product)}
                     className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
                     title="Editar producto"
                   >
@@ -7060,28 +7120,16 @@ function ProductManagement({}: { key?: string }) {
                   </button>
 
                   <button
-                    onClick={() =>
-                      confirmToggleActive(
-                        product
-                      )
-                    }
+                    onClick={() => confirmToggleActive(product)}
                     className={cn(
-                      "p-3 rounded-xl transition-all",
+                      'p-3 rounded-xl transition-all',
                       product.active
-                        ? "bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent"
-                        : "bg-accent text-white"
+                        ? 'bg-surface-hover hover:bg-accent/20 text-foreground-muted hover:text-accent'
+                        : 'bg-accent text-white'
                     )}
-                    title={
-                      product.active
-                        ? "Desactivar producto"
-                        : "Activar producto"
-                    }
+                    title={product.active ? 'Desactivar producto' : 'Activar producto'}
                   >
-                    {product.active ? (
-                      <Trash2 size={18} />
-                    ) : (
-                      <RefreshCw size={18} />
-                    )}
+                    {product.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
                   </button>
                 </div>
               </div>
@@ -7091,7 +7139,6 @@ function ProductManagement({}: { key?: string }) {
                   <p className="text-[10px] font-bold text-accent uppercase tracking-widest">
                     {(product as any).code}
                   </p>
-
                   <h4 className="text-xl font-black text-foreground-main tracking-tight uppercase">
                     {product.name}
                   </h4>
@@ -7102,64 +7149,107 @@ function ProductManagement({}: { key?: string }) {
                     <p className="text-[9px] font-black text-foreground-muted uppercase tracking-widest mb-1">
                       Costo Costura
                     </p>
-
                     <p className="text-lg font-black text-foreground-main">
-                      $
-                      {(
-                        product.sewing_cost ||
-                        0
-                      ).toLocaleString()}
+                      ${(product.sewing_cost || 0).toLocaleString()}
                     </p>
                   </div>
                 </div>
               </div>
             </Card>
-          )
+          ))
         )}
       </div>
 
-      {/* MODAL */}
+      {/* PAGINACIÓN */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-4 flex-wrap">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-5 py-3 rounded-2xl bg-surface border border-border-custom text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+          >
+            Anterior
+          </button>
+
+          {Array.from({ length: totalPages }).map((_, index) => {
+            const page = index + 1;
+            return (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={cn(
+                  'w-12 h-12 rounded-2xl text-[10px] font-black transition-all',
+                  currentPage === page
+                    ? 'bg-accent text-white shadow-lg shadow-accent/20'
+                    : 'bg-surface border border-border-custom text-foreground-muted hover:text-foreground-main'
+                )}
+              >
+                {page}
+              </button>
+            );
+          })}
+
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-5 py-3 rounded-2xl bg-surface border border-border-custom text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
+
+      {/* MODAL CONFIRMACIÓN TOGGLE */}
+      <Modal
+        isOpen={showConfirmToggle}
+        onClose={() => { setShowConfirmToggle(false); setProductToToggle(null); }}
+        title={productToToggle?.active ? 'Desactivar Producto' : 'Activar Producto'}
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-6">
+          <p className="text-sm font-bold text-foreground-muted">
+            ¿Estás seguro de que deseas{' '}
+            {productToToggle?.active ? 'desactivar' : 'activar'} el producto{' '}
+            <span className="font-black text-foreground-main">
+              {productToToggle?.name}
+            </span>?
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => { setShowConfirmToggle(false); setProductToToggle(null); }}
+              className="px-6 py-3 rounded-2xl border border-border-custom text-[10px] font-black uppercase tracking-widest text-foreground-muted hover:bg-surface-hover transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleToggleActive}
+              className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20 hover:scale-105 transition-all"
+            >
+              {productToToggle?.active ? 'Desactivar' : 'Activar'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* MODAL CREAR / EDITAR */}
       <Modal
         isOpen={showAdd}
-        onClose={() => {
-          setShowAdd(false);
-          setEditingProduct(null);
-          resetForm();
-        }}
-        title={
-          editingProduct
-            ? 'Editar Producto'
-            : 'Nuevo Producto'
-        }
+        onClose={() => { setShowAdd(false); setEditingProduct(null); resetForm(); }}
+        title={editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
       >
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6"
-          noValidate
-        >
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+
           {/* CÓDIGO */}
           <div>
             <Input
               label="Código"
               value={newProduct.code}
               onChange={(e) => {
-                setNewProduct({
-                  ...newProduct,
-                  code: e.target.value,
-                });
-
-                setErrors((prev) => ({
-                  ...prev,
-                  code: '',
-                }));
+                setNewProduct({ ...newProduct, code: e.target.value });
+                setErrors(prev => ({ ...prev, code: '' }));
               }}
             />
-
-            {errors.code && (
-              <ErrorMessage
-                message={errors.code}
-              />
-            )}
+            {errors.code && <ErrorMessage message={errors.code} />}
           </div>
 
           {/* NOMBRE */}
@@ -7168,81 +7258,40 @@ function ProductManagement({}: { key?: string }) {
               label="Nombre"
               value={newProduct.name}
               onChange={(e) => {
-                setNewProduct({
-                  ...newProduct,
-                  name: e.target.value,
-                });
-
-                setErrors((prev) => ({
-                  ...prev,
-                  name: '',
-                }));
+                setNewProduct({ ...newProduct, name: e.target.value });
+                setErrors(prev => ({ ...prev, name: '' }));
               }}
             />
-
-            {errors.name && (
-              <ErrorMessage
-                message={errors.name}
-              />
-            )}
+            {errors.name && <ErrorMessage message={errors.name} />}
           </div>
 
           {/* CAMISETA */}
           <div className="space-y-3">
             <p className="text-xs font-black uppercase">
-              Costos de Confección —
-              Camiseta
+              Costos de Confección — Camiseta
             </p>
-            
             {[
-              {
-                key: 'price_filetes',
-                label: 'Filetes',
-              },
-              {
-                key: 'price_despuntes',
-                label: 'Despuntes',
-              },
-              {
-                key: 'price_collarin',
-                label: 'Collarín',
-              },
-              {
-                key: 'price_dobladillo_remate',
-                label:
-                  'Dobladillo y Remate',
-              },
-            ].map(
-              ({ key, label }) => (
-                <Input
-                  key={key}
-                  label={label}
-                  type="number"
-                  value={
-                    (newProduct as any)[
-                      key
-                    ]
-                  }
-                  onChange={(e) =>
-                    setNewProduct({
-                      ...newProduct,
-                      [key]: Number(
-                        e.target.value
-                      ),
-                    })
-                  }
-                />
-              )
-            )}
-
+              { key: 'price_filetes', label: 'Filetes' },
+              { key: 'price_despuntes', label: 'Despuntes' },
+              { key: 'price_collarin', label: 'Collarín' },
+              { key: 'price_dobladillo_remate', label: 'Dobladillo y Remate' },
+            ].map(({ key, label }) => (
+              <Input
+                key={key}
+                label={label}
+                type="number"
+                value={(newProduct as any)[key]}
+                onChange={(e) =>
+                  setNewProduct({ ...newProduct, [key]: Number(e.target.value) })
+                }
+              />
+            ))}
             <div className="bg-accent/10 rounded-2xl p-4 border border-accent/20">
               <p className="text-[10px] font-black uppercase tracking-widest text-accent">
                 Total Costura Camiseta
               </p>
-
               <p className="text-2xl font-black text-foreground-main">
-                $
-                {camisetaTotal.toLocaleString()}
+                ${camisetaTotal.toLocaleString()}
               </p>
             </div>
           </div>
@@ -7250,68 +7299,32 @@ function ProductManagement({}: { key?: string }) {
           {/* PANTALONETA */}
           <div className="space-y-3">
             <p className="text-xs font-black uppercase">
-              Costos de Confección —
-              Pantaloneta
+              Costos de Confección — Pantaloneta
             </p>
-
             {[
-              {
-                key: 'price_filete_p',
-                label: 'Filete',
-              },
-              {
-                key: 'price_despuntes_p',
-                label: 'Despuntes',
-              },
-              {
-                key: 'price_caucho',
-                label: 'Caucho',
-              },
-              {
-                key: 'price_sentar_caucho',
-                label:
-                  'Sentar Caucho',
-              },
-              {
-                key: 'price_collarin_p',
-                label: 'Collarín',
-              },
-              {
-                key: 'price_remate',
-                label: 'Remate',
-              },
-            ].map(
-              ({ key, label }) => (
-                <Input
-                  key={key}
-                  label={label}
-                  type="number"
-                  value={
-                    (newProduct as any)[
-                      key
-                    ]
-                  }
-                  onChange={(e) =>
-                    setNewProduct({
-                      ...newProduct,
-                      [key]: Number(
-                        e.target.value
-                      ),
-                    })
-                  }
-                />
-              )
-            )}
-
+              { key: 'price_filete_p', label: 'Filete' },
+              { key: 'price_despuntes_p', label: 'Despuntes' },
+              { key: 'price_caucho', label: 'Caucho' },
+              { key: 'price_sentar_caucho', label: 'Sentar Caucho' },
+              { key: 'price_collarin_p', label: 'Collarín' },
+              { key: 'price_remate', label: 'Remate' },
+            ].map(({ key, label }) => (
+              <Input
+                key={key}
+                label={label}
+                type="number"
+                value={(newProduct as any)[key]}
+                onChange={(e) =>
+                  setNewProduct({ ...newProduct, [key]: Number(e.target.value) })
+                }
+              />
+            ))}
             <div className="bg-accent/10 rounded-2xl p-4 border border-accent/20">
               <p className="text-[10px] font-black uppercase tracking-widest text-accent">
-                Total Costura
-                Pantaloneta
+                Total Costura Pantaloneta
               </p>
-
               <p className="text-2xl font-black text-foreground-main">
-                $
-                {pantalonetaTotal.toLocaleString()}
+                ${pantalonetaTotal.toLocaleString()}
               </p>
             </div>
           </div>
@@ -7319,23 +7332,20 @@ function ProductManagement({}: { key?: string }) {
           {/* TOTAL FINAL */}
           <div className="bg-surface-hover rounded-3xl p-6 border border-border-custom">
             <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted mb-2">
-              Costo Total de
-              Confección
+              Costo Total de Confección
             </p>
-
             <p className="text-4xl font-black text-accent">
-              $
-              {newProduct.sewing_cost.toLocaleString()}
+              ${newProduct.sewing_cost.toLocaleString()}
             </p>
           </div>
+
+          {errors.confeccion && <ErrorMessage message={errors.confeccion} />}
 
           <button
             type="submit"
             className="w-full bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs"
           >
-            {editingProduct
-              ? 'Actualizar Producto'
-              : 'Guardar Producto'}
+            {editingProduct ? 'Actualizar Producto' : 'Guardar Producto'}
           </button>
         </form>
       </Modal>
