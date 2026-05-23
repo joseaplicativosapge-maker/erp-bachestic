@@ -3884,7 +3884,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 
             <div className="bg-background rounded-[28px] border border-border-custom p-6 space-y-3">
               <p className="text-[9px] font-black uppercase tracking-[0.3em] text-foreground-muted mb-4">
-                Resumen de Prendas
+                Resumen de Uniformes
               </p>
               {(() => {
                 const camisetas = order.items?.filter(i => i.garment_type?.toLowerCase().includes('camiseta')).length || 0;
@@ -3926,7 +3926,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                       </div>
                     )}
                     <div className="flex items-center justify-between pt-3">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-accent">Total Prendas</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-accent">Total Uniformes</span>
                       <span className="font-black text-2xl text-foreground-main tracking-tighter">{order.items?.length || 0}</span>
                     </div>
                   </div>
@@ -3961,7 +3961,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrUrl)}`;
                 const printWindow = window.open('', '_blank', 'width=400,height=600');
                 if (!printWindow) return;
-                printWindow.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Recibo ${order.order_number}</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Arial',sans-serif;background:#fff;color:#111;padding:32px 24px;max-width:360px;margin:0 auto;}.header{text-align:center;border-bottom:2px solid #111;padding-bottom:16px;margin-bottom:20px;}.brand{font-size:22px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;}.brand span{color:#e11d48;}.order-number{display:inline-block;margin-top:8px;font-size:11px;font-weight:800;letter-spacing:0.3em;text-transform:uppercase;background:#fef2f2;color:#e11d48;padding:4px 12px;border-radius:20px;border:1px solid #fecdd3;}.client-name{font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;margin-top:12px;}.client-info{font-size:11px;color:#555;margin-top:4px;font-weight:600;}.item-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f0f0f0;}.item-label{font-size:13px;font-weight:800;text-transform:uppercase;}.item-qty{font-size:22px;font-weight:900;}.total-row{display:flex;justify-content:space-between;align-items:center;background:#111;color:#fff;padding:12px 16px;border-radius:12px;margin-bottom:24px;}.total-label{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.3em;}.total-qty{font-size:26px;font-weight:900;}.qr-section{text-align:center;padding-top:16px;border-top:1px dashed #ddd;}.qr-section img{width:160px;height:160px;border-radius:12px;border:1px solid #eee;}.qr-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.3em;color:#999;margin-top:10px;}.delivery{display:flex;justify-content:space-between;font-size:11px;margin-bottom:20px;padding:10px 14px;background:#f9f9f9;border-radius:10px;border:1px solid #eee;}.delivery-label{color:#999;font-weight:700;text-transform:uppercase;}.delivery-value{font-weight:900;text-transform:uppercase;}.footer{text-align:center;font-size:9px;color:#bbb;margin-top:20px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;}.section-title{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:0.3em;color:#999;margin-bottom:12px;}</style></head><body><div class="header"><div class="brand">Bachestic <span>Sport</span></div><div class="order-number">${order.order_number}</div><div class="client-name">${order.client_name}</div><div class="client-info">${order.client_doc_type||''} ${order.client_doc||''} · ${order.client_phone||''}</div></div><div class="delivery"><span class="delivery-label">Entrega estimada</span><span class="delivery-value">${order.delivery_date?new Date(new Date(order.delivery_date).setDate(new Date(order.delivery_date).getDate()-1)).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}):'Por confirmar'}</span></div><div class="items-section"><div class="section-title">Resumen de Prendas</div>${camisetas>0?`<div class="item-row"><span class="item-label">Camisetas</span><span class="item-qty">${camisetas}</span></div>`:''}${pantalonetas>0?`<div class="item-row"><span class="item-label">Pantalonetas</span><span class="item-qty">${pantalonetas}</span></div>`:''}${otros>0?`<div class="item-row"><span class="item-label">Uniformes</span><span class="item-qty">${otros}</span></div>`:''}</div><div class="total-row"><span class="total-label">Total Prendas</span><span class="total-qty">${order.items?.length||0}</span></div><div class="qr-section"><img src="${qrImageUrl}" alt="QR"/><div class="qr-label">Escanea para seguimiento en línea</div></div><div class="footer">Bachestic Sport · ${new Date().toLocaleDateString('es-CO')}</div><script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();};</script></body></html>`);
+                printWindow.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Recibo ${order.order_number}</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Arial',sans-serif;background:#fff;color:#111;padding:32px 24px;max-width:360px;margin:0 auto;}.header{text-align:center;border-bottom:2px solid #111;padding-bottom:16px;margin-bottom:20px;}.brand{font-size:22px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;}.brand span{color:#e11d48;}.order-number{display:inline-block;margin-top:8px;font-size:11px;font-weight:800;letter-spacing:0.3em;text-transform:uppercase;background:#fef2f2;color:#e11d48;padding:4px 12px;border-radius:20px;border:1px solid #fecdd3;}.client-name{font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;margin-top:12px;}.client-info{font-size:11px;color:#555;margin-top:4px;font-weight:600;}.item-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f0f0f0;}.item-label{font-size:13px;font-weight:800;text-transform:uppercase;}.item-qty{font-size:22px;font-weight:900;}.total-row{display:flex;justify-content:space-between;align-items:center;background:#111;color:#fff;padding:12px 16px;border-radius:12px;margin-bottom:24px;}.total-label{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.3em;}.total-qty{font-size:26px;font-weight:900;}.qr-section{text-align:center;padding-top:16px;border-top:1px dashed #ddd;}.qr-section img{width:160px;height:160px;border-radius:12px;border:1px solid #eee;}.qr-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.3em;color:#999;margin-top:10px;}.delivery{display:flex;justify-content:space-between;font-size:11px;margin-bottom:20px;padding:10px 14px;background:#f9f9f9;border-radius:10px;border:1px solid #eee;}.delivery-label{color:#999;font-weight:700;text-transform:uppercase;}.delivery-value{font-weight:900;text-transform:uppercase;}.footer{text-align:center;font-size:9px;color:#bbb;margin-top:20px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;}.section-title{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:0.3em;color:#999;margin-bottom:12px;}</style></head><body><div class="header"><div class="brand">Bachestic <span>Sport</span></div><div class="order-number">${order.order_number}</div><div class="client-name">${order.client_name}</div><div class="client-info">${order.client_doc_type||''} ${order.client_doc||''} · ${order.client_phone||''}</div></div><div class="delivery"><span class="delivery-label">Entrega estimada</span><span class="delivery-value">${order.delivery_date?new Date(new Date(order.delivery_date).setDate(new Date(order.delivery_date).getDate()-1)).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}):'Por confirmar'}</span></div><div class="items-section"><div class="section-title">Resumen de Uniformes</div>${camisetas>0?`<div class="item-row"><span class="item-label">Camisetas</span><span class="item-qty">${camisetas}</span></div>`:''}${pantalonetas>0?`<div class="item-row"><span class="item-label">Pantalonetas</span><span class="item-qty">${pantalonetas}</span></div>`:''}${otros>0?`<div class="item-row"><span class="item-label">Uniformes</span><span class="item-qty">${otros}</span></div>`:''}</div><div class="total-row"><span class="total-label">Total Uniformes</span><span class="total-qty">${order.items?.length||0}</span></div><div class="qr-section"><img src="${qrImageUrl}" alt="QR"/><div class="qr-label">Escanea para seguimiento en línea</div></div><div class="footer">Bachestic Sport · ${new Date().toLocaleDateString('es-CO')}</div><script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();};</script></body></html>`);
                 printWindow.document.close();
               }}
               className="w-full bg-surface-hover text-foreground-main py-4 rounded-[24px] font-black uppercase tracking-[0.3em] text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main hover:text-background transition-all border border-border-custom"
@@ -4382,32 +4382,32 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                           )}
                         </div>
                       </div>
-  <div className="text-right space-y-1">
-    <p className="text-[10px] font-black text-accent uppercase tracking-widest">{a.department}</p>
-    <p className="text-[9px] text-foreground-muted font-bold">
-      {order.items?.length || 0} uniformes
-    </p>
-    {/* DURACIÓN */}
-    {a.duration_minutes != null ? (
-      <p className={cn(
-        "text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg",
-        a.duration_minutes > 480  // más de 8 horas
-          ? "bg-red-500/10 text-red-500"
-          : a.duration_minutes > 240 // más de 4 horas
-            ? "bg-yellow-500/10 text-yellow-500"
-            : "bg-green-500/10 text-green-500"
-      )}>
-        {a.duration_minutes < 60
-          ? `${a.duration_minutes}m`
-          : `${Math.floor(a.duration_minutes / 60)}h ${a.duration_minutes % 60}m`}
-      </p>
-    ) : (
-      <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted/40 px-2 py-1 rounded-lg bg-surface border border-border-custom">
-        En progreso
-      </p>
-    )}
-  </div>
-</div>
+                          <div className="text-right space-y-1">
+                            <p className="text-[10px] font-black text-accent uppercase tracking-widest">{a.department}</p>
+                            <p className="text-[9px] text-foreground-muted font-bold">
+                              {order.items?.length || 0} uniformes
+                            </p>
+                            {/* DURACIÓN */}
+                            {a.duration_minutes != null ? (
+                              <p className={cn(
+                                "text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg",
+                                a.duration_minutes > 480  // más de 8 horas
+                                  ? "bg-red-500/10 text-red-500"
+                                  : a.duration_minutes > 240 // más de 4 horas
+                                    ? "bg-yellow-500/10 text-yellow-500"
+                                    : "bg-green-500/10 text-green-500"
+                              )}>
+                                {a.duration_minutes < 60
+                                  ? `${a.duration_minutes}m`
+                                  : `${Math.floor(a.duration_minutes / 60)}h ${a.duration_minutes % 60}m`}
+                              </p>
+                            ) : (
+                              <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted/40 px-2 py-1 rounded-lg bg-surface border border-border-custom">
+                                En progreso
+                              </p>
+                            )}
+                          </div>
+                        </div>
                   ))}
                   <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
                     <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total Confeccionado</p>
