@@ -826,7 +826,7 @@ app.post('/api/assignments', (req, res) => {
     // Registrar en historial
     const histStmt = db.prepare(`
       INSERT INTO order_history (order_id, action, details, user_name, created_at)
-      VALUES (?, 'Asignación de Confección', ?, ?, datetime('now'))
+      VALUES (?, 'Asignación', ?, ?, datetime('now'))
     `);
     
     const emp = db.prepare('SELECT name FROM employees WHERE id = ?').get(employee_id);

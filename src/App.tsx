@@ -5191,6 +5191,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
   };
 
   const filteredOrders = orders.filter(o => {
+
     if (showDelivered) {
       if (o.status !== 'Entregado') return false;
     } else {
@@ -5639,7 +5640,7 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
           paginatedOrders.map(order => {
 
             // ✅ SOLO LA PRIMERA ACTIVA
-            const isLocked = order.id !== firstActiveOrderId;
+            const isLocked = !showDelivered && order.id !== firstActiveOrderId;
 
             const daysLeft = order.delivery_date
               ? differenceInBusinessDays(new Date(order.delivery_date), new Date())
