@@ -5249,6 +5249,9 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
     currentPage * ITEMS_PER_PAGE
   );
 
+  // ✅ SOLO LA PRIMERA ORDEN ACTIVA
+  const firstActiveOrderId = paginatedOrders[0]?.id;
+
   const allStatuses: OrderStatus[] = [
     'Abono pendiente',
     'Abono confirmado',
@@ -5440,159 +5443,135 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
               </button>
             )}
           </div>
-
+          
           {/* FILTRO EQUIPO */}
-          <div className="relative group">
-            <div className="absolute inset-0 rounded-2xl bg-accent/5 opacity-0 group-hover:opacity-100 transition-all" />
+<div className="relative group">
+  <div className="absolute inset-0 rounded-2xl bg-accent/5 opacity-0 group-hover:opacity-100 transition-all" />
 
-            <select
-              value={teamFilter}
-              onChange={e => setTeamFilter(e.target.value)}
-              className="
-                appearance-none
-                relative
-                bg-surface
-                border border-border-custom
-                hover:border-accent/40
-                focus:border-accent
-                focus:ring-4
-                focus:ring-accent/10
-                rounded-2xl
-                pl-5 pr-12 py-3
-                text-[10px]
-                font-black
-                uppercase
-                tracking-[0.18em]
-                text-foreground-main
-                outline-none
-                transition-all
-                cursor-pointer
-                min-w-[190px]
-              "
-            >
-              {availableTeams.map(team => (
-                <option key={team} value={team}>
-                  {team}
-                </option>
-              ))}
-            </select>
+  <select
+    value={teamFilter}
+    onChange={e => setTeamFilter(e.target.value)}
+    className="
+      appearance-none
+      relative
+      bg-surface
+      border border-border-custom
+      hover:border-accent/40
+      focus:border-accent
+      focus:ring-4
+      focus:ring-accent/10
+      rounded-2xl
+      pl-5 pr-12 py-3
+      text-[10px]
+      font-black
+      uppercase
+      tracking-[0.18em]
+      text-foreground-main
+      outline-none
+      transition-all
+      cursor-pointer
+      min-w-[190px]
+    "
+  >
+    {availableTeams.map(team => (
+      <option key={team} value={team}>
+        {team}
+      </option>
+    ))}
+  </select>
 
-            <ChevronDown
-              size={16}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none"
-            />
-          </div>
+  <ChevronDown
+    size={16}
+    className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none"
+  />
+</div>
 
-          {/* FECHAS */}
-          <div className="
-            flex items-center gap-4
-            bg-surface
-            border border-border-custom
-            hover:border-accent/30
-            rounded-2xl
-            px-5 py-3
-            transition-all
-          ">
+{/* FECHAS */}
+<div className="
+  flex items-center gap-4
+  bg-surface
+  border border-border-custom
+  hover:border-accent/30
+  rounded-2xl
+  px-5 py-3
+  transition-all
+">
 
-            <select
-              value={dateField}
-              onChange={e => setDateField(e.target.value as any)}
-              className="
-                bg-transparent
-                text-[10px]
-                font-black
-                uppercase
-                tracking-[0.18em]
-                outline-none
-                text-foreground-muted
-                appearance-none
-                cursor-pointer
-              "
-            >
-              <option value="delivery_date">Entrega</option>
-              <option value="created_at">Creación</option>
-            </select>
+  <select
+    value={dateField}
+    onChange={e => setDateField(e.target.value as any)}
+    className="
+      bg-transparent
+      text-[10px]
+      font-black
+      uppercase
+      tracking-[0.18em]
+      outline-none
+      text-foreground-muted
+      appearance-none
+      cursor-pointer
+    "
+  >
+    <option value="delivery_date">Entrega</option>
+    <option value="created_at">Creación</option>
+  </select>
 
-            <div className="w-px h-5 bg-border-custom" />
+  <div className="w-px h-5 bg-border-custom" />
 
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={e => setDateFrom(e.target.value)}
-              className="
-                bg-transparent
-                text-[10px]
-                font-black
-                text-foreground-main
-                outline-none
-                [color-scheme:light]
-                cursor-pointer
-              "
-            />
+  <input
+    type="date"
+    value={dateFrom}
+    onChange={e => setDateFrom(e.target.value)}
+    className="
+      bg-transparent
+      text-[10px]
+      font-black
+      text-foreground-main
+      outline-none
+      [color-scheme:light]
+      cursor-pointer
+    "
+  />
 
-            <span className="text-[10px] font-black text-foreground-muted">
-              —
-            </span>
+  <span className="text-[10px] font-black text-foreground-muted">
+    —
+  </span>
 
-            <input
-              type="date"
-              value={dateTo}
-              onChange={e => setDateTo(e.target.value)}
-              className="
-                bg-transparent
-                text-[10px]
-                font-black
-                text-foreground-main
-                outline-none
-                [color-scheme:light]
-                cursor-pointer
-              "
-            />
+  <input
+    type="date"
+    value={dateTo}
+    onChange={e => setDateTo(e.target.value)}
+    className="
+      bg-transparent
+      text-[10px]
+      font-black
+      text-foreground-main
+      outline-none
+      [color-scheme:light]
+      cursor-pointer
+    "
+  />
 
-            {(dateFrom || dateTo) && (
-              <button
-                onClick={() => {
-                  setDateFrom('');
-                  setDateTo('');
-                }}
-                className="
-                  w-7 h-7
-                  rounded-full
-                  flex items-center justify-center
-                  text-foreground-muted
-                  hover:bg-accent
-                  hover:text-white
-                  transition-all
-                "
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
-
-          {/* CONTADOR */}
-          <div className="
-            ml-auto
-            flex items-center gap-2
-            px-5 py-3
-            rounded-2xl
-            bg-accent/10
-            border border-accent/10
-          ">
-            <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-
-            <span className="
-              text-[10px]
-              font-black
-              uppercase
-              tracking-[0.18em]
-              text-accent
-              whitespace-nowrap
-            ">
-              {filteredOrders.length}{' '}
-              {filteredOrders.length === 1 ? 'orden' : 'órdenes'}
-            </span>
-          </div>
+  {(dateFrom || dateTo) && (
+    <button
+      onClick={() => {
+        setDateFrom('');
+        setDateTo('');
+      }}
+      className="
+        w-7 h-7
+        rounded-full
+        flex items-center justify-center
+        text-foreground-muted
+        hover:bg-accent
+        hover:text-white
+        transition-all
+      "
+    >
+      <X size={13} />
+    </button>
+  )}
+</div>
 
         </div>
       </div>
@@ -5618,6 +5597,10 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
           </div>
         ) : (
           paginatedOrders.map(order => {
+
+            // ✅ SOLO LA PRIMERA ACTIVA
+            const isLocked = order.id !== firstActiveOrderId;
+
             const daysLeft = order.delivery_date
               ? differenceInBusinessDays(new Date(order.delivery_date), new Date())
               : 0;
@@ -5637,10 +5620,16 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
             return (
               <motion.div
                 key={order.id}
-                whileHover={{ x: 4 }}
-                onClick={() => onOrderClick(order.id)}
+                whileHover={!isLocked ? { x: 4 } : undefined}
+                onClick={() => {
+                  if (!isLocked) {
+                    onOrderClick(order.id);
+                  }
+                }}
                 className={cn(
-                  "flex items-center justify-between bg-surface px-6 py-4 rounded-2xl border-l-4 border border-border-custom cursor-pointer transition-all hover:bg-background",
+                  "flex items-center justify-between bg-surface px-6 py-4 rounded-2xl border-l-4 border border-border-custom transition-all",
+                  !isLocked && "cursor-pointer hover:bg-background",
+                  isLocked && "opacity-50 cursor-not-allowed pointer-events-none",
                   order.is_reposition
                     ? "border-l-orange-500 bg-orange-500/5 hover:bg-orange-500/10"
                     : colorClass
@@ -5673,6 +5662,12 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
                     {!!order.is_reposition && order.reposition_reason && (
                       <p className="text-[9px] text-orange-400 font-bold mt-0.5 italic truncate max-w-[200px]">
                         {order.reposition_reason}
+                      </p>
+                    )}
+
+                    {isLocked && (
+                      <p className="text-[9px] text-red-400 font-black uppercase tracking-widest mt-1">
+                        Orden bloqueada
                       </p>
                     )}
                   </div>
