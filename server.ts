@@ -809,6 +809,15 @@ async function startServer() {
     res.json({ activeOrders, delayedOrders });
   });
 
+  app.delete('/api/assignments/:id', (req, res) => {
+    try {
+      db.prepare('DELETE FROM production_assignments WHERE id = ?').run(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
    // POST /api/assignments
 app.post('/api/assignments', (req, res) => {
   const { order_id, employee_id, department, garment_count, price_per_unit, notes } = req.body;
@@ -855,10 +864,48 @@ app.get('/api/orders/:id/assignments', (req, res) => {
       LEFT JOIN employees e ON pa.employee_id = e.id
       WHERE pa.order_id = ?
       ORDER BY pa.created_at DESC
-    `).all(req.params.id);
-    
-    res.json(assignments);
-  } catch (error) {
+    `).all(req.params.id) as any[];
+
+    // Para cada asignación, buscar cuándo se avanzó desde ese estado
+    const nextStatusMap: Record<string, string> = {
+      'En cuadro':      'En montaje',
+      'En montaje':     'En impresión',
+      'En impresión':   'En sublimación',
+      'En sublimación': 'En corte',
+      'En corte':       'En confección',
+      'En empaque':     'En despacho',
+    };
+
+    const enriched = assignments.map(a => {
+      const nextStatus = nextStatusMap[a.department];
+      let duration_minutes: number | null = null;
+      let completed_at: string | null = null;
+
+      if (nextStatus) {
+        // Buscar el primer cambio al siguiente estado DESPUÉS de que se asignó
+        const histEntry = db.prepare(`
+          SELECT created_at FROM order_history
+          WHERE order_id = ?
+            AND action = 'Cambio de Estado'
+            AND details LIKE ?
+            AND created_at > ?
+          ORDER BY created_at ASC
+          LIMIT 1
+        `).get(req.params.id, `%${nextStatus}%`, a.created_at) as any;
+
+        if (histEntry) {
+          completed_at = histEntry.created_at;
+          const start = new Date(a.created_at).getTime();
+          const end   = new Date(histEntry.created_at).getTime();
+          duration_minutes = Math.round((end - start) / 60000);
+        }
+      }
+
+      return { ...a, duration_minutes, completed_at };
+    });
+
+    res.json(enriched);
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });

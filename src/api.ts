@@ -29,6 +29,12 @@ export const api = {
     const res = await fetch(`${API_BASE}/orders/${id}`);
     return handleResponse(res);
   },
+  deleteAssignment: async (id: number): Promise<void> => {
+    const res = await fetch(`${API_BASE}/assignments/${id}`, {
+      method: 'DELETE',
+    });
+    await handleResponse(res);
+  },
   createOrder: async (order: Partial<Order> & { user_name?: string }): Promise<{ id: number; order_number: string }> => {
     const res = await fetch(`${API_BASE}/orders`, {
       method: 'POST',

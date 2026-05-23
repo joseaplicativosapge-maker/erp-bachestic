@@ -3157,6 +3157,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
     }
   };
 
+  // DESPUÉS
   const handleCreateProductionAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productionAssignForm.employee_id) {
@@ -3164,6 +3165,14 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       return;
     }
     try {
+      // Eliminar asignación previa del mismo estado si existe
+      const existing = productionAssignments.filter(
+        a => a.department === order!.status
+      );
+      for (const prev of existing) {
+        await api.deleteAssignment(prev.id);
+      }
+
       await api.createAssignment({
         order_id: orderId,
         employee_id: parseInt(productionAssignForm.employee_id),
@@ -3172,7 +3181,12 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
         price_per_unit: 0,
         notes: productionAssignForm.notes || ''
       });
-      toast.success('Empleado asignado correctamente');
+
+      toast.success(
+        existing.length > 0
+          ? 'Responsable actualizado correctamente'
+          : 'Empleado asignado correctamente'
+      );
       setShowProductionAssignModal(false);
       setProductionAssignForm({ employee_id: '', notes: '' });
       await loadOrder();
@@ -4351,34 +4365,49 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                       return acc;
                     }, {} as Record<number, any>)
                   ).map((emp: any, i) => (
-                    <div key={i} className="bg-surface-hover p-5 rounded-2xl border border-border-custom">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
-                            <Users size={14} />
-                          </div>
-                          <div>
-                            <p className="font-black text-sm text-foreground-main">{emp.employee_name}</p>
-                            <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">Confección</p>
-                          </div>
+                    <div key={i} className="bg-surface-hover p-5 rounded-2xl border border-border-custom flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
+                          <Users size={18} />
                         </div>
-                        <div className="text-right">
-                          <p className="font-black text-lg text-accent">{emp.total_garments} UDS</p>
-                          <p className="text-[9px] font-bold text-foreground-muted">${emp.total_earned.toLocaleString()}</p>
+                        <div>
+                          <p className="font-black text-sm text-foreground-main">
+                            {a.employee_name || `Empleado #${a.employee_id}`}
+                          </p>
+                          <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">
+                            {format(new Date(a.created_at), 'dd/MM/yyyy HH:mm')} Hola
+                          </p>
+                          {a.notes && (
+                            <p className="text-[10px] text-foreground-muted italic mt-0.5">{a.notes}</p>
+                          )}
                         </div>
                       </div>
-                      {emp.items.map((item: any, j: number) => (
-                        <div key={j} className="flex items-center justify-between py-2 border-t border-border-custom text-[10px]">
-                          <span className="text-foreground-muted font-bold uppercase tracking-widest">
-                            {format(new Date(item.created_at), 'dd/MM HH:mm')}
-                          </span>
-                          <div className="flex items-center gap-4">
-                            <span className="text-foreground-main font-bold">{item.garment_count} uds × ${(item.price_per_unit || 0).toLocaleString()}</span>
-                            {item.notes && <span className="text-foreground-muted italic max-w-[120px] truncate">{item.notes}</span>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+  <div className="text-right space-y-1">
+    <p className="text-[10px] font-black text-accent uppercase tracking-widest">{a.department}</p>
+    <p className="text-[9px] text-foreground-muted font-bold">
+      {order.items?.length || 0} uniformes
+    </p>
+    {/* DURACIÓN */}
+    {a.duration_minutes != null ? (
+      <p className={cn(
+        "text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg",
+        a.duration_minutes > 480  // más de 8 horas
+          ? "bg-red-500/10 text-red-500"
+          : a.duration_minutes > 240 // más de 4 horas
+            ? "bg-yellow-500/10 text-yellow-500"
+            : "bg-green-500/10 text-green-500"
+      )}>
+        {a.duration_minutes < 60
+          ? `${a.duration_minutes}m`
+          : `${Math.floor(a.duration_minutes / 60)}h ${a.duration_minutes % 60}m`}
+      </p>
+    ) : (
+      <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted/40 px-2 py-1 rounded-lg bg-surface border border-border-custom">
+        En progreso
+      </p>
+    )}
+  </div>
+</div>
                   ))}
                   <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
                     <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total Confeccionado</p>
@@ -4736,7 +4765,10 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                     }}
                     className="bg-accent text-white px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 hover:scale-105 transition-all"
                   >
-                    <Plus size={14} /> Asignar
+                    <Plus size={14} />
+                    {productionAssignments.some(a => a.department === order.status)
+                      ? 'Cambiar'
+                      : 'Asignar'}
                   </button>
                 )}
               </div>
