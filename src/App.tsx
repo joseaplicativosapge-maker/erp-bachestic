@@ -2992,7 +2992,6 @@ function EditOrderModal({ order, items: initialItems, onCancel, onSuccess, user 
   );
 }
 
-// --- Order Details Component ---
 function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: number, onBack: () => void, onUpdate: () => void, user: User, canEdit: boolean, key?: string }) {
   const [order, setOrder] = useState<Order | null>(null);
   const [history, setHistory] = useState<OrderHistory[]>([]);
@@ -3128,8 +3127,12 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       setOrder(orderData);
       setHistory(historyData);
       setAssignments(assignmentsData);
-      // Separar asignaciones de producción (las que no son de Confección)
-      setProductionAssignments(assignmentsData.filter((a: any) => a.department !== 'Confección'));
+      
+      const prodAssignments = assignmentsData.filter((a: any) => a.department !== 'Confección');
+      console.log('productionAssignments:', prodAssignments);
+      console.log('order.status:', orderData.status);
+      setProductionAssignments(prodAssignments);
+
       setEditData(orderData);
       setEditItems(orderData.items || []);
     } catch (err: any) {
@@ -3766,7 +3769,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 </p>
               )}
             </div>
-            {/* ── COSTO COSTURA ── */}
             <div className="min-w-[150px] flex-1 space-y-3">
               <p className="font-black text-foreground-main">Costo Costura</p>
               <p className="font-black text-accent tracking-tight flex items-center gap-2">
@@ -3778,7 +3780,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
 
-          {/* Diseño de Uniformes */}
           <UniformDesignerSection
             order={order}
             user={user}
@@ -4016,6 +4017,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           )}
 
+          {/* ── ACCIONES DE FLUJO ── */}
           <div className="bg-surface p-8 rounded-[40px] border border-border-custom shadow-2xl space-y-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
@@ -4116,6 +4118,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 </div>
               )}
 
+              {/* ── BLOQUE 1: Diseño aprobado / En cuadro / En montaje ── */}
               {['Diseño aprobado', 'En cuadro', 'En montaje'].includes(order.status) && (role === 'Admin' || role === 'Diseño') && (() => {
                 const stepMap: Partial<Record<OrderStatus, { label: string; next: OrderStatus; icon: any }>> = {
                   'Diseño aprobado': { label: 'Avanzar a: Producción', next: 'En cuadro', icon: Printer },
@@ -4125,28 +4128,60 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 const step = stepMap[order.status as keyof typeof stepMap];
                 if (!step) return null;
                 const Icon = step.icon;
+
+                const requiresAssignment = order.status === 'En cuadro' || order.status === 'En montaje';
+                const hasAssignment = productionAssignments.some(
+                  a => a.department?.trim().toLowerCase() === order.status?.trim().toLowerCase()
+                );
+                const canAdvance = !requiresAssignment || hasAssignment;
+
                 return (
-                  <button
-                    onClick={() => handleStatusUpdate(step.next)}
-                    className="w-full bg-foreground-main text-background py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-foreground-main/90 transition-all"
-                  >
-                    <Icon size={18} /> {step.label}
-                  </button>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => canAdvance && handleStatusUpdate(step.next)}
+                      disabled={!canAdvance}
+                      className={cn(
+                        "w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all",
+                        canAdvance
+                          ? "bg-foreground-main text-background hover:bg-foreground-main/90"
+                          : "bg-surface-hover text-foreground-muted/40 cursor-not-allowed border border-dashed border-border-custom"
+                      )}
+                    >
+                      <Icon size={18} /> {step.label}
+                    </button>
+                    {!canAdvance && (
+                      <p className="text-[9px] font-black uppercase tracking-widest text-accent/70 text-center flex items-center justify-center gap-1.5">
+                        <AlertCircle size={12} />
+                        Asigna un responsable antes de avanzar
+                      </p>
+                    )}
+                  </div>
                 );
               })()}
 
+              {/* ── BLOQUE 2: En impresión / En sublimación / En corte / En confección / En empaque / En despacho ── */}
               {(['En impresión', 'En sublimación', 'En corte', 'En confección', 'En empaque', 'En despacho'] as OrderStatus[]).includes(order.status) && (role === 'Admin' || role === 'Ventas' || role === 'Impresión' || role === 'En Sublimación' || role === 'Corte' || role === 'Confección' || role === 'Empaque') && (() => {
                 const nextMap: Partial<Record<OrderStatus, OrderStatus>> = {
-                  'En impresión': 'En sublimación',
+                  'En impresión':   'En sublimación',
                   'En sublimación': 'En corte',
-                  'En corte': 'En confección',
-                  'En confección': 'En empaque',
-                  'En empaque': 'En despacho',
-                  'En despacho': 'Entregado',
+                  'En corte':       'En confección',
+                  'En confección':  'En empaque',
+                  'En empaque':     'En despacho',
+                  'En despacho':    'Entregado',
                 };
                 const next = nextMap[order.status];
                 if (!next) return null;
 
+                // Validación: responsable asignado
+                const estadosQueRequierenAsignacion: OrderStatus[] = [
+                  'En impresión', 'En sublimación', 'En corte', 'En empaque'
+                ];
+                const requiereAsignacion = estadosQueRequierenAsignacion.includes(order.status);
+                const tieneAsignacion = productionAssignments.some(
+                  a => a.department?.trim().toLowerCase() === order.status?.trim().toLowerCase()
+                );
+
+                // Validación: confección completa
                 let confeccionCompleta = true;
                 let confeccionMensaje = '';
 
@@ -4194,26 +4229,37 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                   }
                 }
 
+                const puedeAvanzar = confeccionCompleta && (!requiereAsignacion || tieneAsignacion);
+
                 return (
                   <div className="space-y-3">
                     <button
-                      onClick={() => confeccionCompleta && handleStatusUpdate(next)}
-                      disabled={!confeccionCompleta}
+                      onClick={() => puedeAvanzar && handleStatusUpdate(next)}
+                      disabled={!puedeAvanzar}
                       className={cn(
                         "w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all",
-                        confeccionCompleta
+                        puedeAvanzar
                           ? "bg-foreground-main text-background hover:bg-foreground-main/90"
                           : "bg-surface-hover text-foreground-muted/40 cursor-not-allowed border border-dashed border-border-custom"
                       )}
                     >
                       <CheckCircle2 size={18} /> Avanzar a: {next}
                     </button>
+
+                    {requiereAsignacion && !tieneAsignacion && (
+                      <p className="text-[9px] font-black uppercase tracking-widest text-accent/70 text-center flex items-center justify-center gap-1.5">
+                        <AlertCircle size={12} />
+                        Asigna un responsable antes de avanzar
+                      </p>
+                    )}
+
                     {order.status === 'En confección' && !confeccionCompleta && (
                       <p className="text-[9px] font-black uppercase tracking-widest text-accent/70 text-center flex items-center justify-center gap-1.5">
                         <AlertCircle size={12} />
                         {confeccionMensaje}
                       </p>
                     )}
+
                     {order.status === 'En impresión' && (role === 'Admin' || role === 'Ventas' || role === 'Impresión') && (
                       <button
                         onClick={() => setShowQualityRejectModal(true)}
@@ -4770,7 +4816,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 </div>
                 {isQualityReject ? (
                   <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 mb-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1.5 mb-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1.5 mb-1">
                       <AlertTriangle size={10} /> Motivo del rechazo:
                     </p>
                     <p className="text-[10px] text-foreground-main leading-relaxed">
@@ -4936,74 +4982,74 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       )}
 
       {showProductionAssignModal && order && (
-  <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
-    <motion.div
-      initial={{ scale: 0.9, opacity: 0, y: 20 }}
-      animate={{ scale: 1, opacity: 1, y: 0 }}
-      className="w-full max-w-md bg-surface rounded-[40px] border border-border-custom p-10 shadow-2xl relative overflow-hidden"
-    >
-      <div className="absolute top-0 left-0 w-full h-1 bg-accent" />
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
-          <Users size={24} />
-        </div>
-        <div>
-          <h3 className="text-xl font-black text-foreground-main uppercase tracking-tight">Asignar Empleado</h3>
-          <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
-            {order.status} · {order.order_number}
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={handleCreateProductionAssignment} className="space-y-6">
-        <div className="space-y-3">
-          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Empleado</label>
-          <div className="relative">
-            <select
-              value={productionAssignForm.employee_id}
-              onChange={e => setProductionAssignForm({ ...productionAssignForm, employee_id: e.target.value })}
-              required
-              className="w-full px-6 py-4 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main appearance-none cursor-pointer pr-12"
-            >
-              <option value="" disabled>Seleccionar empleado...</option>
-              {employees.filter(e => e.active).map(emp => (
-                <option key={emp.id} value={emp.id}>{emp.name} — {emp.role}</option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-foreground-muted" size={18} />
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Observaciones (opcional)</label>
-          <input
-            type="text"
-            value={productionAssignForm.notes}
-            onChange={e => setProductionAssignForm({ ...productionAssignForm, notes: e.target.value })}
-            placeholder="Ej. Turno mañana, instrucciones especiales..."
-            className="w-full px-6 py-4 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main"
-          />
-        </div>
-
-        <div className="flex gap-4 pt-2">
-          <button
-            type="button"
-            onClick={() => { setShowProductionAssignModal(false); setProductionAssignForm({ employee_id: '', notes: '' }); }}
-            className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            className="w-full max-w-md bg-surface rounded-[40px] border border-border-custom p-10 shadow-2xl relative overflow-hidden"
           >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="flex-1 bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-xl shadow-accent/20"
-          >
-            <CheckCircle2 size={16} className="inline mr-2" /> Asignar
-          </button>
+            <div className="absolute top-0 left-0 w-full h-1 bg-accent" />
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
+                <Users size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-foreground-main uppercase tracking-tight">Asignar Empleado</h3>
+                <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
+                  {order.status} · {order.order_number}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateProductionAssignment} className="space-y-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Empleado</label>
+                <div className="relative">
+                  <select
+                    value={productionAssignForm.employee_id}
+                    onChange={e => setProductionAssignForm({ ...productionAssignForm, employee_id: e.target.value })}
+                    required
+                    className="w-full px-6 py-4 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main appearance-none cursor-pointer pr-12"
+                  >
+                    <option value="" disabled>Seleccionar empleado...</option>
+                    {employees.filter(e => e.active).map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.name} — {emp.role}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-foreground-muted" size={18} />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">Observaciones (opcional)</label>
+                <input
+                  type="text"
+                  value={productionAssignForm.notes}
+                  onChange={e => setProductionAssignForm({ ...productionAssignForm, notes: e.target.value })}
+                  placeholder="Ej. Turno mañana, instrucciones especiales..."
+                  className="w-full px-6 py-4 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowProductionAssignModal(false); setProductionAssignForm({ employee_id: '', notes: '' }); }}
+                  className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] border border-border-custom text-foreground-muted hover:bg-surface-hover transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-accent text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:scale-105 transition-all shadow-xl shadow-accent/20"
+                >
+                  <CheckCircle2 size={16} className="inline mr-2" /> Asignar
+                </button>
+              </div>
+            </form>
+          </motion.div>
         </div>
-      </form>
-    </motion.div>
-  </div>
-)}
+      )}
     </motion.div>
   );
 }
