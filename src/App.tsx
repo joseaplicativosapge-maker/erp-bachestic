@@ -5573,6 +5573,30 @@ function KDS({ orders, user, onOrderClick, onUpdate }: { orders: Order[], user: 
   )}
 </div>
 
+{/* CONTADOR DE ÓRDENES */}
+<div className="
+  ml-auto
+  flex items-center gap-2
+  px-5 py-3
+  rounded-2xl
+  bg-accent/10
+  border border-accent/10
+">
+  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+
+  <span className="
+    text-[10px]
+    font-black
+    uppercase
+    tracking-[0.18em]
+    text-accent
+    whitespace-nowrap
+  ">
+    {filteredOrders.length}{' '}
+    {filteredOrders.length === 1 ? 'orden' : 'órdenes'}
+  </span>
+</div>
+
         </div>
       </div>
 
