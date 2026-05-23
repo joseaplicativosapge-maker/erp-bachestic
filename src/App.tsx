@@ -3060,7 +3060,6 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
         setSearchResults([]);
       }
     };
-
     const timer = setTimeout(search, 300);
     return () => clearTimeout(timer);
   }, [clientSearch]);
@@ -3078,13 +3077,13 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   useEffect(() => {
     if (showAssignmentModal) {
       api.getProducts().then(prods => {
-        const camiseta = (prods.find(p => 
-          p.category?.toLowerCase().includes('camiseta') || 
+        const camiseta = (prods.find(p =>
+          p.category?.toLowerCase().includes('camiseta') ||
           p.name.toLowerCase().includes('camiseta')
         ) || prods[0]) as any;
 
-        const pantaloneta = (prods.find(p => 
-          p.category?.toLowerCase().includes('pantaloneta') || 
+        const pantaloneta = (prods.find(p =>
+          p.category?.toLowerCase().includes('pantaloneta') ||
           p.name.toLowerCase().includes('pantaloneta')
         ) || prods[0]) as any;
 
@@ -3111,7 +3110,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       const [orderData, historyData, assignmentsData] = await Promise.all([
         api.getOrder(orderId),
         api.getOrderHistory(orderId),
-        api.getOrderAssignments(orderId) 
+        api.getOrderAssignments(orderId)
       ]);
       setOrder(orderData);
       setHistory(historyData);
@@ -3147,28 +3146,28 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       return;
     }
     setIsSubmittingQualityReject(true);
-      try {
-        await fetch(`/api/orders/${orderId}/status`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            status: 'En cuadro',
-            user_name: user.name,
-            details_override: `⚠ Rechazo de calidad en impresión — Motivo: ${qualityRejectComment}`
-          })
-        });
-        toast.success('Rechazo registrado — orden devuelta a En cuadro');
-        setShowQualityRejectModal(false);
-        setQualityRejectComment('');
-        await loadOrder();
-        onUpdate();
-      } catch (error) {
-        console.error(error);
-        toast.error('Error al registrar el rechazo');
-      } finally {
-        setIsSubmittingQualityReject(false);
-      }
-    };
+    try {
+      await fetch(`/api/orders/${orderId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'En cuadro',
+          user_name: user.name,
+          details_override: `⚠ Rechazo de calidad en impresión — Motivo: ${qualityRejectComment}`
+        })
+      });
+      toast.success('Rechazo registrado — orden devuelta a En cuadro');
+      setShowQualityRejectModal(false);
+      setQualityRejectComment('');
+      await loadOrder();
+      onUpdate();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al registrar el rechazo');
+    } finally {
+      setIsSubmittingQualityReject(false);
+    }
+  };
 
   const handleStatusUpdate = async (newStatus: OrderStatus) => {
     if (!pendingStatus) {
@@ -3191,12 +3190,12 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 
       if (order?.is_reposition && order?.reposition_from_status) {
         const statusOrder: OrderStatus[] = [
-          'En sublimación', 'En corte', 'En confección', 
+          'En sublimación', 'En corte', 'En confección',
           'En empaque', 'En despacho', 'Entregado'
         ];
         const fromIndex = statusOrder.indexOf(order.reposition_from_status as OrderStatus);
         const newIndex = statusOrder.indexOf(newStatus);
-        
+
         if (fromIndex !== -1 && newIndex !== -1 && newIndex >= fromIndex) {
           await api.updateOrder(orderId, {
             is_reposition: false,
@@ -3206,7 +3205,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           });
         }
       }
-      
+
       await loadOrder();
       onUpdate();
     } catch (err: any) {
@@ -3235,7 +3234,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   const handleRejectDesign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!order || !order.versions || order.versions.length === 0) return;
-    
+
     if (!rejectComment.trim()) {
       toast.error('Debes ingresar un comentario');
       return;
@@ -3266,7 +3265,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       const formData = new FormData(e.currentTarget);
       formData.append('version_number', ((order?.versions?.length || 0) + 1).toString());
       formData.append('status', 'Versión enviada');
-      
+
       await api.uploadDesign(orderId, formData, user.name);
       setSelectedFilePreview(null);
       await loadOrder();
@@ -3290,11 +3289,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
         user_name: user.name
       });
 
-      await api.updateStatus(
-        orderId, 
-        'En cuadro' as OrderStatus, 
-        user.name
-      );
+      await api.updateStatus(orderId, 'En cuadro' as OrderStatus, user.name);
 
       await fetch(`/api/orders/${orderId}/status`, {
         method: 'POST',
@@ -3499,7 +3494,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           collarin_p: 'collarin_p', remate: 'remate'
         };
         const unitPrice = productPrices[priceKeyMap[key]] || 0;
-        
+
         await api.createAssignment({
           order_id: orderId,
           employee_id: parseInt(assignmentForm.employee_id),
@@ -3536,7 +3531,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   };
 
   if (loading) return <LoadingState message="Cargando Orden" />;
-  
+
   if (error && !order) return (
     <div className="text-center py-24 bg-surface rounded-[48px] border border-border-custom shadow-2xl max-w-2xl mx-auto">
       <div className="w-20 h-20 bg-accent/10 rounded-3xl flex items-center justify-center mx-auto mb-8">
@@ -3544,8 +3539,8 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       </div>
       <h4 className="font-black text-3xl tracking-tighter text-foreground-main uppercase mb-4">Error de Conexión</h4>
       <p className="text-foreground-muted mb-10 font-bold uppercase tracking-widest text-xs px-12 leading-relaxed">{error}</p>
-      <button 
-        onClick={loadOrder} 
+      <button
+        onClick={loadOrder}
         className="bg-foreground-main text-background px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all active:scale-95 shadow-xl shadow-foreground-main/10"
       >
         Reintentar Sincronización
@@ -3577,7 +3572,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 pb-20">
       {isEditModalOpen && (
-        <EditOrderModal 
+        <EditOrderModal
           order={order}
           items={order.items || []}
           onCancel={() => setIsEditModalOpen(false)}
@@ -3605,28 +3600,19 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           )}
 
-          {/* BADGE PRIORIDAD — visible para TODOS cuando está activa */}
           {!!order.is_priority && (
             <div className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-500">
               <Star size={14} className="fill-yellow-500" />
-              <span className="text-[10px] font-black uppercase tracking-widest">
-                Orden Prioritaria
-              </span>
+              <span className="text-[10px] font-black uppercase tracking-widest">Orden Prioritaria</span>
             </div>
           )}
 
-          {/* BOTÓN PRIORIDAD — solo Admin */}
           {canEdit && user.role === 'Admin' && (
             <button
               onClick={async () => {
                 try {
-                  await api.updateOrder(orderId, {
-                    is_priority: !order.is_priority,
-                    user_name: user.name,
-                  });
-                  toast.success(
-                    order.is_priority ? 'Prioridad eliminada' : 'Orden marcada como prioritaria'
-                  );
+                  await api.updateOrder(orderId, { is_priority: !order.is_priority, user_name: user.name });
+                  toast.success(order.is_priority ? 'Prioridad eliminada' : 'Orden marcada como prioritaria');
                   await loadOrder();
                   onUpdate();
                 } catch (err) {
@@ -3646,7 +3632,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
           )}
 
           {canEdit && (
-            <button 
+            <button
               onClick={() => setIsEditModalOpen(true)}
               className="bg-surface-hover text-foreground-main px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-surface-hover/80 transition-all border border-border-custom"
             >
@@ -3656,7 +3642,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 
           <span className={cn(
             "px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all duration-500",
-            order.status === 'Entregado' ? "bg-green-500/10 text-green-500 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.1)]" : 
+            order.status === 'Entregado' ? "bg-green-500/10 text-green-500 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.1)]" :
             order.status === 'Abono confirmado' ? "bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]" :
             "bg-accent text-white border-accent shadow-xl shadow-accent/20"
           )}>
@@ -3665,7 +3651,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
 
           {['En cuadro', 'En montaje', 'En impresión', 'En sublimación', 'En corte',
             'En confección', 'En empaque', 'En despacho', 'Entregado'].includes(order.status) && (
-            <button 
+            <button
               onClick={exportToExcel}
               className="bg-surface-hover text-foreground-main px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-surface-hover/80 transition-all border border-border-custom flex items-center gap-2"
             >
@@ -3676,11 +3662,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
       </div>
 
       {showReceiptModal && lastPayment && (
-        <ReceiptModal 
-          order={order}
-          payment={lastPayment}
-          onClose={() => setShowReceiptModal(false)}
-        />
+        <ReceiptModal order={order} payment={lastPayment} onClose={() => setShowReceiptModal(false)} />
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
@@ -3705,6 +3687,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
 
+          {/* ── INFO CLIENTE ── */}
           <div className="flex flex-wrap gap-10 py-12 border-y border-border-custom relative z-10">
             <div className="min-w-[150px] flex-1 space-y-3">
               <p className="font-black text-foreground-main">Documento</p>
@@ -3743,8 +3726,18 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 </p>
               )}
             </div>
+            {/* ── COSTO COSTURA ── */}
+            <div className="min-w-[150px] flex-1 space-y-3">
+              <p className="font-black text-foreground-main">Costo Costura</p>
+              <p className="font-black text-accent tracking-tight flex items-center gap-2">
+                <DollarSign size={16} />
+                {order.total_amount && order.total_amount > 0
+                  ? `${Number(order.total_amount).toLocaleString('es-CO')}`
+                  : 'N/A'}
+              </p>
+            </div>
           </div>
-          
+
           {/* Diseño de Uniformes */}
           <UniformDesignerSection
             order={order}
@@ -3756,7 +3749,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             }
             onSaved={() => { loadOrder(); onUpdate(); }}
           />
-          
+
           <div className="bg-surface rounded-[48px] border border-border-custom shadow-2xl overflow-hidden relative">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 blur-[100px] -mr-32 -mt-32"></div>
             <div className="p-12 border-b border-border-custom flex items-center justify-between relative z-10">
@@ -3798,7 +3791,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                         </div>
                       </td>
                       <td className="py-12 px-6 text-center">
-                        <span className="font-black text-foreground-main tracking-tighter group-hover:text-foreground-main transition-all duration-700">{item.number || '-'}</span>
+                        <span className="font-black text-foreground-main tracking-tighter">{item.number || '-'}</span>
                       </td>
                       <td className="py-12 px-6 text-center">
                         <span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500">{item.size || '-'}</span>
@@ -3992,7 +3985,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 Acciones de Flujo
               </h4>
             </div>
-            
+
             <div className="space-y-4">
               {order.status === 'Abono confirmado' && (role === 'Admin' || role === 'Ventas') && (() => {
                 const orderCategories = Array.from(new Set(order.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[];
@@ -4823,6 +4816,15 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {showImageModal && selectedImageUrl && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[300] flex items-center justify-center p-4 sm:p-8" onClick={() => setShowImageModal(false)}>
+          <button className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors bg-white/10 p-3 rounded-full backdrop-blur-md" onClick={() => setShowImageModal(false)}>
+            <X size={24} />
+          </button>
+          <img src={selectedImageUrl} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()} referrerPolicy="no-referrer" />
         </div>
       )}
     </motion.div>
