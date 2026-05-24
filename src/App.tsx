@@ -794,6 +794,167 @@ function Dashboard({ stats, orders, employeeReport, onOrderClick }: { stats: any
   );
 }
 
+// ─── Exportar reporte de tiempos ─────────────────────────────────────────────
+async function exportTimesReport(orders: Order[]) {
+  if (!orders.length) {
+    toast.error('No hay órdenes para exportar');
+    return;
+  }
+
+  toast.info('Generando reporte…');
+
+  const allRows: any[] = [];
+
+  await Promise.all(
+    orders.map(async (order) => {
+      try {
+        const assignments: any[] = await fetch(`/api/orders/${order.id}/assignments`).then((r) => r.json());
+
+        assignments.forEach((a) => {
+          const typeMatch = (a.notes || '').match(/^\[(.+?)\]/);
+          const garment_type = typeMatch ? typeMatch[1] : '—';
+          const task_label = (a.notes || '')
+            .replace(/^\[.+?\]\s*/, '')
+            .split(' — ')[0]
+            .trim() || a.department;
+
+          const durationText =
+            a.duration_minutes != null
+              ? a.duration_minutes < 60
+                ? `${a.duration_minutes}m`
+                : `${Math.floor(a.duration_minutes / 60)}h ${a.duration_minutes % 60}m`
+              : 'En progreso';
+
+          allRows.push({
+            order_number:     order.order_number,
+            client_name:      order.client_name,
+            team_name:        order.team_name || '—',
+            status:           order.status,
+            employee_name:    a.employee_name || `Emp #${a.employee_id}`,
+            department:       a.department,
+            garment_type,
+            task_label,
+            garment_count:    a.garment_count ?? 0,
+            price_per_unit:   a.price_per_unit ?? 0,
+            subtotal:         (a.garment_count ?? 0) * (a.price_per_unit ?? 0),
+            started_at:       a.created_at ? new Date(a.created_at).toLocaleString('es-CO') : '—',
+            completed_at:     a.completed_at ? new Date(a.completed_at).toLocaleString('es-CO') : '—',
+            duration_minutes: a.duration_minutes ?? null,
+            duration_text:    durationText,
+          });
+        });
+      } catch (_) {}
+    })
+  );
+
+  if (!allRows.length) {
+    toast.error('Las órdenes seleccionadas no tienen asignaciones registradas');
+    return;
+  }
+
+  const headerStyle = {
+    font:      { bold: true, color: { rgb: 'FFFFFF' }, sz: 10 },
+    fill:      { fgColor: { rgb: '1A1A2E' } },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: {
+      top:    { style: 'thin', color: { rgb: '444444' } },
+      bottom: { style: 'thin', color: { rgb: '444444' } },
+      left:   { style: 'thin', color: { rgb: '444444' } },
+      right:  { style: 'thin', color: { rgb: '444444' } },
+    },
+  };
+
+  const cellStyle = {
+    font:      { sz: 10 },
+    alignment: { vertical: 'center', wrapText: true },
+    border: {
+      top:    { style: 'thin', color: { rgb: 'DDDDDD' } },
+      bottom: { style: 'thin', color: { rgb: 'DDDDDD' } },
+      left:   { style: 'thin', color: { rgb: 'DDDDDD' } },
+      right:  { style: 'thin', color: { rgb: 'DDDDDD' } },
+    },
+  };
+
+  const accentStyle = { ...cellStyle, font: { bold: true, color: { rgb: 'E11D48' }, sz: 10 } };
+  const slowStyle   = { ...cellStyle, fill: { fgColor: { rgb: 'FEE2E2' } }, font: { color: { rgb: 'B91C1C' }, sz: 10 } };
+  const okStyle     = { ...cellStyle, fill: { fgColor: { rgb: 'D1FAE5' } }, font: { color: { rgb: '065F46' }, sz: 10 } };
+
+  const headers = [
+    'Orden', 'Cliente', 'Equipo', 'Estado Orden',
+    'Responsable', 'Departamento', 'Tipo Prenda', 'Tarea',
+    'Cantidad', 'Precio Unit.', 'Subtotal',
+    'Inicio', 'Fin', 'Duración (min)', 'Duración',
+  ];
+
+  const ws: any = {};
+  const range = { s: { r: 0, c: 0 }, e: { r: allRows.length, c: headers.length - 1 } };
+
+  headers.forEach((h, ci) => {
+    ws[XLSX.utils.encode_cell({ r: 0, c: ci })] = { v: h, t: 's', s: headerStyle };
+  });
+
+  allRows.forEach((row, ri) => {
+    const values = [
+      row.order_number, row.client_name, row.team_name, row.status,
+      row.employee_name, row.department, row.garment_type, row.task_label,
+      row.garment_count, row.price_per_unit, row.subtotal,
+      row.started_at, row.completed_at, row.duration_minutes ?? '', row.duration_text,
+    ];
+    values.forEach((v, ci) => {
+      let s = cellStyle;
+      if (ci === 13 && row.duration_minutes != null)
+        s = row.duration_minutes > 480 ? slowStyle : row.duration_minutes < 240 ? okStyle : cellStyle;
+      if (ci === 10) s = accentStyle;
+      ws[XLSX.utils.encode_cell({ r: ri + 1, c: ci })] = { v, t: typeof v === 'number' ? 'n' : 's', s };
+    });
+  });
+
+  ws['!ref']  = XLSX.utils.encode_range(range);
+  ws['!cols'] = [
+    { wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 18 },
+    { wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 22 },
+    { wch: 10 }, { wch: 12 }, { wch: 12 },
+    { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 14 },
+  ];
+  ws['!rows'] = [{ hpt: 32 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Tiempos por Actividad');
+
+  const byEmp: Record<string, { name: string; tasks: number; qty: number; cost: number; durations: number[] }> = {};
+  allRows.forEach((r) => {
+    const k = r.employee_name;
+    if (!byEmp[k]) byEmp[k] = { name: k, tasks: 0, qty: 0, cost: 0, durations: [] };
+    byEmp[k].tasks += 1;
+    byEmp[k].qty   += r.garment_count;
+    byEmp[k].cost  += r.subtotal;
+    if (r.duration_minutes != null) byEmp[k].durations.push(r.duration_minutes);
+  });
+
+  const summaryData = [
+    ['Responsable', 'Tareas', 'Prendas', 'Total Ganado', 'Prom. Duración (min)', 'Máx. Duración (min)'],
+    ...Object.values(byEmp).map((e) => {
+      const avg = e.durations.length
+        ? Math.round(e.durations.reduce((a, b) => a + b, 0) / e.durations.length)
+        : '';
+      const max = e.durations.length ? Math.max(...e.durations) : '';
+      return [e.name, e.tasks, e.qty, e.cost, avg, max];
+    }),
+  ];
+
+  const ws2 = XLSX.utils.aoa_to_sheet(summaryData);
+  ws2['!cols'] = [{ wch: 24 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 22 }, { wch: 22 }];
+  ['A1','B1','C1','D1','E1','F1'].forEach((cell) => {
+    if (ws2[cell]) ws2[cell].s = headerStyle;
+  });
+
+  XLSX.utils.book_append_sheet(wb, ws2, 'Resumen por Responsable');
+
+  const dateStr = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `Reporte_Tiempos_${dateStr}.xlsx`);
+  toast.success('Reporte descargado');
+}
+
 // --- Orders List Component ---
 function OrdersList({
   orders,
@@ -819,6 +980,7 @@ function OrdersList({
 }) {
   const [showConfirmToggle, setShowConfirmToggle] = useState(false);
   const [orderToToggle, setOrderToToggle] = useState<Order | null>(null);
+  const [isExportingTimes, setIsExportingTimes] = useState(false);
 
   const [teamFilter, setTeamFilter] = useState<string>('Todos');
   const [dateField, setDateField] = useState<'created_at' | 'delivery_date'>('delivery_date');
@@ -827,7 +989,6 @@ function OrdersList({
   const [statusFilter, setStatusFilter] = useState<string>('Todos');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // ✅ PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
   const ORDERS_PER_PAGE = 9;
 
@@ -851,98 +1012,55 @@ function OrdersList({
 
       if (dateFrom || dateTo) {
         const raw = o[dateField];
-
         if (!raw) {
           matchesDate = false;
         } else {
           const orderDate = new Date(raw).toISOString().split('T')[0];
-
           if (dateFrom && orderDate < dateFrom) matchesDate = false;
           if (dateTo && orderDate > dateTo) matchesDate = false;
         }
       }
 
-      return (
-        matchesActive &&
-        matchesTeam &&
-        matchesDate &&
-        matchesStatus &&
-        matchesSearch
-      );
+      return matchesActive && matchesTeam && matchesDate && matchesStatus && matchesSearch;
     })
     .sort((a, b) => {
-
-      // Es prioridad primero
       if (a.is_priority && !b.is_priority) return -1;
       if (!a.is_priority && b.is_priority) return 1;
-
-      // Reposiciones primero
       if (a.is_reposition && !b.is_reposition) return -1;
       if (!a.is_reposition && b.is_reposition) return 1;
-
-      // Entregadas al final
       if (a.status === 'Entregado' && b.status !== 'Entregado') return 1;
       if (a.status !== 'Entregado' && b.status === 'Entregado') return -1;
-
-      return (
-        new Date(a.created_at).getTime() -
-        new Date(b.created_at).getTime()
-      );
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
 
-  // ✅ TOTAL DE PÁGINAS
   const totalPages = Math.ceil(filteredOrders.length / ORDERS_PER_PAGE);
 
-  // ✅ ÓRDENES DE LA PÁGINA ACTUAL
   const paginatedOrders = filteredOrders.slice(
     (currentPage - 1) * ORDERS_PER_PAGE,
     currentPage * ORDERS_PER_PAGE
   );
 
-  // ✅ RESET PAGINACIÓN CUANDO CAMBIAN FILTROS
   useEffect(() => {
     setCurrentPage(1);
-  }, [
-    includeInactive,
-    teamFilter,
-    dateField,
-    dateFrom,
-    dateTo,
-    statusFilter,
-    searchTerm,
-  ]);
+  }, [includeInactive, teamFilter, dateField, dateFrom, dateTo, statusFilter, searchTerm]);
 
-  const copyPublicLink = (
-    e: React.MouseEvent,
-    orderNumber: string
-  ) => {
+  const copyPublicLink = (e: React.MouseEvent, orderNumber: string) => {
     e.stopPropagation();
-
     const url = `${window.location.origin}/?order=${orderNumber}`;
-
     navigator.clipboard.writeText(url);
-
     toast.success('Enlace copiado al portapapeles');
   };
 
   const handleToggleActive = async () => {
     if (!orderToToggle) return;
-
     try {
       await api.updateOrder(orderToToggle.id, {
         active: !orderToToggle.active,
         user_name: user.name,
       });
-
-      toast.success(
-        `Pedido ${
-          orderToToggle.active ? 'desactivado' : 'activado'
-        } correctamente`
-      );
-
+      toast.success(`Pedido ${orderToToggle.active ? 'desactivado' : 'activado'} correctamente`);
       setShowConfirmToggle(false);
       setOrderToToggle(null);
-
       onUpdate();
     } catch (error) {
       console.error(error);
@@ -950,13 +1068,19 @@ function OrdersList({
     }
   };
 
-  const confirmToggleActive = (
-    e: React.MouseEvent,
-    order: Order
-  ) => {
+  const confirmToggleActive = (e: React.MouseEvent, order: Order) => {
     e.stopPropagation();
     setOrderToToggle(order);
     setShowConfirmToggle(true);
+  };
+
+  const handleExportTimes = async () => {
+    setIsExportingTimes(true);
+    try {
+      await exportTimesReport(filteredOrders);
+    } finally {
+      setIsExportingTimes(false);
+    }
   };
 
   return (
@@ -971,15 +1095,32 @@ function OrdersList({
             Órdenes
           </h3>
 
-          {canCreate && (
-            <button
-              onClick={onCreateClick}
-              className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
-            >
-              <Plus size={20} />
-              Nueva Orden
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {user?.role?.trim() === 'Admin' && (
+              <button
+                onClick={handleExportTimes}
+                disabled={isExportingTimes || filteredOrders.length === 0}
+                className="bg-surface-hover text-foreground-main border border-border-custom px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:border-accent/40 hover:text-accent transition-all disabled:opacity-40"
+                title="Exportar reporte de tiempos"
+              >
+                {isExportingTimes
+                  ? <RefreshCw size={16} className="animate-spin" />
+                  : <Download size={16} />
+                }
+                Tiempos
+              </button>
+            )}
+
+            {canCreate && (
+              <button
+                onClick={onCreateClick}
+                className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
+              >
+                <Plus size={20} />
+                Nueva Orden
+              </button>
+            )}
+          </div>
         </div>
 
         {/* FILTROS */}
@@ -998,7 +1139,6 @@ function OrdersList({
             >
               Activos
             </button>
-
             <button
               onClick={() => !includeInactive && onToggleInactive()}
               className={cn(
@@ -1015,50 +1155,20 @@ function OrdersList({
           {/* BUSCADOR */}
           <div className="relative group flex-1 min-w-[260px]">
             <Search
-              className="
-                absolute left-4 top-1/2 -translate-y-1/2
-                text-foreground-muted
-                group-focus-within:text-accent
-                transition-colors duration-300
-              "
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors duration-300"
               size={17}
             />
-
             <input
               type="text"
               placeholder="Buscar cliente u orden..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="
-                w-full
-                pl-11 pr-10 py-3
-                rounded-2xl
-                bg-surface
-                border border-border-custom
-                focus:border-accent
-                focus:ring-4
-                focus:ring-accent/10
-                outline-none
-                text-foreground-main
-                text-[10px]
-                font-black
-                uppercase
-                tracking-[0.18em]
-                placeholder:text-foreground-muted/40
-                transition-all duration-300
-                shadow-sm
-              "
+              className="w-full pl-11 pr-10 py-3 rounded-2xl bg-surface border border-border-custom focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none text-foreground-main text-[10px] font-black uppercase tracking-[0.18em] placeholder:text-foreground-muted/40 transition-all duration-300 shadow-sm"
             />
-
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="
-                  absolute right-3 top-1/2 -translate-y-1/2
-                  text-foreground-muted
-                  hover:text-accent
-                  transition-colors
-                "
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
               >
                 <X size={14} />
               </button>
@@ -1070,27 +1180,7 @@ function OrdersList({
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              className="
-                appearance-none
-                bg-surface
-                border border-border-custom
-                rounded-2xl
-                pl-5 pr-12 py-3
-                text-[10px]
-                font-black
-                uppercase
-                tracking-[0.18em]
-                text-foreground-main
-                outline-none
-                transition-all duration-300
-                cursor-pointer
-                hover:border-accent/40
-                focus:border-accent
-                focus:ring-4
-                focus:ring-accent/10
-                min-w-[220px]
-                shadow-sm
-              "
+              className="appearance-none bg-surface border border-border-custom rounded-2xl pl-5 pr-12 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-foreground-main outline-none transition-all duration-300 cursor-pointer hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/10 min-w-[220px] shadow-sm"
             >
               {[
                 'Todos',
@@ -1109,20 +1199,10 @@ function OrdersList({
                 'En despacho',
                 'Entregado',
               ].map(s => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
+                <option key={s} value={s}>{s}</option>
               ))}
             </select>
-
-            <ChevronDown
-              size={16}
-              className="
-                absolute right-4 top-1/2 -translate-y-1/2
-                text-foreground-muted
-                pointer-events-none
-              "
-            />
+            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none" />
           </div>
 
           {/* EQUIPOS */}
@@ -1130,131 +1210,43 @@ function OrdersList({
             <select
               value={teamFilter}
               onChange={e => setTeamFilter(e.target.value)}
-              className="
-                appearance-none
-                bg-surface
-                border border-border-custom
-                rounded-2xl
-                pl-5 pr-12 py-3
-                text-[10px]
-                font-black
-                uppercase
-                tracking-[0.18em]
-                text-foreground-main
-                outline-none
-                transition-all duration-300
-                cursor-pointer
-                hover:border-accent/40
-                focus:border-accent
-                focus:ring-4
-                focus:ring-accent/10
-                min-w-[200px]
-                shadow-sm
-              "
+              className="appearance-none bg-surface border border-border-custom rounded-2xl pl-5 pr-12 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-foreground-main outline-none transition-all duration-300 cursor-pointer hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/10 min-w-[200px] shadow-sm"
             >
               {availableTeams.map(team => (
-                <option key={team} value={team}>
-                  {team}
-                </option>
+                <option key={team} value={team}>{team}</option>
               ))}
             </select>
-
-            <ChevronDown
-              size={16}
-              className="
-                absolute right-4 top-1/2 -translate-y-1/2
-                text-foreground-muted
-                pointer-events-none
-              "
-            />
+            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none" />
           </div>
 
           {/* FECHAS */}
-          <div
-            className="
-              flex items-center gap-4
-              bg-surface
-              border border-border-custom
-              rounded-2xl
-              px-5 py-3
-              shadow-sm
-              flex-wrap
-            "
-          >
+          <div className="flex items-center gap-4 bg-surface border border-border-custom rounded-2xl px-5 py-3 shadow-sm flex-wrap">
             <select
               value={dateField}
               onChange={e => setDateField(e.target.value as any)}
-              className="
-                bg-transparent
-                text-[10px]
-                font-black
-                uppercase
-                tracking-[0.18em]
-                outline-none
-                text-foreground-muted
-                cursor-pointer
-                appearance-none
-              "
+              className="bg-transparent text-[10px] font-black uppercase tracking-[0.18em] outline-none text-foreground-muted cursor-pointer appearance-none"
             >
               <option value="delivery_date">Entrega</option>
               <option value="created_at">Creación</option>
             </select>
-
             <div className="w-[1px] h-5 bg-border-custom" />
-
             <input
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
-              className="
-                bg-transparent
-                text-[10px]
-                font-black
-                text-foreground-main
-                outline-none
-                cursor-pointer
-                [color-scheme:light]
-                w-32
-              "
+              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:light] w-32"
             />
-
-            <span className="text-[10px] font-black text-foreground-muted">
-              —
-            </span>
-
+            <span className="text-[10px] font-black text-foreground-muted">—</span>
             <input
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
-              className="
-                bg-transparent
-                text-[10px]
-                font-black
-                text-foreground-main
-                outline-none
-                cursor-pointer
-                [color-scheme:light]
-                w-32
-              "
+              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:light] w-32"
             />
           </div>
 
           {/* CONTADOR */}
-          <div
-            className="
-              ml-auto
-              px-5 py-3
-              rounded-2xl
-              bg-accent/10
-              border border-accent/10
-              text-accent
-              text-[10px]
-              font-black
-              uppercase
-              tracking-[0.18em]
-              whitespace-nowrap
-            "
-          >
+          <div className="ml-auto px-5 py-3 rounded-2xl bg-accent/10 border border-accent/10 text-accent text-[10px] font-black uppercase tracking-[0.18em] whitespace-nowrap">
             {filteredOrders.length}{' '}
             {filteredOrders.length === 1 ? 'orden' : 'órdenes'}
           </div>
@@ -1267,21 +1259,13 @@ function OrdersList({
           <div className="md:col-span-2 lg:col-span-3">
             <EmptyState
               icon={ShoppingCart}
-              title={
-                includeInactive
-                  ? 'No hay órdenes inactivas'
-                  : 'No hay órdenes activas'
-              }
+              title={includeInactive ? 'No hay órdenes inactivas' : 'No hay órdenes activas'}
               message={
                 includeInactive
                   ? 'No se han encontrado pedidos en el archivo.'
                   : 'Aún no se han registrado pedidos.'
               }
-              actionLabel={
-                !includeInactive && canCreate
-                  ? 'Crear Nueva Orden'
-                  : undefined
-              }
+              actionLabel={!includeInactive && canCreate ? 'Crear Nueva Orden' : undefined}
               onAction={onCreateClick}
             />
           </div>
@@ -1293,8 +1277,7 @@ function OrdersList({
               noPadding
               className={cn(
                 'p-8 transition-all cursor-pointer group relative overflow-hidden',
-                !order.active &&
-                  'border-accent/20 opacity-40 grayscale-[0.8]'
+                !order.active && 'border-accent/20 opacity-40 grayscale-[0.8]'
               )}
             >
               {!order.active && (
@@ -1308,7 +1291,6 @@ function OrdersList({
                   <p className="text-[10px] uppercase tracking-[0.2em] font-black text-foreground-muted mb-1">
                     {order.order_number}
                   </p>
-
                   <h4 className="font-black text-xl text-foreground-main tracking-tight group-hover:text-accent transition-colors">
                     {order.client_name}
                   </h4>
@@ -1318,31 +1300,21 @@ function OrdersList({
               <div className="space-y-4 mb-8">
                 <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
                   <Clock size={16} className="text-accent" />
-
                   <span>
                     Entrega:{' '}
                     <span className="text-foreground-main">
                       {order.delivery_date
-                        ? format(
-                            new Date(order.delivery_date),
-                            'dd/MM/yyyy'
-                          )
+                        ? format(new Date(order.delivery_date), 'dd/MM/yyyy')
                         : 'N/A'}
                     </span>
                   </span>
                 </div>
 
                 <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
-                  <LayoutDashboard
-                    size={16}
-                    className="text-accent"
-                  />
-
+                  <LayoutDashboard size={16} className="text-accent" />
                   <span>
                     Estado:{' '}
-                    <span className="font-black text-foreground-main">
-                      {order.status}
-                    </span>
+                    <span className="font-black text-foreground-main">{order.status}</span>
                   </span>
                 </div>
 
@@ -1350,26 +1322,22 @@ function OrdersList({
                   <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
                     <span>
                       Equipo:{' '}
-                      <span className="font-black text-foreground-main">
-                        {order.team_name}
-                      </span>
+                      <span className="font-black text-foreground-main">{order.team_name}</span>
                     </span>
                   </div>
                 )}
-                
-                {/* COSTO DE COSTURA */}
-                  <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
-                    <DollarSign size={16} className="text-accent" />
-                    <span>
-                      Costura:{' '}
-                      <span className="font-black text-foreground-main">
-                        {order.total_amount && order.total_amount > 0
-                          ? `$${Number(order.total_amount).toLocaleString('es-CO')}`
-                          : 'N/A'}
-                      </span>
-                    </span>
-                  </div>
 
+                <div className="flex items-center gap-3 text-[11px] font-bold text-foreground-muted uppercase tracking-wider">
+                  <DollarSign size={16} className="text-accent" />
+                  <span>
+                    Costura:{' '}
+                    <span className="font-black text-foreground-main">
+                      {order.total_amount && order.total_amount > 0
+                        ? `$${Number(order.total_amount).toLocaleString('es-CO')}`
+                        : 'N/A'}
+                    </span>
+                  </span>
+                </div>
               </div>
 
               <div className="pt-6 border-t border-border-custom flex justify-between items-center">
@@ -1383,17 +1351,11 @@ function OrdersList({
                         : 'bg-accent text-white'
                     )}
                   >
-                    {order.active ? (
-                      <Trash2 size={18} />
-                    ) : (
-                      <RefreshCw size={18} />
-                    )}
+                    {order.active ? <Trash2 size={18} /> : <RefreshCw size={18} />}
                   </button>
 
                   <button
-                    onClick={e =>
-                      copyPublicLink(e, order.order_number)
-                    }
+                    onClick={e => copyPublicLink(e, order.order_number)}
                     className="p-3 bg-surface-hover hover:bg-accent/10 rounded-xl text-foreground-muted hover:text-foreground-main transition-all"
                   >
                     <Copy size={18} />
@@ -1440,9 +1402,7 @@ function OrdersList({
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 pt-4 flex-wrap">
           <button
-            onClick={() =>
-              setCurrentPage(prev => Math.max(prev - 1, 1))
-            }
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
             className="px-5 py-3 rounded-2xl bg-surface border border-border-custom text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
           >
@@ -1451,7 +1411,6 @@ function OrdersList({
 
           {Array.from({ length: totalPages }).map((_, index) => {
             const page = index + 1;
-
             return (
               <button
                 key={page}
@@ -1469,11 +1428,7 @@ function OrdersList({
           })}
 
           <button
-            onClick={() =>
-              setCurrentPage(prev =>
-                Math.min(prev + 1, totalPages)
-              )
-            }
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
             disabled={currentPage === totalPages}
             className="px-5 py-3 rounded-2xl bg-surface border border-border-custom text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
           >
@@ -1484,35 +1439,35 @@ function OrdersList({
 
       {/* MODAL */}
       <Modal
-  isOpen={showConfirmToggle}
-  onClose={() => setShowConfirmToggle(false)}
-  title={orderToToggle?.active ? 'Desactivar Pedido' : 'Activar Pedido'}
-  maxWidth="max-w-md"
->
-  <div className="space-y-6">
-    <p className="text-sm font-bold text-foreground-muted">
-      ¿Estás seguro de que deseas{' '}
-      {orderToToggle?.active ? 'desactivar' : 'activar'} el pedido de{' '}
-      <span className="font-black text-foreground-main">
-        {orderToToggle?.client_name}
-      </span>?
-    </p>
-    <div className="flex justify-end gap-3">
-      <button
-        onClick={() => setShowConfirmToggle(false)}
-        className="px-6 py-3 rounded-2xl border border-border-custom text-[10px] font-black uppercase tracking-widest text-foreground-muted hover:bg-surface-hover transition-all"
+        isOpen={showConfirmToggle}
+        onClose={() => setShowConfirmToggle(false)}
+        title={orderToToggle?.active ? 'Desactivar Pedido' : 'Activar Pedido'}
+        maxWidth="max-w-md"
       >
-        Cancelar
-      </button>
-      <button
-        onClick={handleToggleActive}
-        className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20 hover:scale-105 transition-all"
-      >
-        {orderToToggle?.active ? 'Desactivar' : 'Activar'}
-      </button>
-    </div>
-  </div>
-</Modal>
+        <div className="space-y-6">
+          <p className="text-sm font-bold text-foreground-muted">
+            ¿Estás seguro de que deseas{' '}
+            {orderToToggle?.active ? 'desactivar' : 'activar'} el pedido de{' '}
+            <span className="font-black text-foreground-main">
+              {orderToToggle?.client_name}
+            </span>?
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setShowConfirmToggle(false)}
+              className="px-6 py-3 rounded-2xl border border-border-custom text-[10px] font-black uppercase tracking-widest text-foreground-muted hover:bg-surface-hover transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleToggleActive}
+              className="px-6 py-3 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20 hover:scale-105 transition-all"
+            >
+              {orderToToggle?.active ? 'Desactivar' : 'Activar'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </motion.div>
   );
 }
