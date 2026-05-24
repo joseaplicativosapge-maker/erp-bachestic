@@ -1084,8 +1084,7 @@ function OrdersList({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
+    <motion.div initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="space-y-10"
     >
