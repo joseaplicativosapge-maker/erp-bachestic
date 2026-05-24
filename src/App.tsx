@@ -4302,7 +4302,9 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
               ) : (
                 <div className="space-y-3">
                   {Object.values(
-                    assignments.reduce((acc, a) => {
+                    assignments
+                    .filter((a: any) => a.department === 'Confección')
+                    .reduce((acc, a) => {
                       const key = a.employee_id;
                       if (!acc[key]) {
                         acc[key] = { employee_name: a.employee_name || `Empleado #${a.employee_id}`, total_garments: 0, total_earned: 0, items: [] };
@@ -9927,7 +9929,6 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
   );
 }
 
-// --- Confection Report Component ---
 function ConfectionReport({ key }: { key?: string }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -9935,6 +9936,7 @@ function ConfectionReport({ key }: { key?: string }) {
   const [typeFilter, setTypeFilter] = useState('');
   const [orderFilter, setOrderFilter] = useState('');
   const [tab, setTab] = useState<'detail' | 'summary'>('detail');
+  const [isExporting, setIsExporting] = useState(false);
 
   const CAM_TASKS = [
     { key: 'filetes',           label: 'Filetes' },
@@ -9955,16 +9957,13 @@ function ConfectionReport({ key }: { key?: string }) {
     const load = async () => {
       try {
         setLoading(true);
-        // Obtiene TODAS las asignaciones del endpoint general
         const assignments = await api.getAllAssignments();
-        // Parsea el campo notes para extraer garment_type y task_label
-        // El formato guardado es: "[Camiseta] Filetes" o "[Pantaloneta] Caucho — obs"
-        const parsed = assignments.map((a: any) => {
+        const confeccionOnly = assignments.filter((a: any) => a.department === 'Confección');
+        const parsed = confeccionOnly.map((a: any) => {
           const notesRaw: string = a.notes || '';
           const typeMatch = notesRaw.match(/^\[(.+?)\]/);
           const garment_type = typeMatch ? typeMatch[1] : 'Camiseta';
           const rest = notesRaw.replace(/^\[.+?\]\s*/, '').split(' — ')[0].trim();
-          // Mapear label a task_key
           const allTasks = [...CAM_TASKS, ...PANT_TASKS];
           const found = allTasks.find(t => t.label.toLowerCase() === rest.toLowerCase());
           return {
@@ -9996,6 +9995,128 @@ function ConfectionReport({ key }: { key?: string }) {
   const totalCost = filtered.reduce((s, r) => s + (r.garment_count || 0) * (r.price_per_unit || 0), 0);
   const camQty    = filtered.filter(r => r.garment_type === 'Camiseta').reduce((s, r) => s + (r.garment_count || 0), 0);
   const pantQty   = filtered.filter(r => r.garment_type === 'Pantaloneta').reduce((s, r) => s + (r.garment_count || 0), 0);
+
+  const exportToExcel = () => {
+    if (!filtered.length) {
+      toast.error('No hay registros para exportar');
+      return;
+    }
+    setIsExporting(true);
+
+    const headerStyle = {
+      font:      { bold: true, color: { rgb: 'FFFFFF' }, sz: 10 },
+      fill:      { fgColor: { rgb: '1A1A2E' } },
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+      border: {
+        top:    { style: 'thin', color: { rgb: '444444' } },
+        bottom: { style: 'thin', color: { rgb: '444444' } },
+        left:   { style: 'thin', color: { rgb: '444444' } },
+        right:  { style: 'thin', color: { rgb: '444444' } },
+      },
+    };
+
+    const cellStyle = {
+      font:      { sz: 10 },
+      alignment: { vertical: 'center', wrapText: true },
+      border: {
+        top:    { style: 'thin', color: { rgb: 'DDDDDD' } },
+        bottom: { style: 'thin', color: { rgb: 'DDDDDD' } },
+        left:   { style: 'thin', color: { rgb: 'DDDDDD' } },
+        right:  { style: 'thin', color: { rgb: 'DDDDDD' } },
+      },
+    };
+
+    const accentStyle = { ...cellStyle, font: { bold: true, color: { rgb: 'E11D48' }, sz: 10 } };
+    const blueStyle   = { ...cellStyle, font: { bold: true, color: { rgb: '3B82F6' }, sz: 10 } };
+    const purpleStyle = { ...cellStyle, font: { bold: true, color: { rgb: '9333EA' }, sz: 10 } };
+    const totalStyle  = { ...cellStyle, font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'F1F5F9' } } };
+
+    // ── Hoja 1: Detalle por tarea ──
+    const headers1 = ['Orden', 'Responsable', 'Tipo Prenda', 'Tarea', 'Cantidad', '$ Unit.', 'Subtotal'];
+    const ws1: any = {};
+    const rows1 = filtered.map(r => [
+      r.order_number || `#${r.order_id}`,
+      r.employee_name || `Emp #${r.employee_id}`,
+      r.garment_type,
+      r.task_label,
+      r.garment_count || 0,
+      r.price_per_unit || 0,
+      (r.garment_count || 0) * (r.price_per_unit || 0),
+    ]);
+
+    headers1.forEach((h, ci) => {
+      ws1[XLSX.utils.encode_cell({ r: 0, c: ci })] = { v: h, t: 's', s: headerStyle };
+    });
+
+    rows1.forEach((row, ri) => {
+      row.forEach((v, ci) => {
+        let s = cellStyle;
+        if (ci === 2) s = v === 'Camiseta' ? blueStyle : purpleStyle;
+        if (ci === 6) s = accentStyle;
+        ws1[XLSX.utils.encode_cell({ r: ri + 1, c: ci })] = { v, t: typeof v === 'number' ? 'n' : 's', s };
+      });
+    });
+
+    // Fila total
+    const totalRow = rows1.length + 1;
+    ['TOTAL', '', '', '', totalQty, '', totalCost].forEach((v, ci) => {
+      ws1[XLSX.utils.encode_cell({ r: totalRow, c: ci })] = { v, t: typeof v === 'number' ? 'n' : 's', s: totalStyle };
+    });
+
+    ws1['!ref']  = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: totalRow, c: 6 } });
+    ws1['!cols'] = [{ wch: 16 }, { wch: 22 }, { wch: 14 }, { wch: 22 }, { wch: 10 }, { wch: 12 }, { wch: 14 }];
+    ws1['!rows'] = [{ hpt: 28 }];
+
+    // ── Hoja 2: Resumen por responsable ──
+    const byEmp: Record<string, any> = {};
+    filtered.forEach(r => {
+      const k = r.employee_name || `Emp #${r.employee_id}`;
+      if (!byEmp[k]) byEmp[k] = { name: k, total_qty: 0, total_cost: 0, cam: {} as any, pant: {} as any };
+      const bucket = r.garment_type === 'Camiseta' ? byEmp[k].cam : byEmp[k].pant;
+      if (!bucket[r.task_label]) bucket[r.task_label] = { qty: 0, cost: 0 };
+      bucket[r.task_label].qty  += r.garment_count || 0;
+      bucket[r.task_label].cost += (r.garment_count || 0) * (r.price_per_unit || 0);
+      byEmp[k].total_qty  += r.garment_count || 0;
+      byEmp[k].total_cost += (r.garment_count || 0) * (r.price_per_unit || 0);
+    });
+
+    const summaryRows: any[][] = [
+      ['Responsable', 'Tipo', 'Tarea', 'Cantidad', 'Costo'],
+    ];
+    Object.values(byEmp).sort((a: any, b: any) => b.total_cost - a.total_cost).forEach((emp: any) => {
+      Object.entries(emp.cam).forEach(([label, v]: any) => {
+        summaryRows.push([emp.name, 'Camiseta', label, v.qty, v.cost]);
+      });
+      Object.entries(emp.pant).forEach(([label, v]: any) => {
+        summaryRows.push([emp.name, 'Pantaloneta', label, v.qty, v.cost]);
+      });
+      summaryRows.push(['SUBTOTAL ' + emp.name, '', '', emp.total_qty, emp.total_cost]);
+    });
+
+    const ws2: any = {};
+    summaryRows.forEach((row, ri) => {
+      const isHeader  = ri === 0;
+      const isSubtotal = typeof row[0] === 'string' && row[0].startsWith('SUBTOTAL');
+      row.forEach((v, ci) => {
+        let s = isHeader ? headerStyle : isSubtotal ? totalStyle : cellStyle;
+        if (!isHeader && !isSubtotal && ci === 1) s = v === 'Camiseta' ? blueStyle : purpleStyle;
+        if (!isHeader && !isSubtotal && ci === 4) s = accentStyle;
+        ws2[XLSX.utils.encode_cell({ r: ri, c: ci })] = { v, t: typeof v === 'number' ? 'n' : 's', s };
+      });
+    });
+    ws2['!ref']  = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: summaryRows.length - 1, c: 4 } });
+    ws2['!cols'] = [{ wch: 24 }, { wch: 14 }, { wch: 22 }, { wch: 10 }, { wch: 14 }];
+    ws2['!rows'] = [{ hpt: 28 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws1, 'Detalle por Tarea');
+    XLSX.utils.book_append_sheet(wb, ws2, 'Resumen por Responsable');
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `Reporte_Confeccion_${dateStr}.xlsx`);
+    toast.success('Reporte exportado');
+    setIsExporting(false);
+  };
 
   if (loading) return <LoadingState message="Cargando reporte de confección" />;
 
@@ -10126,6 +10247,14 @@ function ConfectionReport({ key }: { key?: string }) {
       {/* Cabecera */}
       <div className="flex items-center justify-between">
         <h3 className="text-3xl font-black tracking-tighter text-foreground-main">Reporte de Confección</h3>
+        <button
+          onClick={exportToExcel}
+          disabled={isExporting || filtered.length === 0}
+          className="bg-surface-hover text-foreground-main border border-border-custom px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-2 hover:border-accent/40 hover:text-accent transition-all disabled:opacity-40"
+        >
+          {isExporting ? <RefreshCw size={15} className="animate-spin" /> : <Download size={15} />}
+          Exportar Excel
+        </button>
       </div>
 
       {/* Métricas */}
@@ -10145,7 +10274,6 @@ function ConfectionReport({ key }: { key?: string }) {
 
       {/* Filtros */}
       <div className="flex flex-wrap items-center gap-4 p-4 rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl">
-        {/* Responsable */}
         <div className="relative">
           <select
             value={empFilter}
@@ -10158,7 +10286,6 @@ function ConfectionReport({ key }: { key?: string }) {
           <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none" />
         </div>
 
-        {/* Tipo prenda */}
         <div className="relative">
           <select
             value={typeFilter}
@@ -10172,7 +10299,6 @@ function ConfectionReport({ key }: { key?: string }) {
           <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none" />
         </div>
 
-        {/* Orden */}
         <div className="relative group flex-1 min-w-[200px]">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted" size={16} />
           <input
@@ -10184,7 +10310,6 @@ function ConfectionReport({ key }: { key?: string }) {
           />
         </div>
 
-        {/* Contador */}
         <div className="ml-auto px-5 py-3 rounded-2xl bg-accent/10 border border-accent/10 text-accent text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
           {filtered.length} registros
         </div>
