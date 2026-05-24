@@ -835,8 +835,6 @@ async function exportTimesReport(orders: Order[]) {
             garment_type,
             task_label,
             garment_count:    a.garment_count ?? 0,
-            price_per_unit:   a.price_per_unit ?? 0,
-            subtotal:         (a.garment_count ?? 0) * (a.price_per_unit ?? 0),
             started_at:       a.created_at ? new Date(a.created_at).toLocaleString('es-CO') : '—',
             completed_at:     a.completed_at ? new Date(a.completed_at).toLocaleString('es-CO') : '—',
             duration_minutes: a.duration_minutes ?? null,
@@ -875,15 +873,13 @@ async function exportTimesReport(orders: Order[]) {
     },
   };
 
-  const accentStyle = { ...cellStyle, font: { bold: true, color: { rgb: 'E11D48' }, sz: 10 } };
-  const slowStyle   = { ...cellStyle, fill: { fgColor: { rgb: 'FEE2E2' } }, font: { color: { rgb: 'B91C1C' }, sz: 10 } };
-  const okStyle     = { ...cellStyle, fill: { fgColor: { rgb: 'D1FAE5' } }, font: { color: { rgb: '065F46' }, sz: 10 } };
+  const slowStyle = { ...cellStyle, fill: { fgColor: { rgb: 'FEE2E2' } }, font: { color: { rgb: 'B91C1C' }, sz: 10 } };
+  const okStyle   = { ...cellStyle, fill: { fgColor: { rgb: 'D1FAE5' } }, font: { color: { rgb: '065F46' }, sz: 10 } };
 
   const headers = [
     'Orden', 'Cliente', 'Equipo', 'Estado Orden',
     'Responsable', 'Departamento', 'Tipo Prenda', 'Tarea',
-    'Cantidad', 'Precio Unit.', 'Subtotal',
-    'Inicio', 'Fin', 'Duración (min)', 'Duración',
+    'Cantidad', 'Inicio', 'Fin', 'Duración (min)', 'Duración',
   ];
 
   const ws: any = {};
@@ -897,14 +893,13 @@ async function exportTimesReport(orders: Order[]) {
     const values = [
       row.order_number, row.client_name, row.team_name, row.status,
       row.employee_name, row.department, row.garment_type, row.task_label,
-      row.garment_count, row.price_per_unit, row.subtotal,
+      row.garment_count,
       row.started_at, row.completed_at, row.duration_minutes ?? '', row.duration_text,
     ];
     values.forEach((v, ci) => {
       let s = cellStyle;
-      if (ci === 13 && row.duration_minutes != null)
+      if (ci === 11 && row.duration_minutes != null)
         s = row.duration_minutes > 480 ? slowStyle : row.duration_minutes < 240 ? okStyle : cellStyle;
-      if (ci === 10) s = accentStyle;
       ws[XLSX.utils.encode_cell({ r: ri + 1, c: ci })] = { v, t: typeof v === 'number' ? 'n' : 's', s };
     });
   });
@@ -913,7 +908,7 @@ async function exportTimesReport(orders: Order[]) {
   ws['!cols'] = [
     { wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 18 },
     { wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 22 },
-    { wch: 10 }, { wch: 12 }, { wch: 12 },
+    { wch: 10 },
     { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 14 },
   ];
   ws['!rows'] = [{ hpt: 32 }];
@@ -921,30 +916,29 @@ async function exportTimesReport(orders: Order[]) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Tiempos por Actividad');
 
-  const byEmp: Record<string, { name: string; tasks: number; qty: number; cost: number; durations: number[] }> = {};
+  const byEmp: Record<string, { name: string; tasks: number; qty: number; durations: number[] }> = {};
   allRows.forEach((r) => {
     const k = r.employee_name;
-    if (!byEmp[k]) byEmp[k] = { name: k, tasks: 0, qty: 0, cost: 0, durations: [] };
+    if (!byEmp[k]) byEmp[k] = { name: k, tasks: 0, qty: 0, durations: [] };
     byEmp[k].tasks += 1;
     byEmp[k].qty   += r.garment_count;
-    byEmp[k].cost  += r.subtotal;
     if (r.duration_minutes != null) byEmp[k].durations.push(r.duration_minutes);
   });
 
   const summaryData = [
-    ['Responsable', 'Tareas', 'Prendas', 'Total Ganado', 'Prom. Duración (min)', 'Máx. Duración (min)'],
+    ['Responsable', 'Tareas', 'Prendas', 'Prom. Duración (min)', 'Máx. Duración (min)'],
     ...Object.values(byEmp).map((e) => {
       const avg = e.durations.length
         ? Math.round(e.durations.reduce((a, b) => a + b, 0) / e.durations.length)
         : '';
       const max = e.durations.length ? Math.max(...e.durations) : '';
-      return [e.name, e.tasks, e.qty, e.cost, avg, max];
+      return [e.name, e.tasks, e.qty, avg, max];
     }),
   ];
 
   const ws2 = XLSX.utils.aoa_to_sheet(summaryData);
-  ws2['!cols'] = [{ wch: 24 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 22 }, { wch: 22 }];
-  ['A1','B1','C1','D1','E1','F1'].forEach((cell) => {
+  ws2['!cols'] = [{ wch: 24 }, { wch: 10 }, { wch: 10 }, { wch: 22 }, { wch: 22 }];
+  ['A1','B1','C1','D1','E1'].forEach((cell) => {
     if (ws2[cell]) ws2[cell].s = headerStyle;
   });
 
@@ -4319,35 +4313,37 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                       return acc;
                     }, {} as Record<number, any>)
                   ).map((emp: any, i) => (
-                    <div key={i} className="bg-surface-hover p-5 rounded-2xl border border-border-custom flex items-center justify-between">
+                    <div key={i} className="bg-surface-hover p-5 rounded-2xl border border-border-custom space-y-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
                           <Users size={18} />
                         </div>
-                        <div>
-                          <p className="font-black text-sm text-foreground-main">
-                            {a.employee_name || `Empleado #${a.employee_id}`}
-                          </p>
-                          <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">
-                            {format(new Date(a.created_at), 'dd/MM/yyyy HH:mm')} Hola
-                          </p>
-                          {a.notes && (
-                            <p className="text-[10px] text-foreground-muted italic mt-0.5">{a.notes}</p>
-                          )}
-                        </div>
+                        <p className="font-black text-sm text-foreground-main">{emp.name}</p>
                       </div>
+                      {emp.items.map((a: any, j: number) => (
+                        <div key={j} className="flex items-center justify-between border-t border-border-custom pt-3">
+                          <div>
+                            <p className="font-black text-sm text-foreground-main">
+                              {a.employee_name || `Empleado #${a.employee_id}`}
+                            </p>
+                            <p className="text-[10px] font-black text-foreground-muted uppercase tracking-widest">
+                              {format(new Date(a.created_at), 'dd/MM/yyyy HH:mm')}
+                            </p>
+                            {a.notes && (
+                              <p className="text-[10px] text-foreground-muted italic mt-0.5">{a.notes}</p>
+                            )}
+                          </div>
                           <div className="text-right space-y-1">
                             <p className="text-[10px] font-black text-accent uppercase tracking-widest">{a.department}</p>
                             <p className="text-[9px] text-foreground-muted font-bold">
-                              {order.items?.length || 0} uniformes
+                              {a.garment_count || 0} uds
                             </p>
-                            {/* DURACIÓN */}
                             {a.duration_minutes != null ? (
                               <p className={cn(
                                 "text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg",
-                                a.duration_minutes > 480  // más de 8 horas
+                                a.duration_minutes > 480
                                   ? "bg-red-500/10 text-red-500"
-                                  : a.duration_minutes > 240 // más de 4 horas
+                                  : a.duration_minutes > 240
                                     ? "bg-yellow-500/10 text-yellow-500"
                                     : "bg-green-500/10 text-green-500"
                               )}>
@@ -4362,6 +4358,8 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                             )}
                           </div>
                         </div>
+                      ))}
+                    </div>
                   ))}
                   <div className="flex justify-between items-center px-5 py-4 bg-accent/10 rounded-2xl border border-accent/20">
                     <p className="text-[10px] font-black uppercase tracking-widest text-accent">Total Confeccionado</p>
