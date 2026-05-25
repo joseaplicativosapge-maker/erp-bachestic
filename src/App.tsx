@@ -7997,77 +7997,14 @@ function UniformDesignerSection({
   order: Order;
   user?: User;
   readOnly: boolean;
-  onSaved?: () => void;
+  onSaved: () => void;
 }) {
-  const [pendingFiles, setPendingFiles] = useState<Record<string, File | null>>({});
-  const [isSaving, setIsSaving]         = useState(false);
-  const [saved, setSaved]               = useState<Record<string, string>>(order.uniform_zones || {});
- 
-  const handleZoneChange = (zoneId: string, file: File | null, _previewUrl: string | null) => {
-    setPendingFiles(prev => ({ ...prev, [zoneId]: file }));
-  };
- 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      for (const [zoneId, file] of Object.entries(pendingFiles)) {
-        if (file) {
-          const result = await api.uploadUniformZone(order.id, zoneId, file);
-          setSaved(prev => ({ ...prev, [zoneId]: result.file_path }));
-        } else if (file === null && saved[zoneId]) {
-          await api.deleteUniformZone(order.id, zoneId);
-          setSaved(prev => { const n = { ...prev }; delete n[zoneId]; return n; });
-        }
-      }
-      setPendingFiles({});
-      toast.success('Diseño guardado');
-      onSaved?.();
-    } catch (err) {
-      console.error(err);
-      toast.error('Error al guardar el diseño');
-    } finally {
-      setIsSaving(false);
-    }
-  };
- 
-  const hasPending = Object.keys(pendingFiles).length > 0;
- 
   return (
-    <div className="bg-surface rounded-[32px] border border-border-custom shadow-xl p-6 space-y-4">
-      {/* Header compacto */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-accent/10 rounded-xl flex items-center justify-center">
-            <Shirt className="text-accent" size={18} />
-          </div>
-          <div>
-            <p className="font-black text-foreground-main uppercase tracking-[0.3em] text-[10px]">
-              Diseño de Uniformes
-            </p>
-            <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
-              {readOnly ? 'Vista de composición' : 'Carga logos por zona'}
-            </p>
-          </div>
-        </div>
-        {!readOnly && hasPending && (
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="bg-accent text-white px-5 py-2.5 rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-1.5 hover:scale-105 transition-all shadow-lg shadow-accent/20 disabled:opacity-50"
-          >
-            {isSaving ? <RefreshCw size={12} className="animate-spin" /> : <Save size={12} />}
-            Guardar
-          </button>
-        )}
-      </div>
- 
-      <UniformDesigner
-        savedLogos={saved}
-        readOnly={readOnly}
-        onZoneChange={!readOnly ? handleZoneChange : undefined}
-        playerName="JUGADOR"
-        playerNumber="10"
-      />
-    </div>
+    <UniformDesigner
+      order={order}
+      user={user}
+      readOnly={readOnly}
+      onSaved={onSaved}
+    />
   );
 }

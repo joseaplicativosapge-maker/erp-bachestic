@@ -14,7 +14,6 @@ import type { Employee, EmployeeReport, Role } from "./types";
 
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-
 const ITEMS_PER_PAGE = 9;
 
 const ROLE_OPTIONS = [
@@ -254,8 +253,7 @@ export function EmployeeManagement() {
                 className={cn(
                   "group hover:border-accent/30 transition-all relative overflow-hidden",
                   !emp.active && "opacity-60 grayscale-[0.5]"
-                )}
-              >
+                )}>
                 {!emp.active && (
                   <div className="absolute top-0 right-0 bg-accent text-white text-[8px] font-black px-3 py-1.5 uppercase tracking-widest rounded-bl-xl">
                     Inactivo
