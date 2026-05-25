@@ -56,7 +56,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from "xlsx-js-style";
 import { motion, AnimatePresence } from 'motion/react';
-import { api } from './api';
+import { api } from './lib/api';
 import { Order, OrderItem, OrderStatus, Role, User, Client, OrderHistory, Employee, EmployeeReport, ProductionAssignment, Payment, Product, Team } from './lib/types';
 import { format, differenceInBusinessDays } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';

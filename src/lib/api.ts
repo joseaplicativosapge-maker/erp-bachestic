@@ -1,5 +1,5 @@
 import { Order, OrderItem, OrderStatus, Employee, 
-  ProductionAssignment, EmployeeReport, User, Client, OrderHistory, Product, Team } from './lib/types';
+  ProductionAssignment, EmployeeReport, User, Client, OrderHistory, Product, Team } from './types';
 
 const API_BASE = '/api';
 
