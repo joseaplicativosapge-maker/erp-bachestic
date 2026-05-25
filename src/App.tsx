@@ -58,9 +58,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { api } from './services/api';
 import { Order, OrderStatus, User } from './lib/types';
 import { differenceInBusinessDays } from 'date-fns';
-
-
-// Pantallas
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ClientRoadmap from './pages/ClientRoadmap';
