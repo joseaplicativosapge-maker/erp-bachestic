@@ -23,7 +23,7 @@ import { format } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { toast } from 'sonner';
-import UniformDesigner from './UniformDesigner';
+import UniformDesigner from './components/UniformDesigner';
 import Card from './components/Card';
 import { cn } from '@/src/lib/utils';
 

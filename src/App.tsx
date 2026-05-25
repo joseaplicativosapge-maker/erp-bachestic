@@ -63,10 +63,23 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Toaster, toast } from 'sonner';
 import QRCode from "react-qr-code";
-import UniformDesigner from './UniformDesigner';
+
+// Pantallas
 import Login from './Login';
 import Dashboard from './Dashboard';
 import ClientRoadmap from './ClientRoadmap';
+
+// Componentes
+import UniformDesigner from './components/UniformDesigner';
+import Card from './components/Card';
+import LoadingState from './components/LoadingState';
+import EmptyState from './components/EmptyState';
+import Modal from './components/Modal';
+import Input from './components/Input';
+import Select from './components/Select';
+
+// Utilidades Generales
+import { cn } from './lib/utils';
 
 import { 
   BarChart, 
@@ -81,127 +94,6 @@ import {
   Cell
 } from 'recharts';
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-// --- Common Components ---
-function LoadingState({ message = 'Cargando...' }: { message?: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-64 gap-6">
-      <div className="relative w-16 h-16">
-        <div className="absolute inset-0 border-4 border-accent/10 rounded-full"></div>
-        <div className="absolute inset-0 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-      </div>
-      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground-muted/40 animate-pulse">{message}</p>
-    </div>
-  );
-}
-
-function EmptyState({ icon: Icon, title, message, actionLabel, onAction }: { icon: any, title: string, message: string, actionLabel?: string, onAction?: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 px-8 text-center bg-surface-hover rounded-[40px] border-2 border-dashed border-border-custom">
-      <div className="w-24 h-24 bg-accent/10 rounded-full flex items-center justify-center text-accent mb-8 animate-pulse">
-        <Icon size={48} />
-      </div>
-      <h3 className="text-2xl font-black text-foreground-main tracking-tight mb-3">{title}</h3>
-      <p className="text-foreground-muted text-sm font-medium max-w-md mx-auto mb-10 leading-relaxed">{message}</p>
-      {actionLabel && onAction && (
-        <button 
-          onClick={onAction}
-          className="bg-accent text-white px-10 py-4 rounded-2xl font-black text-xs tracking-widest hover:scale-105 transition-all uppercase shadow-2xl shadow-accent/40 active:scale-95 flex items-center gap-3"
-        >
-          <Plus size={18} /> {actionLabel}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function Card({ children, className, onClick, noPadding = false }: { children: React.ReactNode, className?: string, onClick?: () => void, noPadding?: boolean, key?: any }) {
-  return (
-    <div 
-      onClick={onClick}
-      className={cn(
-        "bg-surface rounded-[32px] border border-border-custom shadow-2xl transition-all duration-300",
-        onClick && "cursor-pointer hover:border-accent/30",
-        !noPadding && "p-8",
-        className
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-function Modal({ children, title, subtitle, onClose, isOpen, maxWidth = "max-w-4xl" }: { children: React.ReactNode, title: string, subtitle?: string, onClose: () => void, isOpen: boolean, maxWidth?: string }) {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto">
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0, y: 20 }} 
-            animate={{ scale: 1, opacity: 1, y: 0 }} 
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className={cn("w-full bg-background rounded-[40px] shadow-2xl overflow-hidden flex flex-col my-auto border border-border-custom", maxWidth)}
-          >
-            <div className="p-8 border-b border-border-custom flex items-center justify-between bg-surface shrink-0">
-              <div>
-                <h3 className="text-2xl font-black tracking-tighter uppercase text-foreground-main">{title}</h3>
-                {subtitle && <p className="text-foreground-muted text-[10px] font-bold uppercase tracking-widest mt-1">{subtitle}</p>}
-              </div>
-              <button onClick={onClose} className="p-3 hover:bg-surface-hover rounded-2xl transition-all text-foreground-muted hover:text-foreground-main">
-                <X size={24} />
-              </button>
-            </div>
-            <div className="p-8 overflow-y-auto custom-scrollbar max-h-[70vh]">
-              {children}
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-function Input({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <div className="space-y-3">
-      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">{label}</label>
-      <input 
-        {...props}
-        className={cn(
-          "w-full px-6 py-4 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main transition-all placeholder:text-foreground-muted/30",
-          props.className
-        )} 
-      />
-    </div>
-  );
-}
-
-function Select({ label, options, ...props }: { label: string, options: { value: string, label: string }[] } & React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <div className="space-y-3 relative">
-      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted">{label}</label>
-      <div className="relative">
-        <select 
-          {...props}
-          className={cn(
-            "w-full px-6 py-4 rounded-2xl bg-surface border border-border-custom focus:border-accent/50 outline-none text-foreground-main transition-all cursor-pointer appearance-none pr-12",
-            props.className
-          )}
-        >
-          {options.map(opt => (
-            <option key={opt.value} value={opt.value} className="bg-surface text-foreground-main">{opt.label}</option>
-          ))}
-        </select>
-        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-foreground-muted">
-          <ChevronDown size={18} />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
