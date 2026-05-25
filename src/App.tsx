@@ -68,7 +68,7 @@ import QRCode from "react-qr-code";
 import Login from './Login';
 import Dashboard from './Dashboard';
 import ClientRoadmap from './ClientRoadmap';
-import { EmployeeManagement } from './EmployeeManagement';
+import { EmployeeManagement } from './management/EmployeeManagement';
 
 // Componentes
 import UniformDesigner from './components/UniformDesigner';
