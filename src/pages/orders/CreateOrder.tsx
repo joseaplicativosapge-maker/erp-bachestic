@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Plus, Search, X, Users, ChevronRight,
-  Contact, Calculator, Shirt, Clock, CheckCircle2,
+  Contact, Calculator, Shirt, 
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
