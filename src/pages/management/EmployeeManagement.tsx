@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, Phone, LayoutDashboard, Edit2, Trash2, RefreshCw, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
-import { api } from "../services/api";
+import { api } from "../../services/api";
 import { Input } from "../components/Input";
 import { Select }  from "../components/Select";
 import Card from "../components/Card";
@@ -10,7 +10,7 @@ import Modal  from "../components/Modal";
 import EmptyState  from "../components/EmptyState";
 import LoadingState from "../components/LoadingState";
 import { ErrorMessage } from "../components/ErrorMessage";
-import type { Employee, EmployeeReport, Role } from "../lib/types";
+import type { Employee, EmployeeReport, Role } from "../../lib/types";
 
 
 // ─── Constants ───────────────────────────────────────────────────────────────

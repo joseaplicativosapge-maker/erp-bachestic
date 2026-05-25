@@ -24,7 +24,7 @@ import { format } from 'date-fns';
 
 import { cn } from '@/src/lib/utils';
 
-import Card from '@/src/components/Card';
+import Card from '@/src/pages/components/Card';
 
 interface Order {
   id: number;

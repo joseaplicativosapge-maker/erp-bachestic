@@ -68,16 +68,16 @@ import QRCode from "react-qr-code";
 import Login from './Login';
 import Dashboard from './Dashboard';
 import ClientRoadmap from './ClientRoadmap';
-import { EmployeeManagement } from './management/EmployeeManagement';
+import { EmployeeManagement } from './pages/management/EmployeeManagement';
 
 // Componentes
-import UniformDesigner from './components/UniformDesigner';
-import Card from './components/Card';
-import LoadingState from './components/LoadingState';
-import EmptyState from './components/EmptyState';
-import Modal from './components/Modal';
-import { Input } from './components/Input';
-import { Select } from './components/Select';
+import UniformDesigner from './pages/components/UniformDesigner';
+import Card from './pages/components/Card';
+import LoadingState from './pages/components/LoadingState';
+import EmptyState from './pages/components/EmptyState';
+import Modal from './pages/components/Modal';
+import { Input } from './pages/components/Input';
+import { Select } from './pages/components/Select';
 
 // Utilidades Generales
 import { cn } from './lib/utils';
