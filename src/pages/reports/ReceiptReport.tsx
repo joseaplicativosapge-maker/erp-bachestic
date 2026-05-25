@@ -2,12 +2,12 @@ import { format } from "date-fns";
 import QRCode from "react-qr-code";
 import type { Order, Payment } from "@/src/lib/types";
 
-interface ReceiptProps {
+interface ReceiptReportProps {
   order:   Order;
   payment: Payment;
 }
 
-export function Receipt({ order, payment }: ReceiptProps) {
+export function ReceiptReport({ order, payment }: ReceiptReportProps) {
   const orderUrl = `http://localhost:3000/?order=${order.order_number}`;
 
   const groupedItems =

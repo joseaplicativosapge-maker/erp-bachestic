@@ -1,6 +1,6 @@
 import { Printer } from "lucide-react";
 import Modal from "@/src/pages/components/Modal";
-import { Receipt } from "@/src/pages/reports/Receipt";
+import { ReceiptReport } from "@/src/pages/reports/ReceiptReport";
 import type { Order, Payment } from "@/src/lib/types";
 
 interface ReceiptModalProps {
@@ -14,7 +14,7 @@ export function ReceiptModal({ order, payment, onClose }: ReceiptModalProps) {
     <Modal isOpen={true} onClose={onClose} title="Recibo de Pago" maxWidth="max-w-5xl">
       <div className="space-y-8">
         <div className="max-h-[70vh] overflow-y-auto bg-gray-100 p-8 border border-border-custom">
-          <Receipt order={order} payment={payment} />
+          <ReceiptReport order={order} payment={payment} />
         </div>
 
         <div className="flex gap-4">
