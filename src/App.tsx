@@ -65,9 +65,9 @@ import { Toaster, toast } from 'sonner';
 import QRCode from "react-qr-code";
 
 // Pantallas
-import Login from './Login';
-import Dashboard from './Dashboard';
-import ClientRoadmap from './ClientRoadmap';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import ClientRoadmap from './pages/ClientRoadmap';
 import { EmployeeManagement } from './pages/management/EmployeeManagement';
 
 // Componentes

@@ -17,13 +17,13 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { api } from './services/api';
-import { Order, OrderItem, OrderStatus, Role, User, Payment } from './lib/types';
+import { api } from '../services/api';
+import { Order, OrderItem, OrderStatus, Role, User, Payment } from '../lib/types';
 import { format } from 'date-fns';
 import { twMerge } from 'tailwind-merge';
 import { toast } from 'sonner';
-import UniformDesigner from './pages/components/UniformDesigner';
-import Card from './pages/components/Card';
+import UniformDesigner from './components/UniformDesigner';
+import Card from './components/Card';
 import { cn } from '@/src/lib/utils';
 
 // ---------------------------------------------------------------------------
