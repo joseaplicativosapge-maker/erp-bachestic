@@ -18,9 +18,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from './api';
-import { Order, OrderItem, OrderStatus, Role, User, Payment } from './types';
+import { Order, OrderItem, OrderStatus, Role, User, Payment } from './lib/types';
 import { format } from 'date-fns';
-import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { toast } from 'sonner';
 import UniformDesigner from './components/UniformDesigner';

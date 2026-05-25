@@ -1,4 +1,5 @@
-import { Order, OrderItem, OrderStatus, Employee, ProductionAssignment, EmployeeReport, User, Client, OrderHistory, Payment, Product, Team } from './types';
+import { Order, OrderItem, OrderStatus, Employee, 
+  ProductionAssignment, EmployeeReport, User, Client, OrderHistory, Product, Team } from './lib/types';
 
 const API_BASE = '/api';
 

@@ -10,7 +10,7 @@ import Modal  from "../components/Modal";
 import EmptyState  from "../components/EmptyState";
 import LoadingState from "../components/LoadingState";
 import { ErrorMessage } from "../components/ErrorMessage";
-import type { Employee, EmployeeReport, Role } from "../types";
+import type { Employee, EmployeeReport, Role } from "../lib/types";
 
 
 // ─── Constants ───────────────────────────────────────────────────────────────

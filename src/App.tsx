@@ -57,7 +57,7 @@ import {
 import * as XLSX from "xlsx-js-style";
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from './api';
-import { Order, OrderItem, OrderStatus, Role, User, Client, OrderHistory, Employee, EmployeeReport, ProductionAssignment, Payment, Product, Team } from './types';
+import { Order, OrderItem, OrderStatus, Role, User, Client, OrderHistory, Employee, EmployeeReport, ProductionAssignment, Payment, Product, Team } from './lib/types';
 import { format, differenceInBusinessDays } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
