@@ -3349,7 +3349,7 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
             </div>
           </div>
 
-          <UniformDesignerSection
+          <UniformDesigner
             order={order}
             user={user}
             readOnly={
@@ -7983,28 +7983,5 @@ function ConfectionReport({ key }: { key?: string }) {
         </div>
       )}
     </motion.div>
-  );
-}
-
-// ─── Sección Diseño de Uniformes ─────────────────────────────────────────────
-// ─── Sección Diseño de Uniformes (wrapper compacto) ──────────────────────────
-function UniformDesignerSection({
-  order,
-  user,
-  readOnly,
-  onSaved,
-}: {
-  order: Order;
-  user?: User;
-  readOnly: boolean;
-  onSaved: () => void;
-}) {
-  return (
-    <UniformDesigner
-      order={order}
-      user={user}
-      readOnly={readOnly}
-      onSaved={onSaved}
-    />
   );
 }
