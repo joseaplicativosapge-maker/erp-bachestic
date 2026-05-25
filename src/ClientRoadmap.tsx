@@ -24,27 +24,14 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { toast } from 'sonner';
 import UniformDesigner from './UniformDesigner';
-
-// ---------------------------------------------------------------------------
-// Utilidades locales (si ya tienes cn en @/lib/utils cámbialo aquí)
-// ---------------------------------------------------------------------------
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import Card from './components/Card';
+import { cn } from '@/src/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Tipos auxiliares mínimos — ajusta si ya los tienes centralizados
 // ---------------------------------------------------------------------------
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
-}
-
-function Card({ children, className, ...props }: CardProps) {
-  return (
-    <div className={cn('rounded-2xl bg-surface border border-border-custom', className)} {...props}>
-      {children}
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
