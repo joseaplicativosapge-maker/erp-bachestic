@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Clock, X } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { api } from './lib/api';
+import { api } from './services/api';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 

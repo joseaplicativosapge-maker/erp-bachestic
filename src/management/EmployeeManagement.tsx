@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, Phone, LayoutDashboard, Edit2, Trash2, RefreshCw, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
-import { api } from "../lib/api";
+import { api } from "../services/api";
 import { Input } from "../components/Input";
 import { Select }  from "../components/Select";
 import Card from "../components/Card";

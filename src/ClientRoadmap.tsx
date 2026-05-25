@@ -17,7 +17,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { api } from './lib/api';
+import { api } from './services/api';
 import { Order, OrderItem, OrderStatus, Role, User, Payment } from './lib/types';
 import { format } from 'date-fns';
 import { twMerge } from 'tailwind-merge';
