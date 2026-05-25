@@ -3932,7 +3932,11 @@ function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: { orderId: n
                 Carga el diseño para cada producto o uniforme. Estos se visualizarán en el seguimiento del cliente.
               </p>
               <div className="grid grid-cols-1 gap-8">
-                {(Array.from(new Set(order.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[]).map((cat) => {
+                {((() => {
+                  const cats = Array.from(new Set(order.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[];
+                  if (!cats.includes('Portero')) cats.push('Portero');
+                  return cats;
+                })()).map((cat) => {
                   const design = [...(order.references || [])].reverse().find(r => r.comments === cat);
                   return (
                     <div key={cat} className="space-y-3">
@@ -6503,7 +6507,11 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
                 <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px] whitespace-nowrap">Diseño Actual</h4>
               </div>
               <div className="space-y-8">
-                {(Array.from(new Set(foundOrder.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[]).map((cat) => {
+                {((() => {
+                  const cats = Array.from(new Set(foundOrder.items?.map(item => item.garment_type).filter(Boolean) || [])) as string[];
+                  if (!cats.includes('Portero')) cats.push('Portero');
+                  return cats;
+                })()).map((cat) => {
                   const ref = [...(foundOrder.references || [])].reverse().find(r => r.comments === cat);
                   return (
                     <div key={cat} className="space-y-3">
@@ -6537,7 +6545,9 @@ function ClientRoadmap({ orders, user, initialSearch = '', role, isPublic = fals
                           </div>
                         </div>
                       ) : (
-                        !isDesignPhase ? (
+                        // Portero siempre puede subir imagen (es referencia del cliente)
+                        // Los demás slots solo permiten subir si NO están en fase de diseño
+                        (!isDesignPhase || cat === 'Portero') ? (
                           <form onSubmit={(e) => {
                             e.preventDefault();
                             const formData = new FormData();
