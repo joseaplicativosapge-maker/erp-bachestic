@@ -8,8 +8,9 @@ import {
   AlertTriangle,
   Star,
   ExternalLink,
+  SlidersHorizontal 
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { differenceInBusinessDays } from "date-fns";
 import { cn } from "@/src/lib/utils";
@@ -137,6 +138,7 @@ export function KDS({ orders, user, onOrderClick, onUpdate }: KDSProps) {
   const [dateTo,         setDateTo]         = useState("");
   const [searchTerm,     setSearchTerm]     = useState("");
   const [currentPage,    setCurrentPage]    = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // ── Effects ───────────────────────────────────────────────────────────────
 
@@ -304,78 +306,144 @@ export function KDS({ orders, user, onOrderClick, onUpdate }: KDSProps) {
       <div className="flex flex-col gap-6">
 
         {/* Filtros */}
-        <div className="flex flex-wrap items-center gap-4 p-4 rounded-3xl border border-border-custom bg-surface/60 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
+        <div className="rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.04)] overflow-hidden">
 
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+  {/* HEADER */}
+  <div className="flex flex-wrap items-center justify-between gap-4 p-4">
 
-          {/* Toggle En producción / Entregadas */}
-          <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom w-fit">
-            <button
-              onClick={() => setShowDelivered(false)}
-              className={cn(
-                "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                !showDelivered
-                  ? "bg-accent text-white shadow-lg shadow-accent/20"
-                  : "text-foreground-muted hover:text-foreground-main"
-              )}
-            >
-              En Producción
-            </button>
-            <button
-              onClick={() => setShowDelivered(true)}
-              className={cn(
-                "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                showDelivered
-                  ? "bg-green-600 text-white shadow-lg shadow-green-600/20"
-                  : "text-foreground-muted hover:text-foreground-main"
-              )}
-            >
-              <CheckCircle2 size={14} /> Entregadas
-            </button>
+    {/* IZQUIERDA */}
+    <div className="flex flex-wrap items-center gap-4">
+
+      {/* Toggle En producción / Entregadas */}
+      <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom w-fit">
+        <button
+          onClick={() => setShowDelivered(false)}
+          className={cn(
+            "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+            !showDelivered
+              ? "bg-accent text-white shadow-lg shadow-accent/20"
+              : "text-foreground-muted hover:text-foreground-main"
+          )}
+        >
+          En Producción
+        </button>
+
+        <button
+          onClick={() => setShowDelivered(true)}
+          className={cn(
+            "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+            showDelivered
+              ? "bg-green-600 text-white shadow-lg shadow-green-600/20"
+              : "text-foreground-muted hover:text-foreground-main"
+          )}
+        >
+          <CheckCircle2 size={14} />
+          Entregadas
+        </button>
+      </div>
+
+      {/* Leyenda */}
+      <div className="flex items-center gap-6 bg-surface px-6 py-3 rounded-2xl border border-border-custom">
+        {[
+          { color: "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]", label: "A tiempo" },
+          { color: "bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]", label: "Próximo" },
+          { color: "bg-accent shadow-[0_0_10px_var(--accent-glow)]", label: "Vencido" },
+        ].map(({ color, label }) => (
+          <div key={label} className="flex items-center gap-3">
+            <div className={`w-2 h-2 rounded-full ${color}`} />
+            <span className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+              {label}
+            </span>
           </div>
+        ))}
+      </div>
 
-          {/* Leyenda */}
-          <div className="flex items-center gap-6 bg-surface px-6 py-3 rounded-2xl border border-border-custom">
-            {[
-              { color: "bg-green-500  shadow-[0_0_10px_rgba(34,197,94,0.5)]",  label: "A tiempo" },
-              { color: "bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]", label: "Próximo"  },
-              { color: "bg-accent     shadow-[0_0_10px_var(--accent-glow)]",   label: "Vencido"  },
-            ].map(({ color, label }) => (
-              <div key={label} className="flex items-center gap-3">
-                <div className={`w-2 h-2 rounded-full ${color}`} />
-                <span className="text-[9px] font-black uppercase tracking-widest text-foreground-muted">{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-          {/* Estado (solo Admin) */}
+      {/* Contador */}
+      <div className="px-5 py-3 rounded-2xl bg-accent/10 border border-accent/10">
+        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-accent whitespace-nowrap">
+          {filteredOrders.length}{" "}
+          {filteredOrders.length === 1 ? "orden" : "órdenes"}
+        </span>
+      </div>
+    </div>
+
+    {/* BOTÓN FILTROS */}
+    <button
+      onClick={() => setFiltersOpen(!filtersOpen)}
+      className={cn(
+        "px-6 py-4 rounded-2xl border border-border-custom bg-surface-hover text-[10px] font-black uppercase tracking-[0.18em] flex items-center gap-3 transition-all",
+        filtersOpen
+          ? "text-accent border-accent/30"
+          : "text-foreground-muted hover:text-foreground-main"
+      )}
+    >
+      <SlidersHorizontal size={16} />
+
+      {filtersOpen ? "Ocultar filtros" : "Mostrar filtros"}
+
+      <ChevronDown
+        size={16}
+        className={cn(
+          "transition-transform duration-300",
+          filtersOpen && "rotate-180"
+        )}
+      />
+    </button>
+  </div>
+
+  {/* FILTROS */}
+  <AnimatePresence initial={false}>
+    {filtersOpen && (
+      <motion.div
+        initial={{ height: 0, opacity: 0 }}
+        animate={{ height: "auto", opacity: 1 }}
+        exit={{ height: 0, opacity: 0 }}
+        transition={{ duration: 0.25 }}
+        className="overflow-hidden border-t border-border-custom"
+      >
+        <div className="p-4 flex flex-wrap items-center gap-4">
+
+          {/* Estado */}
           {role === "Admin" && !showDelivered && (
             <div className="relative group">
-              <div className="absolute inset-0 rounded-2xl bg-accent/5 opacity-0 group-hover:opacity-100 transition-all" />
               <select
                 value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value as OrderStatus | "Todos")}
-                className="appearance-none relative bg-surface border border-border-custom hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/10 rounded-2xl pl-5 pr-12 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-foreground-main outline-none transition-all cursor-pointer min-w-[220px]"
+                onChange={e =>
+                  setStatusFilter(e.target.value as OrderStatus | "Todos")
+                }
+                className="appearance-none bg-surface border border-border-custom hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/10 rounded-2xl pl-5 pr-12 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-foreground-main outline-none transition-all cursor-pointer min-w-[220px]"
               >
                 <option value="Todos">Todos los estados</option>
-                {ALL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+
+                {ALL_STATUSES.map(s => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
               </select>
-              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none" />
+
+              <ChevronDown
+                size={16}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none"
+              />
             </div>
           )}
 
           {/* Buscador */}
-          <div className="relative group">
-            <div className="absolute inset-0 rounded-2xl bg-accent/5 opacity-0 group-focus-within:opacity-100 transition-all" />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors" size={16} />
+          <div className="relative group flex-1 min-w-[260px]">
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors"
+              size={16}
+            />
+
             <input
               type="text"
               placeholder="Buscar cliente..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="relative pl-11 pr-11 py-3 rounded-2xl bg-surface border border-border-custom hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none text-foreground-main text-[10px] font-black uppercase tracking-[0.18em] placeholder:text-foreground-muted/40 transition-all w-[260px]"
+              className="w-full pl-11 pr-11 py-3 rounded-2xl bg-surface border border-border-custom hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none text-foreground-main text-[10px] font-black uppercase tracking-[0.18em] placeholder:text-foreground-muted/40 transition-all"
             />
+
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm("")}
@@ -388,22 +456,34 @@ export function KDS({ orders, user, onOrderClick, onUpdate }: KDSProps) {
 
           {/* Equipo */}
           <div className="relative group">
-            <div className="absolute inset-0 rounded-2xl bg-accent/5 opacity-0 group-hover:opacity-100 transition-all" />
             <select
               value={teamFilter}
               onChange={e => setTeamFilter(e.target.value)}
-              className="appearance-none relative bg-surface border border-border-custom hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/10 rounded-2xl pl-5 pr-12 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-foreground-main outline-none transition-all cursor-pointer min-w-[190px]"
+              className="appearance-none bg-surface border border-border-custom hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/10 rounded-2xl pl-5 pr-12 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-foreground-main outline-none transition-all cursor-pointer min-w-[190px]"
             >
-              {availableTeams.map(team => <option key={team} value={team}>{team}</option>)}
+              {availableTeams.map(team => (
+                <option key={team} value={team}>
+                  {team}
+                </option>
+              ))}
             </select>
-            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none" />
+
+            <ChevronDown
+              size={16}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none"
+            />
           </div>
 
           {/* Fechas */}
-          <div className="flex items-center gap-4 bg-surface border border-border-custom hover:border-accent/30 rounded-2xl px-5 py-3 transition-all">
+          <div className="flex items-center gap-4 bg-surface border border-border-custom hover:border-accent/30 rounded-2xl px-5 py-3 transition-all flex-wrap">
+
             <select
               value={dateField}
-              onChange={e => setDateField(e.target.value as "created_at" | "delivery_date")}
+              onChange={e =>
+                setDateField(
+                  e.target.value as "created_at" | "delivery_date"
+                )
+              }
               className="bg-transparent text-[10px] font-black uppercase tracking-[0.18em] outline-none text-foreground-muted appearance-none cursor-pointer"
             >
               <option value="delivery_date">Entrega</option>
@@ -412,17 +492,30 @@ export function KDS({ orders, user, onOrderClick, onUpdate }: KDSProps) {
 
             <div className="w-px h-5 bg-border-custom" />
 
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="bg-transparent text-[10px] font-black text-foreground-main outline-none [color-scheme:light] cursor-pointer" />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="bg-transparent text-[10px] font-black text-foreground-main outline-none [color-scheme:light] cursor-pointer"
+            />
 
-            <span className="text-[10px] font-black text-foreground-muted">—</span>
+            <span className="text-[10px] font-black text-foreground-muted">
+              —
+            </span>
 
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="bg-transparent text-[10px] font-black text-foreground-main outline-none [color-scheme:light] cursor-pointer" />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              className="bg-transparent text-[10px] font-black text-foreground-main outline-none [color-scheme:light] cursor-pointer"
+            />
 
             {(dateFrom || dateTo) && (
               <button
-                onClick={() => { setDateFrom(""); setDateTo(""); }}
+                onClick={() => {
+                  setDateFrom("");
+                  setDateTo("");
+                }}
                 className="w-7 h-7 rounded-full flex items-center justify-center text-foreground-muted hover:bg-accent hover:text-white transition-all"
               >
                 <X size={13} />
@@ -430,14 +523,11 @@ export function KDS({ orders, user, onOrderClick, onUpdate }: KDSProps) {
             )}
           </div>
 
-          {/* Contador */}
-          <div className="ml-auto flex items-center gap-2 px-5 py-3 rounded-2xl bg-accent/10 border border-accent/10">
-            <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-accent whitespace-nowrap">
-              {filteredOrders.length} {filteredOrders.length === 1 ? "orden" : "órdenes"}
-            </span>
-          </div>
         </div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+</div>
       </div>
 
       {/* Lista */}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AnimatePresence, motion } from 'motion/react';
 import { Plus, Package, Edit2, Trash2, RefreshCw, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
@@ -80,6 +81,7 @@ export function ProductManagement() {
   const [currentPageInactive,setCurrentPageInactive]= useState(1);
   const [newProduct,         setNewProduct]         = useState<FormData>(EMPTY_FORM);
   const [errors,             setErrors]             = useState(EMPTY_ERRORS);
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => { loadProducts(); }, []);
 
@@ -277,40 +279,92 @@ export function ProductManagement() {
     <div className="space-y-8">
 
       {/* CABECERA */}
-              <div className="flex flex-wrap items-center gap-4 p-4 rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
+      <div className="w-full p-4 rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
 
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-6 flex-wrap">
-          <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
-            {(["active", "inactive"] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                  activeTab === tab
-                    ? "bg-accent text-white shadow-lg shadow-accent/20"
-                    : "text-foreground-muted hover:text-foreground-main"
-                )}
-              >
-                {tab === "active" ? "Activos" : "Desactivados"}
-              </button>
-            ))}
-          </div>
+  {/* TOP BAR */}
+  <div className="flex items-center justify-between gap-4 flex-wrap">
+
+    {/* LEFT */}
+    <div className="flex items-center gap-4 flex-wrap">
+
+      {/* TABS */}
+      <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
+        {(["active", "inactive"] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+              activeTab === tab
+                ? "bg-accent text-white shadow-lg shadow-accent/20"
+                : "text-foreground-muted hover:text-foreground-main"
+            )}
+          >
+            {tab === "active" ? "Activos" : "Desactivados"}
+          </button>
+        ))}
+      </div>
+
+      {/* TOGGLE FILTROS */}
+      <button
+        onClick={() => setShowFilters(!showFilters)}
+        className={cn(
+          "h-12 px-5 rounded-2xl border border-border-custom bg-surface-hover text-[10px] font-black uppercase tracking-[0.18em] flex items-center gap-3 transition-all",
+          showFilters
+            ? "border-accent text-accent"
+            : "text-foreground-muted hover:text-foreground-main"
+        )}
+      >
+        <Search size={16} />
+
+        {showFilters ? "Ocultar Filtros" : "Mostrar Filtros"}
+      </button>
+
+    </div>
+
+    {/* RIGHT */}
+    <button
+      onClick={() => {
+        setEditingProduct(null);
+        resetForm();
+        setShowAdd(true);
+      }}
+      className="h-12 px-8 rounded-2xl bg-accent text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:scale-[1.03] transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
+    >
+      <Plus size={18} />
+      Nuevo Producto
+    </button>
+
+  </div>
+
+  {/* FILTROS */}
+  <AnimatePresence>
+    {showFilters && (
+      <motion.div
+        initial={{ opacity: 0, height: 0, y: -10 }}
+        animate={{ opacity: 1, height: "auto", y: 0 }}
+        exit={{ opacity: 0, height: 0, y: -10 }}
+        transition={{ duration: 0.25 }}
+        className="overflow-hidden"
+      >
+
+        <div className="pt-5">
 
           {/* BUSCADOR */}
-          <div className="relative group">
+          <div className="relative group max-w-md">
             <Search
               className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors duration-300"
               size={16}
             />
+
             <input
               type="text"
               placeholder="Buscar por nombre o código..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-10 pr-10 py-3 rounded-2xl bg-surface border border-border-custom focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none text-foreground-main text-[10px] font-black uppercase tracking-[0.18em] placeholder:text-foreground-muted/40 transition-all duration-300 shadow-sm min-w-[260px]"
+              className="w-full pl-10 pr-10 py-3 rounded-2xl bg-surface border border-border-custom focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none text-foreground-main text-[10px] font-black uppercase tracking-[0.18em] placeholder:text-foreground-muted/40 transition-all duration-300 shadow-sm"
             />
+
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm("")}
@@ -320,18 +374,14 @@ export function ProductManagement() {
               </button>
             )}
           </div>
-        </div>
-
-        <button
-          onClick={() => { setEditingProduct(null); resetForm(); setShowAdd(true); }}
-          className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
-        >
-          <Plus size={18} />
-          Nuevo Producto
-        </button>
 
         </div>
-      </div>
+
+      </motion.div>
+    )}
+  </AnimatePresence>
+
+</div>
 
       {/* GRID */}
       {filteredProducts.length === 0 ? (

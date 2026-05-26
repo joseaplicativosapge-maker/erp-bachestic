@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import {
   Plus, Search, X, Clock, LayoutDashboard, DollarSign,
-  Download, RefreshCw, Trash2, Copy, Star, ShoppingCart, ChevronDown,
+  Download, RefreshCw, Trash2, Copy, Star, ShoppingCart, ChevronDown, SlidersHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
@@ -85,7 +85,7 @@ export function OrdersList({
   const [showConfirmToggle, setShowConfirmToggle] = useState(false);
   const [orderToToggle,     setOrderToToggle]     = useState<Order | null>(null);
   const [isExportingTimes,  setIsExportingTimes]  = useState(false);
-
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [teamFilter,   setTeamFilter]   = useState("Todos");
   const [dateField,    setDateField]    = useState<DateField>("delivery_date");
   const [dateFrom,     setDateFrom]     = useState("");
@@ -205,145 +205,210 @@ export function OrdersList({
       className="space-y-10"
     >
       <div className="flex flex-col gap-6">
-
-        
-
         {/* FILTROS */}
-        <div className="flex flex-wrap items-center gap-4 p-4 rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
-          {/* CABECERA */}
-        <div className="flex items-center justify-between">
+        <div className="rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.04)] overflow-hidden">
 
-          <div className="flex items-center gap-3">
-            {user?.role?.trim() === "Admin" && (
-              <button
-                onClick={handleExportTimes}
-                disabled={isExportingTimes || filteredOrders.length === 0}
-                className="bg-surface-hover text-foreground-main border border-border-custom px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:border-accent/40 hover:text-accent transition-all disabled:opacity-40"
-                title="Exportar reporte de tiempos"
-              >
-                {isExportingTimes
-                  ? <RefreshCw size={16} className="animate-spin" />
-                  : <Download size={16} />
-                }
-                Tiempos
-              </button>
-            )}
+          {/* HEADER */}
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4">
 
-            {canCreate && (
-              <button
-                onClick={onCreateClick}
-                className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
-              >
-                <Plus size={20} />
-                Nueva Orden
-              </button>
-            )}
-          </div>
-        </div>
-          {/* TOGGLE ACTIVOS / DESACTIVADOS */}
-          <div className="flex items-center bg-surface-hover/80 p-1.5 rounded-2xl border border-border-custom shadow-sm">
-          
-            {([
-              { label: "Activos",      active: !includeInactive },
-              { label: "Desactivados", active:  includeInactive },
-            ] as const).map(({ label, active }) => (
-              <button
-                key={label}
-                onClick={() => active || onToggleInactive()}
+            {/* LEFT */}
+            <div className="flex flex-wrap items-center gap-3">
+
+              {user?.role?.trim() === "Admin" && (
+                <button
+                  onClick={handleExportTimes}
+                  disabled={isExportingTimes || filteredOrders.length === 0}
+                  className="bg-surface-hover text-foreground-main border border-border-custom px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:border-accent/40 hover:text-accent transition-all disabled:opacity-40"
+                  title="Exportar reporte de tiempos"
+                >
+                  {isExportingTimes
+                    ? <RefreshCw size={16} className="animate-spin" />
+                    : <Download size={16} />
+                  }
+
+                  Tiempos
+                </button>
+              )}
+
+              {canCreate && (
+                <button
+                  onClick={onCreateClick}
+                  className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
+                >
+                  <Plus size={20} />
+                  Nueva Orden
+                </button>
+              )}
+
+              {/* CONTADOR */}
+              <div className="px-5 py-3 rounded-2xl bg-accent/10 border border-accent/10 text-accent text-[10px] font-black uppercase tracking-[0.18em] whitespace-nowrap">
+                {filteredOrders.length}{" "}
+                {filteredOrders.length === 1 ? "orden" : "órdenes"}
+              </div>
+            </div>
+
+            {/* TOGGLE */}
+            <button
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              className={cn(
+                "px-6 py-4 rounded-2xl border border-border-custom bg-surface-hover text-[10px] font-black uppercase tracking-[0.18em] flex items-center gap-3 transition-all",
+                filtersOpen
+                  ? "text-accent border-accent/30"
+                  : "text-foreground-muted hover:text-foreground-main"
+              )}
+            >
+              <SlidersHorizontal size={16} />
+
+              {filtersOpen ? "Ocultar filtros" : "Mostrar filtros"}
+
+              <ChevronDown
+                size={16}
                 className={cn(
-                  "px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300",
-                  active
-                    ? "bg-accent text-white shadow-xl shadow-accent/20 scale-[1.02]"
-                    : "text-foreground-muted hover:text-foreground-main hover:bg-surface"
+                  "transition-transform duration-300",
+                  filtersOpen && "rotate-180"
                 )}
-              >
-                {label}
-              </button>
-            ))}
+              />
+            </button>
+
           </div>
 
-          {/* BUSCADOR */}
-          <div className="relative group flex-1 min-w-[260px]">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors duration-300"
-              size={17}
-            />
-            <input
-              type="text"
-              placeholder="Buscar cliente u orden..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-10 py-3 rounded-2xl bg-surface border border-border-custom focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none text-foreground-main text-[10px] font-black uppercase tracking-[0.18em] placeholder:text-foreground-muted/40 transition-all duration-300 shadow-sm"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
+          {/* ACCORDION */}
+          <AnimatePresence initial={false}>
+            {filtersOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden border-t border-border-custom"
               >
-                <X size={14} />
-              </button>
+
+                <div className="p-4 flex flex-wrap items-center gap-4">
+
+                  {/* TOGGLE ACTIVOS */}
+                  <div className="flex items-center bg-surface-hover/80 p-1.5 rounded-2xl border border-border-custom shadow-sm">
+                    {([
+                      { label: "Activos", active: !includeInactive },
+                      { label: "Desactivados", active: includeInactive },
+                    ] as const).map(({ label, active }) => (
+                      <button
+                        key={label}
+                        onClick={() => active || onToggleInactive()}
+                        className={cn(
+                          "px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300",
+                          active
+                            ? "bg-accent text-white shadow-xl shadow-accent/20 scale-[1.02]"
+                            : "text-foreground-muted hover:text-foreground-main hover:bg-surface"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* BUSCADOR */}
+                  <div className="relative group flex-1 min-w-[260px]">
+                    <Search
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors duration-300"
+                      size={17}
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Buscar cliente u orden..."
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      className="w-full pl-11 pr-10 py-3 rounded-2xl bg-surface border border-border-custom focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none text-foreground-main text-[10px] font-black uppercase tracking-[0.18em] placeholder:text-foreground-muted/40 transition-all duration-300 shadow-sm"
+                    />
+
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* ESTADO */}
+                  <div className="relative">
+                    <select
+                      value={statusFilter}
+                      onChange={e => setStatusFilter(e.target.value)}
+                      className="appearance-none bg-surface border border-border-custom rounded-2xl pl-5 pr-12 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-foreground-main outline-none transition-all duration-300 cursor-pointer hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/10 min-w-[220px] shadow-sm"
+                    >
+                      {STATUS_OPTIONS.map(s => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+
+                    <ChevronDown
+                      size={16}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none"
+                    />
+                  </div>
+
+                  {/* EQUIPOS */}
+                  <div className="relative">
+                    <select
+                      value={teamFilter}
+                      onChange={e => setTeamFilter(e.target.value)}
+                      className="appearance-none bg-surface border border-border-custom rounded-2xl pl-5 pr-12 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-foreground-main outline-none transition-all duration-300 cursor-pointer hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/10 min-w-[200px] shadow-sm"
+                    >
+                      {availableTeams.map(team => (
+                        <option key={team} value={team}>
+                          {team}
+                        </option>
+                      ))}
+                    </select>
+
+                    <ChevronDown
+                      size={16}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none"
+                    />
+                  </div>
+
+                  {/* FECHAS */}
+                  <div className="flex items-center gap-4 bg-surface border border-border-custom rounded-2xl px-5 py-3 shadow-sm flex-wrap">
+                    <select
+                      value={dateField}
+                      onChange={e => setDateField(e.target.value as DateField)}
+                      className="bg-transparent text-[10px] font-black uppercase tracking-[0.18em] outline-none text-foreground-muted cursor-pointer appearance-none"
+                    >
+                      <option value="delivery_date">Entrega</option>
+                      <option value="created_at">Creación</option>
+                    </select>
+
+                    <div className="w-[1px] h-5 bg-border-custom" />
+
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={e => setDateFrom(e.target.value)}
+                      className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:light] w-32"
+                    />
+
+                    <span className="text-[10px] font-black text-foreground-muted">
+                      —
+                    </span>
+
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={e => setDateTo(e.target.value)}
+                      className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:light] w-32"
+                    />
+                  </div>
+
+                </div>
+
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
 
-          {/* ESTADO */}
-          <div className="relative">
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="appearance-none bg-surface border border-border-custom rounded-2xl pl-5 pr-12 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-foreground-main outline-none transition-all duration-300 cursor-pointer hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/10 min-w-[220px] shadow-sm"
-            >
-              {STATUS_OPTIONS.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none" />
-          </div>
-
-          {/* EQUIPOS */}
-          <div className="relative">
-            <select
-              value={teamFilter}
-              onChange={e => setTeamFilter(e.target.value)}
-              className="appearance-none bg-surface border border-border-custom rounded-2xl pl-5 pr-12 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-foreground-main outline-none transition-all duration-300 cursor-pointer hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/10 min-w-[200px] shadow-sm"
-            >
-              {availableTeams.map(team => (
-                <option key={team} value={team}>{team}</option>
-              ))}
-            </select>
-            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none" />
-          </div>
-
-          {/* FECHAS */}
-          <div className="flex items-center gap-4 bg-surface border border-border-custom rounded-2xl px-5 py-3 shadow-sm flex-wrap">
-            <select
-              value={dateField}
-              onChange={e => setDateField(e.target.value as DateField)}
-              className="bg-transparent text-[10px] font-black uppercase tracking-[0.18em] outline-none text-foreground-muted cursor-pointer appearance-none"
-            >
-              <option value="delivery_date">Entrega</option>
-              <option value="created_at">Creación</option>
-            </select>
-            <div className="w-[1px] h-5 bg-border-custom" />
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={e => setDateFrom(e.target.value)}
-              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:light] w-32"
-            />
-            <span className="text-[10px] font-black text-foreground-muted">—</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={e => setDateTo(e.target.value)}
-              className="bg-transparent text-[10px] font-black text-foreground-main outline-none cursor-pointer [color-scheme:light] w-32"
-            />
-          </div>
-
-          {/* CONTADOR */}
-          <div className="ml-auto px-5 py-3 rounded-2xl bg-accent/10 border border-accent/10 text-accent text-[10px] font-black uppercase tracking-[0.18em] whitespace-nowrap">
-            {filteredOrders.length}{" "}
-            {filteredOrders.length === 1 ? "orden" : "órdenes"}
-          </div>
         </div>
       </div>
 
