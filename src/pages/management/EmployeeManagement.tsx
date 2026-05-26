@@ -181,30 +181,30 @@ export function EmployeeManagement() {
 
   const filteredEmployees = employees.filter(emp => {
 
-    /* ACTIVO / INACTIVO */
-    const matchesStatus =
-      activeTab === "active"
-        ? emp.active
-        : !emp.active;
+      /* ACTIVO / INACTIVO */
+      const matchesStatus =
+        activeTab === "active"
+          ? emp.active
+          : !emp.active;
 
-    /* BUSCADOR */
-    const matchesSearch =
-      emp.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      /* BUSCADOR */
+      const matchesSearch =
+        emp.name
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
 
-    /* DEPARTAMENTO */
-    const matchesDepartment =
-      !departmentFilter ||
-      emp.department === departmentFilter;
+      /* DEPARTAMENTO / ROLE */
+      const matchesDepartment =
+        !departmentFilter ||
+        emp.role === departmentFilter;
 
-    /* RESULTADO FINAL */
-    return (
-      matchesStatus &&
-      matchesSearch &&
-      matchesDepartment
-    );
-  });
+      /* RESULTADO FINAL */
+      return (
+        matchesStatus &&
+        matchesSearch &&
+        matchesDepartment
+      );
+    });
 
   const currentPage  = activeTab === "active" ? currentPageActive : currentPageInactive;
   const totalPages   = Math.ceil(filteredEmployees.length / ITEMS_PER_PAGE);
