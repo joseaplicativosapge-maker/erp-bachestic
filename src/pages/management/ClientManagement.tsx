@@ -359,85 +359,86 @@ export function ClientManagement() {
 
       {/* HEADER */}
       <div className="flex flex-col 2xl:flex-row 2xl:items-end justify-between gap-6">
+        <div className="flex flex-wrap items-center gap-4 p-4 rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
+          {/* LEFT */}
+          <div className="space-y-5">
 
-        {/* LEFT */}
-        <div className="space-y-5">
+            {/* TABS */}
+            <div className="flex bg-surface-hover border border-border-custom rounded-2xl p-1 w-fit">
+              <button
+                onClick={() => setIncludeInactive(false)}
+                className={cn(
+                  'px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                  !includeInactive
+                    ? 'bg-accent text-white shadow-lg shadow-accent/20'
+                    : 'text-foreground-muted hover:text-foreground-main'
+                )}
+              >
+                Activos
+              </button>
 
-          {/* TABS */}
-          <div className="flex bg-surface-hover border border-border-custom rounded-2xl p-1 w-fit">
+              <button
+                onClick={() => setIncludeInactive(true)}
+                className={cn(
+                  'px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                  includeInactive
+                    ? 'bg-accent text-white shadow-lg shadow-accent/20'
+                    : 'text-foreground-muted hover:text-foreground-main'
+                )}
+              >
+                Desactivados
+              </button>
+            </div>
+          </div>
+
+          {/* FILTROS */}
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_auto] gap-4 w-full 2xl:w-auto">
+
+            {/* CLIENTE */}
+            <div className="relative min-w-[300px]">
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted"
+              />
+
+              <input
+                type="text"
+                placeholder="Buscar cliente o documento..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full h-14 rounded-2xl border border-border-custom bg-surface-hover pl-12 pr-4 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent/30"
+              />
+            </div>
+
+            {/* EQUIPOS */}
+            <div className="relative min-w-[300px]">
+              <Users
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted"
+              />
+
+              <input
+                type="text"
+                placeholder='Buscar equipo o escribir "sin equipos"'
+                value={teamFilter}
+                onChange={e => setTeamFilter(e.target.value)}
+                className="w-full h-14 rounded-2xl border border-border-custom bg-surface-hover pl-12 pr-4 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent/30"
+              />
+            </div>
+
+            {/* NUEVO */}
             <button
-              onClick={() => setIncludeInactive(false)}
-              className={cn(
-                'px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
-                !includeInactive
-                  ? 'bg-accent text-white shadow-lg shadow-accent/20'
-                  : 'text-foreground-muted hover:text-foreground-main'
-              )}
+              onClick={() => {
+                setIsAdding(true);
+                setEditingClient(null);
+                resetForm();
+              }}
+              className="h-14 px-8 rounded-2xl bg-accent text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:scale-[1.03] transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
             >
-              Activos
-            </button>
-
-            <button
-              onClick={() => setIncludeInactive(true)}
-              className={cn(
-                'px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
-                includeInactive
-                  ? 'bg-accent text-white shadow-lg shadow-accent/20'
-                  : 'text-foreground-muted hover:text-foreground-main'
-              )}
-            >
-              Desactivados
+              <Plus size={20} />
+              Nuevo Cliente
             </button>
           </div>
-        </div>
-
-        {/* FILTROS */}
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_auto] gap-4 w-full 2xl:w-auto">
-
-          {/* CLIENTE */}
-          <div className="relative min-w-[300px]">
-            <Search
-              size={18}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted"
-            />
-
-            <input
-              type="text"
-              placeholder="Buscar cliente o documento..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full h-14 rounded-2xl border border-border-custom bg-surface-hover pl-12 pr-4 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent/30"
-            />
-          </div>
-
-          {/* EQUIPOS */}
-          <div className="relative min-w-[300px]">
-            <Users
-              size={18}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted"
-            />
-
-            <input
-              type="text"
-              placeholder='Buscar equipo o escribir "sin equipos"'
-              value={teamFilter}
-              onChange={e => setTeamFilter(e.target.value)}
-              className="w-full h-14 rounded-2xl border border-border-custom bg-surface-hover pl-12 pr-4 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent/30"
-            />
-          </div>
-
-          {/* NUEVO */}
-          <button
-            onClick={() => {
-              setIsAdding(true);
-              setEditingClient(null);
-              resetForm();
-            }}
-            className="h-14 px-8 rounded-2xl bg-accent text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:scale-[1.03] transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
-          >
-            <Plus size={20} />
-            Nuevo Cliente
-          </button>
         </div>
       </div>
 

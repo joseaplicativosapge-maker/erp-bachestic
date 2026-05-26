@@ -277,6 +277,8 @@ export function ProductManagement() {
     <div className="space-y-8">
 
       {/* CABECERA */}
+              <div className="flex flex-wrap items-center gap-4 p-4 rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
+
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-6 flex-wrap">
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
@@ -327,6 +329,8 @@ export function ProductManagement() {
           <Plus size={18} />
           Nuevo Producto
         </button>
+
+        </div>
       </div>
 
       {/* GRID */}

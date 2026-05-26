@@ -303,8 +303,10 @@ export function KDS({ orders, user, onOrderClick, onUpdate }: KDSProps) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
       <div className="flex flex-col gap-6">
 
-        {/* Cabecera */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        {/* Filtros */}
+        <div className="flex flex-wrap items-center gap-4 p-4 rounded-3xl border border-border-custom bg-surface/60 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
+
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
 
           {/* Toggle En producción / Entregadas */}
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom w-fit">
@@ -346,10 +348,7 @@ export function KDS({ orders, user, onOrderClick, onUpdate }: KDSProps) {
             ))}
           </div>
         </div>
-
-        {/* Filtros */}
-        <div className="flex flex-wrap items-center gap-4 p-4 rounded-3xl border border-border-custom bg-surface/60 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
-
+        
           {/* Estado (solo Admin) */}
           {role === "Admin" && !showDelivered && (
             <div className="relative group">

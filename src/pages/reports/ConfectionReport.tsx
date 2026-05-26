@@ -346,18 +346,6 @@ export function ConfectionReport({ reportKey }: ConfectionReportProps) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
 
-      {/* Cabecera */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={exportToExcel}
-          disabled={isExporting || filtered.length === 0}
-          className="bg-surface-hover text-foreground-main border border-border-custom px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-2 hover:border-accent/40 hover:text-accent transition-all disabled:opacity-40"
-        >
-          {isExporting ? <RefreshCw size={15} className="animate-spin" /> : <Download size={15} />}
-          Exportar Excel
-        </button>
-      </div>
-
       {/* Métricas */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         {[
@@ -375,6 +363,19 @@ export function ConfectionReport({ reportKey }: ConfectionReportProps) {
 
       {/* Filtros */}
       <div className="flex flex-wrap items-center gap-4 p-4 rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl">
+        <button
+            onClick={exportToExcel}
+            disabled={isExporting || filtered.length === 0}
+            className="bg-surface-hover text-foreground-main border border-border-custom px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-2 hover:border-accent/40 hover:text-accent transition-all disabled:opacity-40 whitespace-nowrap"
+          >
+            {isExporting ? (
+              <RefreshCw size={15} className="animate-spin" />
+            ) : (
+              <Download size={15} />
+            )}
+
+            Exportar Excel
+          </button>
         <div className="relative">
           <select
             value={empFilter}

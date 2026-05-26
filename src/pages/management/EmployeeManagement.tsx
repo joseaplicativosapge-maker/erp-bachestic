@@ -194,35 +194,48 @@ export function EmployeeManagement() {
     <div className="space-y-8">
 
       {/* CABECERA */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-8">
+      <div className="w-full flex items-center justify-between">
 
-          <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
-            {(["active", "inactive"] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                  activeTab === tab
-                    ? "bg-accent text-white shadow-lg shadow-accent/20"
-                    : "text-foreground-muted hover:text-foreground-main"
-                )}
-              >
-                {tab === "active" ? "Activos" : "Desactivados"}
-              </button>
-            ))}
-          </div>
-        </div>
+  <div className="w-full flex flex-wrap items-center justify-between gap-4 p-4 rounded-3xl border border-border-custom bg-surface/60 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
 
-        <button
-          onClick={() => { setEditingEmployee(null); resetForm(); setShowAdd(true); }}
-          className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20"
-        >
-          <Plus size={20} />
-          Registrar Empleado
-        </button>
+    {/* LEFT */}
+    <div className="flex items-center gap-8 flex-wrap">
+
+      <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
+        {(["active", "inactive"] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+              activeTab === tab
+                ? "bg-accent text-white shadow-lg shadow-accent/20"
+                : "text-foreground-muted hover:text-foreground-main"
+            )}
+          >
+            {tab === "active" ? "Activos" : "Desactivados"}
+          </button>
+        ))}
       </div>
+
+    </div>
+
+    {/* RIGHT */}
+    <button
+      onClick={() => {
+        setEditingEmployee(null);
+        resetForm();
+        setShowAdd(true);
+      }}
+      className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
+    >
+      <Plus size={20} />
+      Registrar Empleado
+    </button>
+
+  </div>
+
+</div>
 
       {/* GRID */}
       {filteredEmployees.length === 0 ? (
