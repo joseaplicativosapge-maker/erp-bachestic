@@ -206,11 +206,12 @@ export function OrdersList({
     >
       <div className="flex flex-col gap-6">
 
-        {/* CABECERA */}
+        
+
+        {/* FILTROS */}
+        <div className="flex flex-wrap items-center gap-4 p-4 rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
+          {/* CABECERA */}
         <div className="flex items-center justify-between">
-          <h3 className="text-3xl font-black tracking-tighter text-foreground-main">
-            Órdenes
-          </h3>
 
           <div className="flex items-center gap-3">
             {user?.role?.trim() === "Admin" && (
@@ -239,12 +240,9 @@ export function OrdersList({
             )}
           </div>
         </div>
-
-        {/* FILTROS */}
-        <div className="flex flex-wrap items-center gap-4 p-4 rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
-
           {/* TOGGLE ACTIVOS / DESACTIVADOS */}
           <div className="flex items-center bg-surface-hover/80 p-1.5 rounded-2xl border border-border-custom shadow-sm">
+          
             {([
               { label: "Activos",      active: !includeInactive },
               { label: "Desactivados", active:  includeInactive },

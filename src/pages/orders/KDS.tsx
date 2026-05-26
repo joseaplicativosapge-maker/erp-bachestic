@@ -305,9 +305,6 @@ export function KDS({ orders, user, onOrderClick, onUpdate }: KDSProps) {
 
         {/* Cabecera */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <h3 className="text-4xl font-black text-foreground-main tracking-tighter">Producción</h3>
-          </div>
 
           {/* Toggle En producción / Entregadas */}
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom w-fit">

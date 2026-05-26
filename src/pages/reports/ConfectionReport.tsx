@@ -348,7 +348,6 @@ export function ConfectionReport({ reportKey }: ConfectionReportProps) {
 
       {/* Cabecera */}
       <div className="flex items-center justify-between">
-        <h3 className="text-3xl font-black tracking-tighter text-foreground-main">Reporte de Confección</h3>
         <button
           onClick={exportToExcel}
           disabled={isExporting || filtered.length === 0}

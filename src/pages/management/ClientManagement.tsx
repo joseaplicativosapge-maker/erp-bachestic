@@ -362,11 +362,6 @@ export function ClientManagement() {
 
         {/* LEFT */}
         <div className="space-y-5">
-          <div>
-            <h3 className="text-3xl font-black tracking-tight text-foreground-main">
-              Clientes
-            </h3>
-          </div>
 
           {/* TABS */}
           <div className="flex bg-surface-hover border border-border-custom rounded-2xl p-1 w-fit">

@@ -196,9 +196,6 @@ export function EmployeeManagement() {
       {/* CABECERA */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <h3 className="text-3xl font-black text-foreground-main tracking-tighter">
-            Empleados
-          </h3>
 
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             {(["active", "inactive"] as const).map(tab => (

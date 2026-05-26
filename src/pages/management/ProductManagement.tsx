@@ -279,10 +279,6 @@ export function ProductManagement() {
       {/* CABECERA */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-6 flex-wrap">
-          <h3 className="text-3xl font-black text-foreground-main tracking-tighter">
-            Productos
-          </h3>
-
           <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
             {(["active", "inactive"] as const).map(tab => (
               <button

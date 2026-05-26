@@ -58,7 +58,7 @@ export default function Dashboard({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-10 mt-8"
+      className="space-y-10"
     >
       {/* STATS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
