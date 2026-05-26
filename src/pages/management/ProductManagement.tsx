@@ -279,108 +279,123 @@ export function ProductManagement() {
     <div className="space-y-8">
 
       {/* CABECERA */}
-      <div className="w-full p-4 rounded-[28px] border border-border-custom bg-surface/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
-
-  {/* TOP BAR */}
-  <div className="flex items-center justify-between gap-4 flex-wrap">
-
-    {/* LEFT */}
-    <div className="flex items-center gap-4 flex-wrap">
-
-      {/* TABS */}
-      <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
-        {(["active", "inactive"] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={cn(
-              "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-              activeTab === tab
-                ? "bg-accent text-white shadow-lg shadow-accent/20"
-                : "text-foreground-muted hover:text-foreground-main"
-            )}
-          >
-            {tab === "active" ? "Activos" : "Desactivados"}
-          </button>
-        ))}
-      </div>
-
-      {/* TOGGLE FILTROS */}
-      <button
-        onClick={() => setShowFilters(!showFilters)}
-        className={cn(
-          "h-12 px-5 rounded-2xl border border-border-custom bg-surface-hover text-[10px] font-black uppercase tracking-[0.18em] flex items-center gap-3 transition-all",
-          showFilters
-            ? "border-accent text-accent"
-            : "text-foreground-muted hover:text-foreground-main"
-        )}
-      >
-        <Search size={16} />
-
-        {showFilters ? "Ocultar Filtros" : "Mostrar Filtros"}
-      </button>
-
-    </div>
-
-    {/* RIGHT */}
-    <button
-      onClick={() => {
-        setEditingProduct(null);
-        resetForm();
-        setShowAdd(true);
-      }}
-      className="h-12 px-8 rounded-2xl bg-accent text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:scale-[1.03] transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
-    >
-      <Plus size={18} />
-      Nuevo Producto
-    </button>
-
-  </div>
+      <div className="flex flex-col 2xl:flex-row 2xl:items-end justify-between gap-6">
 
   {/* FILTROS */}
-  <AnimatePresence>
-    {showFilters && (
-      <motion.div
-        initial={{ opacity: 0, height: 0, y: -10 }}
-        animate={{ opacity: 1, height: "auto", y: 0 }}
-        exit={{ opacity: 0, height: 0, y: -10 }}
-        transition={{ duration: 0.25 }}
-        className="overflow-hidden"
-      >
+  <div className="w-full rounded-[32px] border border-border-custom bg-surface/80 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.04)] overflow-hidden">
 
-        <div className="pt-5">
+    {/* TOP BAR */}
+    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-5">
 
-          {/* BUSCADOR */}
-          <div className="relative group max-w-md">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted group-focus-within:text-accent transition-colors duration-300"
-              size={16}
-            />
+      {/* LEFT */}
+      <div className="flex items-center gap-4 flex-wrap">
 
-            <input
-              type="text"
-              placeholder="Buscar por nombre o código..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-10 py-3 rounded-2xl bg-surface border border-border-custom focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none text-foreground-main text-[10px] font-black uppercase tracking-[0.18em] placeholder:text-foreground-muted/40 transition-all duration-300 shadow-sm"
-            />
-
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
+        {/* TABS */}
+        <div className="flex bg-surface-hover border border-border-custom rounded-2xl p-1">
+          {(["active", "inactive"] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                activeTab === tab
+                  ? "bg-accent text-white shadow-lg shadow-accent/20"
+                  : "text-foreground-muted hover:text-foreground-main"
+              )}
+            >
+              {tab === "active" ? "Activos" : "Desactivados"}
+            </button>
+          ))}
         </div>
 
-      </motion.div>
-    )}
-  </AnimatePresence>
+        {/* TOTAL */}
+        <div className="px-5 py-3 rounded-2xl bg-accent/10 border border-accent/10 text-accent text-[10px] font-black uppercase tracking-[0.18em] whitespace-nowrap">
+          {filteredProducts.length}{" "}
+          {filteredProducts.length === 1 ? "producto" : "productos"}
+        </div>
 
+      </div>
+
+      {/* RIGHT */}
+      <div className="flex items-center gap-3 flex-wrap">
+
+        {/* TOGGLE FILTROS */}
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={cn(
+            "h-14 px-6 rounded-2xl border border-border-custom bg-surface-hover text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-all",
+            showFilters
+              ? "border-accent text-accent"
+              : "text-foreground-muted hover:text-foreground-main"
+          )}
+        >
+          <Search size={18} />
+
+          {showFilters ? "Ocultar Filtros" : "Mostrar Filtros"}
+        </button>
+
+        {/* NUEVO PRODUCTO */}
+        <button
+          onClick={() => {
+            setEditingProduct(null);
+            resetForm();
+            setShowAdd(true);
+          }}
+          className="h-14 px-8 rounded-2xl bg-accent text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:scale-[1.03] transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
+        >
+          <Plus size={20} />
+          Nuevo Producto
+        </button>
+
+      </div>
+    </div>
+
+    {/* ACCORDION */}
+    <AnimatePresence initial={false}>
+      {showFilters && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          className="overflow-hidden border-t border-border-custom"
+        >
+
+          {/* FILTROS */}
+          <div className="p-5 grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+            {/* BUSCADOR */}
+            <div className="relative">
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted"
+              />
+
+              <input
+                type="text"
+                placeholder="Buscar por nombre o código..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full h-14 rounded-2xl border border-border-custom bg-surface-hover pl-12 pr-12 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent/30"
+              />
+
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+          </div>
+
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+  </div>
 </div>
 
       {/* GRID */}

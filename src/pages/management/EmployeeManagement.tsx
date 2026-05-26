@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { Plus, Phone, LayoutDashboard, Edit2, Trash2, RefreshCw, Users } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Plus, Phone, LayoutDashboard, Edit2, Trash2, RefreshCw, Users,
+  Search,
+  X,
+  Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
 import { api } from "../../services/api";
@@ -51,6 +55,9 @@ export function EmployeeManagement() {
   const [currentPageInactive,setCurrentPageInactive]= useState(1);
   const [newEmployee,        setNewEmployee]        = useState(EMPTY_FORM);
   const [errors,             setErrors]             = useState(EMPTY_ERRORS);
+  const [showFilters, setShowFilters] = useState(false);
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => { loadData(); }, []);
 
@@ -172,9 +179,32 @@ export function EmployeeManagement() {
 
   if (loading) return <LoadingState message="Cargando Personal" />;
 
-  const filteredEmployees = employees.filter(emp =>
-    activeTab === "active" ? emp.active : !emp.active
-  );
+  const filteredEmployees = employees.filter(emp => {
+
+    /* ACTIVO / INACTIVO */
+    const matchesStatus =
+      activeTab === "active"
+        ? emp.active
+        : !emp.active;
+
+    /* BUSCADOR */
+    const matchesSearch =
+      emp.name
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+
+    /* DEPARTAMENTO */
+    const matchesDepartment =
+      !departmentFilter ||
+      emp.department === departmentFilter;
+
+    /* RESULTADO FINAL */
+    return (
+      matchesStatus &&
+      matchesSearch &&
+      matchesDepartment
+    );
+  });
 
   const currentPage  = activeTab === "active" ? currentPageActive : currentPageInactive;
   const totalPages   = Math.ceil(filteredEmployees.length / ITEMS_PER_PAGE);
@@ -196,42 +226,141 @@ export function EmployeeManagement() {
       {/* CABECERA */}
       <div className="w-full flex items-center justify-between">
 
-  <div className="w-full flex flex-wrap items-center justify-between gap-4 p-4 rounded-3xl border border-border-custom bg-surface/60 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
+  <div className="w-full rounded-[32px] border border-border-custom bg-surface/60 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] overflow-hidden">
 
-    {/* LEFT */}
-    <div className="flex items-center gap-8 flex-wrap">
+    {/* TOP BAR */}
+    <div className="flex flex-wrap items-center justify-between gap-4 p-4">
 
-      <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
-        {(["active", "inactive"] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={cn(
-              "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-              activeTab === tab
-                ? "bg-accent text-white shadow-lg shadow-accent/20"
-                : "text-foreground-muted hover:text-foreground-main"
-            )}
-          >
-            {tab === "active" ? "Activos" : "Desactivados"}
-          </button>
-        ))}
+      {/* LEFT */}
+      <div className="flex items-center gap-4 flex-wrap">
+
+        {/* TABS */}
+        <div className="flex bg-surface-hover p-1 rounded-2xl border border-border-custom">
+          {(["active", "inactive"] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                activeTab === tab
+                  ? "bg-accent text-white shadow-lg shadow-accent/20"
+                  : "text-foreground-muted hover:text-foreground-main"
+              )}
+            >
+              {tab === "active" ? "Activos" : "Desactivados"}
+            </button>
+          ))}
+        </div>
+
+        {/* CONTADOR */}
+        <div className="px-5 py-3 rounded-2xl bg-accent/10 border border-accent/10 text-accent text-[10px] font-black uppercase tracking-[0.18em] whitespace-nowrap">
+          {filteredEmployees.length}{" "}
+          {filteredEmployees.length === 1 ? "empleado" : "empleados"}
+        </div>
+
+      </div>
+
+      {/* RIGHT */}
+      <div className="flex items-center gap-3 flex-wrap">
+
+        {/* TOGGLE FILTROS */}
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={cn(
+            "h-14 px-6 rounded-2xl border border-border-custom bg-surface-hover text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-all",
+            showFilters
+              ? "border-accent text-accent"
+              : "text-foreground-muted hover:text-foreground-main"
+          )}
+        >
+          <Search size={18} />
+
+          {showFilters ? "Ocultar Filtros" : "Mostrar Filtros"}
+        </button>
+
+        {/* NUEVO EMPLEADO */}
+        <button
+          onClick={() => {
+            setEditingEmployee(null);
+            resetForm();
+            setShowAdd(true);
+          }}
+          className="bg-accent text-white px-8 h-14 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
+        >
+          <Plus size={20} />
+          Registrar Empleado
+        </button>
+
       </div>
 
     </div>
 
-    {/* RIGHT */}
-    <button
-      onClick={() => {
-        setEditingEmployee(null);
-        resetForm();
-        setShowAdd(true);
-      }}
-      className="bg-accent text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-accent/20 whitespace-nowrap"
-    >
-      <Plus size={20} />
-      Registrar Empleado
-    </button>
+    {/* ACCORDION */}
+    <AnimatePresence initial={false}>
+      {showFilters && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          className="overflow-hidden border-t border-border-custom"
+        >
+
+          {/* FILTROS */}
+          <div className="p-5 grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+            {/* BUSCAR NOMBRE */}
+            <div className="relative">
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted"
+              />
+
+              <input
+                type="text"
+                placeholder="Buscar empleado..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full h-14 rounded-2xl border border-border-custom bg-surface-hover pl-12 pr-12 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent/30"
+              />
+
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-accent transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* DEPARTAMENTO */}
+            <div className="relative">
+              <Building2
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted"
+              />
+
+              <select
+                value={departmentFilter}
+                onChange={e => setDepartmentFilter(e.target.value)}
+                className="w-full h-14 rounded-2xl border border-border-custom bg-surface-hover pl-12 pr-4 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent/30 appearance-none"
+              >
+                <option value="">Todos los departamentos</option>
+
+                {ROLE_OPTIONS.map(role => (
+                  <option key={role.value} value={role.value}>
+                    {role.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+          </div>
+
+        </motion.div>
+      )}
+    </AnimatePresence>
 
   </div>
 
