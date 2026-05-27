@@ -27,14 +27,14 @@ import Card from './components/Card';
 import { cn } from '@/src/lib/utils';
 
 // ---------------------------------------------------------------------------
-// Tipos auxiliares mínimos — ajusta si ya los tienes centralizados
+// Tipos auxiliares mínimos
 // ---------------------------------------------------------------------------
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 
 // ---------------------------------------------------------------------------
-// ReceiptModal — stub; reemplaza con tu componente real si existe
+// ReceiptModal — stub
 // ---------------------------------------------------------------------------
 function ReceiptModal({
   order,
@@ -56,7 +56,7 @@ function ReceiptModal({
 }
 
 // ---------------------------------------------------------------------------
-// UniformDesignerSection — wrapper del UniformDesigner existente
+// UniformDesignerSection
 // ---------------------------------------------------------------------------
 function UniformDesignerSection({
   order,
@@ -76,6 +76,79 @@ function UniformDesignerSection({
       readOnly={readOnly}
       onSaved={onSaved}
     />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helper: extraer el tipo de una versión de diseño
+// ---------------------------------------------------------------------------
+function getVersionType(comments: string | undefined): 'Uniforme' | 'Portero' | null {
+  if (!comments) return null;
+  if (comments.startsWith('[Uniforme]')) return 'Uniforme';
+  if (comments.startsWith('[Portero]'))  return 'Portero';
+  return null;
+}
+
+function getVersionComment(comments: string | undefined): string {
+  if (!comments) return '';
+  return comments.replace(/^\[(Uniforme|Portero)\]\s*—?\s*/, '').trim();
+}
+
+// ---------------------------------------------------------------------------
+// DesignVersionCard — tarjeta individual de versión
+// ---------------------------------------------------------------------------
+function DesignVersionCard({
+  version,
+  onExpand,
+}: {
+  version: any;
+  onExpand: (url: string) => void;
+}) {
+  const type    = getVersionType(version.comments);
+  const comment = getVersionComment(version.comments);
+
+  return (
+    <div className="space-y-3">
+      {/* Badge de tipo */}
+      {type && (
+        <div className="flex items-center gap-2">
+          {type === 'Uniforme' ? (
+            <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <Shirt size={10} /> Uniforme
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              <Users size={10} /> Portero
+            </span>
+          )}
+          <span className="text-[9px] font-black uppercase tracking-widest text-foreground-muted bg-background px-2 py-1 rounded-lg border border-border-custom">
+            V{version.version_number}
+          </span>
+        </div>
+      )}
+
+      {/* Imagen */}
+      <div
+        className="relative aspect-video rounded-[28px] overflow-hidden border border-border-custom shadow-xl group cursor-pointer"
+        onClick={() => onExpand(version.file_path)}
+      >
+        <img
+          src={version.file_path}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <div className="p-4 bg-white/10 backdrop-blur-md rounded-full text-white">
+            <Maximize2 size={22} />
+          </div>
+        </div>
+      </div>
+
+      {/* Comentario del diseñador */}
+      {comment && (
+        <p className="text-[10px] text-foreground-muted italic leading-relaxed px-1">{comment}</p>
+      )}
+    </div>
   );
 }
 
@@ -487,6 +560,26 @@ export default function ClientRoadmap({
       ? Math.round(((productionProgressIndex + 1) / productionSubSteps.length) * 100)
       : 0;
 
+  // ─── Agrupar versiones del diseñador por tipo (Uniforme / Portero / sin tag) ───
+  const latestVersionsByType = React.useMemo(() => {
+    if (!foundOrder?.versions?.length) return { uniforme: null, portero: null, other: null };
+
+    const all = [...foundOrder.versions].reverse(); // más reciente primero
+
+    const uniforme = all.find(v => getVersionType(v.comments) === 'Uniforme') || null;
+    const portero  = all.find(v => getVersionType(v.comments) === 'Portero')  || null;
+    // versiones antiguas sin tag (compatibilidad hacia atrás)
+    const other    = all.find(v => getVersionType(v.comments) === null)        || null;
+
+    return { uniforme, portero, other };
+  }, [foundOrder?.versions]);
+
+  const hasAnyDesignVersion = !!(
+    latestVersionsByType.uniforme ||
+    latestVersionsByType.portero  ||
+    latestVersionsByType.other
+  );
+
   // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
@@ -845,7 +938,7 @@ export default function ClientRoadmap({
           {/* Paneles inferiores */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-12 border-t border-border-custom">
 
-            {/* Panel Diseño Actual */}
+            {/* Panel Diseño Actual (referencias del cliente) */}
             <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl h-fit space-y-8">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
@@ -971,63 +1064,68 @@ export default function ClientRoadmap({
               </div>
             </div>
 
-            {/* Propuesta del Diseñador */}
-            {foundOrder.versions && foundOrder.versions.length > 0 && (
-              <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl h-fit space-y-8">
+            {/* ── PROPUESTA DEL DISEÑADOR ── muestra Uniforme + Portero lado a lado */}
+            {hasAnyDesignVersion && (
+              <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl h-fit space-y-8 lg:col-span-2">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                   <div className="flex items-center gap-4 min-w-0">
                     <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5 shrink-0">
                       <Palette className="text-accent" size={24} />
                     </div>
-                    <h4 className="font-black text-foreground-main uppercase tracking-[0.3em] text-[11px] truncate">
-                      Propuesta del Diseñador
-                    </h4>
-                  </div>
-                  <p className="px-4 py-1.5 bg-accent/10 text-accent rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
-                    Versión #{foundOrder?.versions?.[0]?.version_number}
-                  </p>
-                </div>
-                <div
-                  className="relative aspect-video rounded-[32px] overflow-hidden border border-border-custom shadow-2xl group cursor-pointer"
-                  onClick={() => {
-                    setSelectedImageUrl(foundOrder.versions![0].file_path);
-                    setShowImageModal(true);
-                  }}
-                >
-                  <img
-                    src={foundOrder.versions[0].file_path}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="p-4 bg-white/10 backdrop-blur-md rounded-full text-white">
-                      <Maximize2 size={24} />
+                    <div>
+                      <h4 className="font-black text-foreground-main uppercase tracking-[0.3em] text-[11px]">
+                        Propuesta del Diseñador
+                      </h4>
+                      <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-0.5">
+                        Revisa cada diseño y aprueba o solicita cambios
+                      </p>
                     </div>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-8 flex flex-col justify-end pointer-events-none">
-                    <p className="text-white font-bold text-sm mb-2">Comentarios del Diseñador:</p>
-                    <p className="text-white/80 text-xs italic">
-                      {foundOrder.versions[0].comments || 'Sin comentarios adicionales'}
-                    </p>
-                  </div>
+                  {/* Badge estado global */}
+                  <span className={cn(
+                    "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0",
+                    foundOrder.status === 'Corrección solicitada'
+                      ? 'bg-amber-500/10 text-amber-500'
+                      : foundOrder.status === 'Diseño aprobado'
+                      ? 'bg-green-500/10 text-green-500'
+                      : 'bg-accent/10 text-accent'
+                  )}>
+                    {foundOrder.status === 'Corrección solicitada'
+                      ? '✎ Correcciones pendientes'
+                      : foundOrder.status === 'Diseño aprobado'
+                      ? '✓ Diseño aprobado'
+                      : 'Pendiente de revisión'}
+                  </span>
                 </div>
-                {foundOrder.status === 'Versión enviada' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <button
-                      onClick={handleApproveDesign}
-                      className="bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-green-600/20 flex items-center justify-center gap-3"
-                    >
-                      <CheckCircle size={20} /> Aprobar
-                    </button>
-                    <button
-                      onClick={() => setShowRejectModal(true)}
-                      className="bg-accent text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-accent/20 flex items-center justify-center gap-3"
-                    >
-                      <MessageSquare size={20} /> Cambios
-                    </button>
-                  </div>
-                )}
+
+                {/* Grid de versiones: Uniforme | Portero */}
+                <div className={cn(
+                  "grid gap-8",
+                  // Si hay ambas versiones, dos columnas; si solo una, una columna
+                  (latestVersionsByType.uniforme || latestVersionsByType.other) && latestVersionsByType.portero
+                    ? "grid-cols-1 sm:grid-cols-2"
+                    : "grid-cols-1"
+                )}>
+                  {/* Uniforme (o versión sin tag si no hay nueva) */}
+                  {(latestVersionsByType.uniforme || latestVersionsByType.other) && (
+                    <DesignVersionCard
+                      version={latestVersionsByType.uniforme || latestVersionsByType.other}
+                      onExpand={url => { setSelectedImageUrl(url); setShowImageModal(true); }}
+                    />
+                  )}
+
+                  {/* Portero */}
+                  {latestVersionsByType.portero && (
+                    <DesignVersionCard
+                      version={latestVersionsByType.portero}
+                      onExpand={url => { setSelectedImageUrl(url); setShowImageModal(true); }}
+                    />
+                  )}
+                </div>
+
+                {/* Comentario de corrección (si aplica) */}
                 {foundOrder.status === 'Corrección solicitada' &&
+                  foundOrder.versions &&
                   foundOrder.versions[foundOrder.versions.length - 1].client_comments && (
                     <div className="p-6 bg-accent/5 rounded-[24px] border border-accent/10">
                       <p className="text-[10px] font-black uppercase tracking-widest text-accent mb-2 flex items-center gap-2">
@@ -1041,6 +1139,24 @@ export default function ClientRoadmap({
                       </p>
                     </div>
                   )}
+
+                {/* Botones de aprobación / corrección */}
+                {foundOrder.status === 'Versión enviada' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <button
+                      onClick={handleApproveDesign}
+                      className="bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-green-600/20 flex items-center justify-center gap-3"
+                    >
+                      <CheckCircle size={20} /> Aprobar Todo
+                    </button>
+                    <button
+                      onClick={() => setShowRejectModal(true)}
+                      className="bg-accent text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-accent/20 flex items-center justify-center gap-3"
+                    >
+                      <MessageSquare size={20} /> Solicitar Cambios
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1317,7 +1433,7 @@ export default function ClientRoadmap({
               </div>
             )}
 
-            {/* Historial de Diseños */}
+            {/* Historial de Diseños (versiones anteriores) */}
             {foundOrder.versions && foundOrder.versions.length > 1 && (
               <div className="bg-foreground-main/[0.02] p-8 rounded-[40px] border border-border-custom shadow-2xl col-span-full">
                 <div className="flex items-center gap-4 mb-6">
@@ -1329,54 +1445,73 @@ export default function ClientRoadmap({
                   </h4>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {foundOrder.versions.map(v => (
-                    <div
-                      key={v.id}
-                      className="bg-surface p-6 rounded-[32px] border border-border-custom shadow-xl group"
-                    >
-                      <div className="flex justify-between items-center mb-4">
-                        <span className="px-3 py-1 bg-background rounded-full text-[9px] font-black uppercase tracking-widest text-foreground-muted">
-                          Versión #{v.version_number}
-                        </span>
-                        <span
-                          className={cn(
-                            'text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full',
-                            v.status === 'Aprobado'
-                              ? 'bg-green-500/10 text-green-500'
-                              : 'bg-accent/10 text-accent'
-                          )}
-                        >
-                          {v.status}
-                        </span>
-                      </div>
+                  {foundOrder.versions.map(v => {
+                    const type    = getVersionType(v.comments);
+                    const comment = getVersionComment(v.comments);
+                    return (
                       <div
-                        className="relative aspect-video rounded-2xl overflow-hidden mb-4 cursor-pointer"
-                        onClick={() => {
-                          setSelectedImageUrl(v.file_path);
-                          setShowImageModal(true);
-                        }}
+                        key={v.id}
+                        className="bg-surface p-6 rounded-[32px] border border-border-custom shadow-xl group"
                       >
-                        <img
-                          src={v.file_path}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Maximize2 size={20} className="text-white" />
+                        <div className="flex justify-between items-center mb-4 gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <span className="px-3 py-1 bg-background rounded-full text-[9px] font-black uppercase tracking-widest text-foreground-muted">
+                              V#{v.version_number}
+                            </span>
+                            {type === 'Uniforme' && (
+                              <span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                <Shirt size={8} /> Uniforme
+                              </span>
+                            )}
+                            {type === 'Portero' && (
+                              <span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                                <Users size={8} /> Portero
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className={cn(
+                              'text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full',
+                              v.status === 'Aprobado'
+                                ? 'bg-green-500/10 text-green-500'
+                                : 'bg-accent/10 text-accent'
+                            )}
+                          >
+                            {v.status}
+                          </span>
                         </div>
+                        <div
+                          className="relative aspect-video rounded-2xl overflow-hidden mb-4 cursor-pointer"
+                          onClick={() => {
+                            setSelectedImageUrl(v.file_path);
+                            setShowImageModal(true);
+                          }}
+                        >
+                          <img
+                            src={v.file_path}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Maximize2 size={20} className="text-white" />
+                          </div>
+                        </div>
+                        {comment && (
+                          <p className="text-[10px] text-foreground-muted italic mb-3">{comment}</p>
+                        )}
+                        {v.client_comments && (
+                          <div className="p-3 bg-accent/5 rounded-xl border border-accent/10">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-accent mb-1 flex items-center gap-1.5">
+                              <MessageSquare size={10} /> Tus Comentarios:
+                            </p>
+                            <p className="text-[10px] text-foreground-main italic">
+                              {v.client_comments}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      {v.client_comments && (
-                        <div className="p-3 bg-accent/5 rounded-xl border border-accent/10">
-                          <p className="text-[9px] font-black uppercase tracking-widest text-accent mb-1 flex items-center gap-1.5">
-                            <MessageSquare size={10} /> Tus Comentarios:
-                          </p>
-                          <p className="text-[10px] text-foreground-main italic">
-                            {v.client_comments}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
