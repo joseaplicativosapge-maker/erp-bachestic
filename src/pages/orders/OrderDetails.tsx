@@ -141,6 +141,14 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
 
   // Form state
   const [selectedFilePreview,      setSelectedFilePreview]      = useState<string | null>(null);
+
+  // ── NUEVO: estado para los dos archivos de diseño ──────────────────────────
+  const [selectedUniformFile,      setSelectedUniformFile]      = useState<File | null>(null);
+  const [selectedPorteroFile,      setSelectedPorteroFile]      = useState<File | null>(null);
+  const [uniformPreview,           setUniformPreview]           = useState<string | null>(null);
+  const [porteroPreview,           setPorteroPreview]           = useState<string | null>(null);
+  // ──────────────────────────────────────────────────────────────────────────
+
   const [rejectComment,            setRejectComment]            = useState("");
   const [qualityRejectComment,     setQualityRejectComment]     = useState("");
   const [repositionReason,         setRepositionReason]         = useState("");
@@ -159,7 +167,7 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
   const [assignmentForm,       setAssignmentForm]       = useState(EMPTY_ASSIGNMENT_FORM);
   const [productionAssignForm, setProductionAssignForm] = useState({ employee_id: "", notes: "" });
 
-  // Client search (unused in main flow but kept for completeness)
+  // Client search
   const [clientSearch,  setClientSearch]  = useState("");
   const [searchResults, setSearchResults] = useState<Client[]>([]);
 
@@ -296,22 +304,56 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
     finally { setIsSubmittingReject(false); }
   };
 
+  // ── NUEVO: handler de upload con dos archivos ──────────────────────────────
   const handleDesignUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       setIsUploading(true);
       setError(null);
-      const formData = new FormData(e.currentTarget);
-      formData.append("version_number", ((order?.versions?.length || 0) + 1).toString());
-      formData.append("status", "Versión enviada");
-      await api.uploadDesign(orderId, formData, user.name);
-      setSelectedFilePreview(null);
+
+      const form = e.currentTarget;
+      const comments = (form.querySelector('textarea[name="comments"]') as HTMLTextAreaElement)?.value || "";
+      const nextVersion = (order?.versions?.length || 0) + 1;
+
+      const filesToUpload: { file: File; label: string }[] = [];
+      if (selectedUniformFile) filesToUpload.push({ file: selectedUniformFile, label: "Uniforme" });
+      if (selectedPorteroFile) filesToUpload.push({ file: selectedPorteroFile, label: "Portero" });
+
+      if (!filesToUpload.length) {
+        toast.error("Sube al menos una imagen (Uniforme o Portero)");
+        setIsUploading(false);
+        return;
+      }
+
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const { file, label } = filesToUpload[i];
+        const formData = new FormData();
+        formData.append("design", file);
+        formData.append("version_number", (nextVersion + i).toString());
+        // Solo el primero cambia el estado a "Versión enviada"; el resto usa un estado neutral
+        formData.append("status", i === 0 ? "Versión enviada" : "Versión enviada");
+        formData.append("comments", `[${label}]${comments ? " — " + comments : ""}`);
+        await api.uploadDesign(orderId, formData, user.name);
+      }
+
+      // Garantizar que el estado quede en "Versión enviada"
+      await api.updateStatus(orderId, "Versión enviada" as OrderStatus, user.name);
+
+      // Limpiar estado
+      setSelectedUniformFile(null);
+      setSelectedPorteroFile(null);
+      setUniformPreview(null);
+      setPorteroPreview(null);
+
       await loadOrder();
       onUpdate();
     } catch (err: any) {
       setError(err.message || "Error al subir el diseño");
-    } finally { setIsUploading(false); }
+    } finally {
+      setIsUploading(false);
+    }
   };
+  // ──────────────────────────────────────────────────────────────────────────
 
   const handleQualityReject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -862,36 +904,93 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
                 );
               })()}
 
-              {/* En diseño / Corrección → upload */}
+              {/* ── En diseño / Corrección → NUEVO formulario de dos imágenes ── */}
               {(order.status === "En diseño" || order.status === "Corrección solicitada") && (role === "Admin" || role === "Diseño") && (
-                <form onSubmit={handleDesignUpload} className="space-y-6">
-                  <div className="relative group">
-                    <div className="border-2 border-dashed border-border-custom rounded-[32px] p-10 text-center hover:border-accent/40 transition-all cursor-pointer relative bg-background overflow-hidden">
-                      <input type="file" name="design" className="absolute inset-0 opacity-0 cursor-pointer z-20" required
-                        onChange={e => { const f = e.target.files?.[0]; if (f) setSelectedFilePreview(URL.createObjectURL(f)); }} />
-                      {selectedFilePreview ? (
+                <form onSubmit={handleDesignUpload} className="space-y-5">
+
+                  {/* Uniforme */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted flex items-center gap-2">
+                      <Shirt size={12} className="text-accent" /> Diseño Uniforme
+                    </p>
+                    <div className="relative group border-2 border-dashed border-border-custom rounded-[28px] p-6 text-center hover:border-accent/40 transition-all cursor-pointer bg-background overflow-hidden">
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                        onChange={e => {
+                          const f = e.target.files?.[0];
+                          if (f) { setSelectedUniformFile(f); setUniformPreview(URL.createObjectURL(f)); }
+                        }}
+                      />
+                      {uniformPreview ? (
                         <div className="relative z-10">
-                          <img src={selectedFilePreview} className="max-h-48 mx-auto rounded-2xl shadow-2xl border border-border-custom" />
-                          <p className="text-[9px] font-black text-accent uppercase tracking-widest mt-4">Imagen seleccionada</p>
+                          <img src={uniformPreview} className="max-h-36 mx-auto rounded-2xl shadow-xl border border-border-custom" />
+                          <p className="text-[9px] font-black text-accent uppercase tracking-widest mt-3">Uniforme seleccionado ✓</p>
                         </div>
                       ) : (
-                        <div className="relative z-10">
-                          <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                            <Upload className="text-accent" size={24} />
+                        <div className="relative z-10 py-4">
+                          <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                            <Upload className="text-accent" size={20} />
                           </div>
-                          <p className="text-[10px] font-black text-foreground-main uppercase tracking-[0.2em] mb-1">Subir Versión de Diseño</p>
-                          <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">JPG, PNG o PDF (Máx. 10MB)</p>
+                          <p className="text-[10px] font-black text-foreground-main uppercase tracking-[0.2em] mb-1">Subir Uniforme</p>
+                          <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">JPG, PNG o PDF</p>
                         </div>
                       )}
                     </div>
                   </div>
-                  <textarea name="comments" placeholder="Añadir comentarios..." className="w-full p-6 rounded-[24px] bg-background border border-border-custom text-foreground-main font-bold text-xs outline-none focus:border-accent/30 transition-all resize-none leading-relaxed" rows={3} />
-                  <button type="submit" disabled={isUploading} className="w-full bg-accent text-white py-5 rounded-[24px] font-black uppercase tracking-[0.3em] text-[10px] flex items-center justify-center gap-3 disabled:opacity-50 hover:bg-accent/90 transition-all shadow-[0_10px_30px_rgba(220,38,38,0.3)] active:scale-[0.98]">
+
+                  {/* Portero */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-muted flex items-center gap-2">
+                      <Users size={12} className="text-accent" /> Diseño Portero
+                      <span className="text-foreground-muted/40 font-bold normal-case tracking-normal text-[9px]">(opcional)</span>
+                    </p>
+                    <div className="relative group border-2 border-dashed border-border-custom rounded-[28px] p-6 text-center hover:border-accent/40 transition-all cursor-pointer bg-background overflow-hidden">
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                        onChange={e => {
+                          const f = e.target.files?.[0];
+                          if (f) { setSelectedPorteroFile(f); setPorteroPreview(URL.createObjectURL(f)); }
+                        }}
+                      />
+                      {porteroPreview ? (
+                        <div className="relative z-10">
+                          <img src={porteroPreview} className="max-h-36 mx-auto rounded-2xl shadow-xl border border-border-custom" />
+                          <p className="text-[9px] font-black text-accent uppercase tracking-widest mt-3">Portero seleccionado ✓</p>
+                        </div>
+                      ) : (
+                        <div className="relative z-10 py-4">
+                          <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                            <Upload className="text-accent" size={20} />
+                          </div>
+                          <p className="text-[10px] font-black text-foreground-main uppercase tracking-[0.2em] mb-1">Subir Portero</p>
+                          <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest">JPG, PNG o PDF</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <textarea
+                    name="comments"
+                    placeholder="Añadir comentarios generales..."
+                    className="w-full p-6 rounded-[24px] bg-background border border-border-custom text-foreground-main font-bold text-xs outline-none focus:border-accent/30 transition-all resize-none leading-relaxed"
+                    rows={3}
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={isUploading || (!selectedUniformFile && !selectedPorteroFile)}
+                    className="w-full bg-accent text-white py-5 rounded-[24px] font-black uppercase tracking-[0.3em] text-[10px] flex items-center justify-center gap-3 disabled:opacity-50 hover:bg-accent/90 transition-all shadow-[0_10px_30px_rgba(220,38,38,0.3)] active:scale-[0.98]"
+                  >
                     {isUploading ? <Clock className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
-                    Enviar Versión a Revisión
+                    Enviar Versión{selectedUniformFile && selectedPorteroFile ? "es" : ""} a Revisión
                   </button>
                 </form>
               )}
+              {/* ────────────────────────────────────────────────────────── */}
 
               {/* Versión enviada → aprobar/corregir */}
               {order.status === "Versión enviada" && (role === "Admin" || role === "Cliente") && (
@@ -1118,38 +1217,60 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
             })()}
 
             <div className="space-y-4 relative z-10">
-              {order.versions?.map(v => (
-                <div key={v.id} className="flex gap-6 p-6 rounded-[32px] border border-border-custom hover:bg-background transition-all group">
-                  <div className="w-24 h-24 bg-background rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-border-custom group-hover:border-accent/30 transition-colors cursor-pointer relative"
-                    onClick={() => { if (v.file_path) { setSelectedImageUrl(v.file_path); setShowImageModal(true); } }}>
-                    {v.file_path ? (
-                      <>
-                        <img src={v.file_path} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <div className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white"><Maximize2 size={16} /></div>
-                        </div>
-                      </>
-                    ) : <Palette size={28} className="text-foreground-muted" />}
-                  </div>
-                  <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="font-black text-foreground-main text-base tracking-tight group-hover:text-accent transition-colors">Versión {v.version_number}</p>
-                      <span className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest bg-background px-2 py-1 rounded-lg">{format(new Date(v.created_at), "dd/MM")}</span>
+              {order.versions?.map(v => {
+                // Detectar si la versión es de Uniforme o Portero
+                const isUniforme = v.comments?.startsWith("[Uniforme]");
+                const isPortero  = v.comments?.startsWith("[Portero]");
+                const cleanComment = v.comments?.replace(/^\[(Uniforme|Portero)\]\s*—?\s*/, "").trim();
+
+                return (
+                  <div key={v.id} className="flex gap-6 p-6 rounded-[32px] border border-border-custom hover:bg-background transition-all group">
+                    <div className="w-24 h-24 bg-background rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-border-custom group-hover:border-accent/30 transition-colors cursor-pointer relative"
+                      onClick={() => { if (v.file_path) { setSelectedImageUrl(v.file_path); setShowImageModal(true); } }}>
+                      {v.file_path ? (
+                        <>
+                          <img src={v.file_path} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <div className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white"><Maximize2 size={16} /></div>
+                          </div>
+                        </>
+                      ) : <Palette size={28} className="text-foreground-muted" />}
                     </div>
-                    <p className="text-[11px] text-foreground-muted line-clamp-2 leading-relaxed italic mb-3">{v.comments}</p>
-                    {v.client_comments && (
-                      <div className="mb-3 p-3 bg-accent/5 border border-accent/10 rounded-xl">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-accent mb-1 flex items-center gap-1.5"><MessageSquare size={10} /> Comentarios del Cliente:</p>
-                        <p className="text-[11px] text-foreground-main italic">{v.client_comments}</p>
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <p className="font-black text-foreground-main text-base tracking-tight group-hover:text-accent transition-colors">Versión {v.version_number}</p>
+                          {/* Badge de tipo */}
+                          {isUniforme && (
+                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1">
+                              <Shirt size={9} /> Uniforme
+                            </span>
+                          )}
+                          {isPortero && (
+                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center gap-1">
+                              <Users size={9} /> Portero
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[9px] text-foreground-muted font-bold uppercase tracking-widest bg-background px-2 py-1 rounded-lg">{format(new Date(v.created_at), "dd/MM")}</span>
                       </div>
-                    )}
-                    <span className={cn("text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border w-fit",
-                      v.status === "Aprobado" ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-accent/10 text-accent border-accent/20")}>
-                      {v.status}
-                    </span>
+                      {cleanComment && (
+                        <p className="text-[11px] text-foreground-muted line-clamp-2 leading-relaxed italic mb-3">{cleanComment}</p>
+                      )}
+                      {v.client_comments && (
+                        <div className="mb-3 p-3 bg-accent/5 border border-accent/10 rounded-xl">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-accent mb-1 flex items-center gap-1.5"><MessageSquare size={10} /> Comentarios del Cliente:</p>
+                          <p className="text-[11px] text-foreground-main italic">{v.client_comments}</p>
+                        </div>
+                      )}
+                      <span className={cn("text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border w-fit",
+                        v.status === "Aprobado" ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-accent/10 text-accent border-accent/20")}>
+                        {v.status}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {(!order.versions || !order.versions.length) && (
                 <div className="text-center py-16 bg-background rounded-[32px] border border-dashed border-border-custom">
                   <Palette className="mx-auto text-foreground-muted opacity-20 mb-4" size={48} />
