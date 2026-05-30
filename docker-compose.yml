@@ -1,12 +1,15 @@
 version: "3.8"
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        GEMINI_API_KEY: ${GEMINI_API_KEY}
     ports:
-      - "3005:3000"
+      - "3000:3000"
     environment:
       - NODE_ENV=production
-      - SESSION_SECRET=kX9mP2qL7nR4wY1vB8zA5xC3
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - DATABASE_URL=/data/bachestic.db
     volumes:
       - sqlite_data:/data
