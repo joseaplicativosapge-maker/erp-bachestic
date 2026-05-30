@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  app:
+    image: tu-usuario/bachestic-erp:latest
+    ports:
+      - "3005:3000"
+    environment:
+      - NODE_ENV=production
+      - SESSION_SECRET=tu_secreto_aqui
+      - DATABASE_URL=/data/bachestic.db
+    volumes:
+      - sqlite_data:/data
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:

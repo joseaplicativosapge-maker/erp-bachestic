@@ -448,6 +448,8 @@ export default function ClientRoadmap({
       if (['Diseño aprobado', 'En cuadro', 'En montaje', 'En impresión'].includes(status))
         return 'En diseño';
       if (status === 'Versión enviada') return 'En diseño';
+      // ✅ FIX: Corrección solicitada también debe mostrarse como "En diseño" en el stepper
+      if (status === 'Corrección solicitada') return 'En diseño';
       if (['En sublimación', 'En corte'].includes(status)) return 'En sublimación';
       if (['En confección', 'En empaque'].includes(status)) return 'En confección';
     }
