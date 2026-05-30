@@ -2,14 +2,12 @@ version: "3.8"
 services:
   app:
     build:
-      context: .
-      args:
-        GEMINI_API_KEY: ${GEMINI_API_KEY}
+      context: https://github.com/joseaplicativosapge-maker/erp-bachestic.git
     ports:
       - "3005:3000"
     environment:
       - NODE_ENV=production
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_API_KEY=tu_key_real_aqui
       - DATABASE_URL=/data/bachestic.db
     volumes:
       - sqlite_data:/data
