@@ -1,8 +1,8 @@
 # Etapa 1: construir la app
-FROM node:18-alpine AS builder
+FROM node:18 AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 COPY . .
 RUN npm run build
 
