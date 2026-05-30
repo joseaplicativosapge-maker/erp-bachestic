@@ -1,19 +1,16 @@
-FROM node:20-alpine AS base
-
+# Etapa 1: construir la app
+FROM node:18-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
-
+RUN npm install
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine AS production
+# Etapa 2: imagen final
+FROM node:18-alpine
 WORKDIR /app
-COPY --from=base /app/build ./build
-COPY --from=base /app/public ./public
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/package.json ./
-COPY --from=base /app/server.ts ./
-
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
 EXPOSE 3000
 CMD ["npm", "start"]
