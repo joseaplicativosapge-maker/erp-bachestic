@@ -11,6 +11,8 @@ import type { Order, OrderItem, OrderStatus, User } from "@/src/lib/types";
 
 const SIZES = ["2","4","6","8","10","12","14","16","S","M","L","XL","XXL"];
 
+const CATEGORIES = ["Uniforme", "Chaqueta", "Medias", "Camiseta"] as const;
+
 const DOC_TYPE_OPTIONS = [
   { value: "CC",        label: "CC"        },
   { value: "NIT",       label: "NIT"       },
@@ -38,18 +40,18 @@ const STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
 
 const EMPTY_ITEM: Partial<OrderItem> = {
   item_name: "", player_name: "", number: "", size: "",
-  sleeve: "", design_type: "", fit: "", garment_type: "Camiseta",
+  sleeve: "", design_type: "", fit: "", garment_type: "Uniforme",
   observations: "", sewing_price: 0, sale_price: 0,
 };
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface EditOrderProps {
-  order:        Order;
-  items:        OrderItem[];
-  onCancel:     () => void;
-  onSuccess:    () => void;
-  user:         User;
+  order:     Order;
+  items:     OrderItem[];
+  onCancel:  () => void;
+  onSuccess: () => void;
+  user:      User;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -68,35 +70,58 @@ export function EditOrder({ order, items: initialItems, onCancel, onSuccess, use
   });
 
   const [items,          setItems]          = useState<Partial<OrderItem>[]>(initialItems);
+  const [newItems,       setNewItems]       = useState<Partial<OrderItem>[]>([]);
   const [referenceFiles, setReferenceFiles] = useState<File[]>([]);
 
+  const allItems = [...items, ...newItems];
+
   useEffect(() => {
-    const total = items.reduce((sum, item) => sum + (item.sale_price || 0), 0);
+    const total = allItems.reduce((sum, item) => sum + (item.sale_price || 0), 0);
     setFormData(prev => ({ ...prev, total_amount: total }));
-  }, [items]);
+  }, [items, newItems]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   const updateItem = (idx: number, field: keyof OrderItem, value: string) => {
-    setItems(prev => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], [field]: value };
-      return next;
-    });
+    const existingCount = items.length;
+    if (idx < existingCount) {
+      setItems(prev => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], [field]: value };
+        return next;
+      });
+    } else {
+      const newIdx = idx - existingCount;
+      setNewItems(prev => {
+        const next = [...prev];
+        next[newIdx] = { ...next[newIdx], [field]: value };
+        return next;
+      });
+    }
   };
 
-  const removeItem = (idx: number) =>
-    setItems(prev => prev.filter((_, i) => i !== idx));
+  const removeItem = (idx: number) => {
+    const existingCount = items.length;
+    if (idx < existingCount) {
+      setItems(prev => prev.filter((_, i) => i !== idx));
+    } else {
+      const newIdx = idx - existingCount;
+      setNewItems(prev => prev.filter((_, i) => i !== newIdx));
+    }
+  };
 
   const addItem = () =>
-    setItems(prev => [...prev, { ...EMPTY_ITEM }]);
+    setNewItems(prev => [...prev, { ...EMPTY_ITEM }]);
 
   // ── Submit ────────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
     try {
       await api.updateOrder(order.id, { ...formData, user_name: user.name });
-      await api.addItems(order.id, items);
+
+      if (newItems.length > 0) {
+        await api.addItems(order.id, newItems.map(i => ({ ...i, section: 'Uniforme' })));
+      }
 
       if (referenceFiles.length > 0) {
         const refsFormData = new FormData();
@@ -167,7 +192,14 @@ export function EditOrder({ order, items: initialItems, onCancel, onSuccess, use
         {/* ITEMS TABLE */}
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h4 className="font-black text-2xl tracking-tight text-foreground-main">Uniformes</h4>
+            <h4 className="font-black text-2xl tracking-tight text-foreground-main">
+              Uniformes
+              {newItems.length > 0 && (
+                <span className="ml-3 text-xs font-black bg-accent text-white px-2.5 py-1 rounded-full">
+                  +{newItems.length} nuevo{newItems.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </h4>
             <button
               onClick={addItem}
               className="h-12 px-6 rounded-2xl bg-accent text-white text-[10px] font-black uppercase tracking-[0.25em] hover:scale-[1.03] transition-all shadow-xl shadow-accent/20"
@@ -178,12 +210,15 @@ export function EditOrder({ order, items: initialItems, onCancel, onSuccess, use
 
           <div className="overflow-hidden rounded-[32px] border border-border-custom bg-surface shadow-2xl shadow-black/5">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1100px]">
+              <table className="w-full min-w-[1200px]">
 
                 <thead className="bg-surface-hover border-b border-border-custom">
                   <tr className="text-[9px] uppercase font-black tracking-[0.25em] text-foreground-muted">
-                    {["Jugador", "Número", "Talla", "Manga", "Tipo", "Horma", "Observaciones", "Acción"].map((h, i) => (
-                      <th key={h} className={`py-5 px-${i === 0 || i === 6 ? "5" : "4"} ${i >= 1 && i <= 5 ? "text-center" : i === 7 ? "text-right" : "text-left"}`}>
+                    {["Categoría", "Jugador", "Número", "Talla", "Manga", "Tipo", "Horma", "Observaciones", "Acción"].map((h, i) => (
+                      <th
+                        key={h}
+                        className={`py-5 px-4 ${i >= 2 && i <= 6 ? "text-center" : i === 8 ? "text-right" : "text-left"}`}
+                      >
                         {h}
                       </th>
                     ))}
@@ -191,82 +226,134 @@ export function EditOrder({ order, items: initialItems, onCancel, onSuccess, use
                 </thead>
 
                 <tbody className="divide-y divide-border-custom">
-                  {items.map((item, idx) => (
-                    <tr key={idx} className="group hover:bg-surface-hover/60 transition-all">
+                  {allItems.map((item, idx) => {
+                    const isNew = idx >= items.length;
+                    return (
+                      <tr
+                        key={idx}
+                        className={`group hover:bg-surface-hover/60 transition-all ${isNew ? "bg-accent/[0.02]" : ""}`}
+                      >
 
-                      {/* JUGADOR */}
-                      <td className="py-4 px-5">
-                        <input type="text" value={item.player_name || ""} placeholder="Nombre del jugador"
-                          onChange={e => updateItem(idx, "player_name", e.target.value)}
-                          className="w-full h-11 rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background px-4 outline-none font-bold text-sm text-foreground-main transition-all" />
-                      </td>
+                        {/* CATEGORÍA */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            {isNew && (
+                              <span className="shrink-0 text-[8px] font-black bg-accent/10 text-accent px-1.5 py-0.5 rounded uppercase tracking-widest">
+                                Nuevo
+                              </span>
+                            )}
+                            <select
+                              value={item.garment_type || "Uniforme"}
+                              onChange={e => updateItem(idx, "garment_type", e.target.value)}
+                              className="h-11 min-w-[130px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-[11px] font-black uppercase text-foreground-main transition-all"
+                            >
+                              {CATEGORIES.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </td>
 
-                      {/* NÚMERO */}
-                      <td className="py-4 px-4">
-                        <input type="text" value={item.number || ""} placeholder="00"
-                          onChange={e => updateItem(idx, "number", e.target.value)}
-                          className="w-16 h-11 mx-auto rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none text-center font-black text-foreground-main transition-all" />
-                      </td>
+                        {/* JUGADOR */}
+                        <td className="py-4 px-4">
+                          <input
+                            type="text"
+                            value={item.player_name || ""}
+                            placeholder="Nombre del jugador"
+                            onChange={e => updateItem(idx, "player_name", e.target.value)}
+                            className="w-full h-11 rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background px-4 outline-none font-bold text-sm text-foreground-main transition-all"
+                          />
+                        </td>
 
-                      {/* TALLA */}
-                      <td className="py-4 px-4">
-                        <select value={item.size || ""} onChange={e => updateItem(idx, "size", e.target.value)}
-                          className="h-11 min-w-[90px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-center text-[11px] font-black uppercase text-foreground-main transition-all">
-                          <option value="">Talla</option>
-                          {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </td>
+                        {/* NÚMERO */}
+                        <td className="py-4 px-4">
+                          <input
+                            type="text"
+                            value={item.number || ""}
+                            placeholder="00"
+                            onChange={e => updateItem(idx, "number", e.target.value)}
+                            className="w-16 h-11 mx-auto block rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none text-center font-black text-foreground-main transition-all"
+                          />
+                        </td>
 
-                      {/* MANGA */}
-                      <td className="py-4 px-4">
-                        <select value={item.sleeve || ""} onChange={e => updateItem(idx, "sleeve", e.target.value)}
-                          className="h-11 min-w-[110px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-center text-[11px] font-black uppercase text-foreground-main transition-all">
-                          <option value="">Manga</option>
-                          <option value="Corta">Corta</option>
-                          <option value="Larga">Larga</option>
-                        </select>
-                      </td>
+                        {/* TALLA */}
+                        <td className="py-4 px-4">
+                          <select
+                            value={item.size || ""}
+                            onChange={e => updateItem(idx, "size", e.target.value)}
+                            className="h-11 min-w-[90px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-center text-[11px] font-black uppercase text-foreground-main transition-all"
+                          >
+                            <option value="">Talla</option>
+                            {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </td>
 
-                      {/* TIPO */}
-                      <td className="py-4 px-4">
-                        <select value={item.design_type || ""} onChange={e => updateItem(idx, "design_type", e.target.value)}
-                          className="h-11 min-w-[120px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-center text-[11px] font-black uppercase text-foreground-main transition-all">
-                          <option value="">Tipo</option>
-                          <option value="Jugador">Jugador</option>
-                          <option value="Portero">Portero</option>
-                        </select>
-                      </td>
+                        {/* MANGA */}
+                        <td className="py-4 px-4">
+                          <select
+                            value={item.sleeve || ""}
+                            onChange={e => updateItem(idx, "sleeve", e.target.value)}
+                            className="h-11 min-w-[110px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-center text-[11px] font-black uppercase text-foreground-main transition-all"
+                          >
+                            <option value="">Manga</option>
+                            <option value="Corta">Corta</option>
+                            <option value="Larga">Larga</option>
+                          </select>
+                        </td>
 
-                      {/* HORMA */}
-                      <td className="py-4 px-4">
-                        <select value={item.fit || ""} onChange={e => updateItem(idx, "fit", e.target.value)}
-                          className="h-11 min-w-[120px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-center text-[11px] font-black uppercase text-foreground-main transition-all">
-                          <option value="">Horma</option>
-                          <option value="Hombre">Hombre</option>
-                          <option value="Dama">Dama</option>
-                        </select>
-                      </td>
+                        {/* TIPO */}
+                        <td className="py-4 px-4">
+                          <select
+                            value={item.design_type || ""}
+                            onChange={e => updateItem(idx, "design_type", e.target.value)}
+                            className="h-11 min-w-[120px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-center text-[11px] font-black uppercase text-foreground-main transition-all"
+                          >
+                            <option value="">Tipo</option>
+                            <option value="Jugador">Jugador</option>
+                            <option value="Portero">Portero</option>
+                          </select>
+                        </td>
 
-                      {/* OBSERVACIONES */}
-                      <td className="py-4 px-5">
-                        <input type="text" value={item.observations || ""} placeholder="Observaciones..."
-                          onChange={e => updateItem(idx, "observations", e.target.value)}
-                          className="w-full h-11 rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background px-4 outline-none text-sm text-foreground-muted transition-all" />
-                      </td>
+                        {/* HORMA */}
+                        <td className="py-4 px-4">
+                          <select
+                            value={item.fit || ""}
+                            onChange={e => updateItem(idx, "fit", e.target.value)}
+                            className="h-11 min-w-[120px] rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background outline-none px-3 text-center text-[11px] font-black uppercase text-foreground-main transition-all"
+                          >
+                            <option value="">Horma</option>
+                            <option value="Hombre">Hombre</option>
+                            <option value="Dama">Dama</option>
+                          </select>
+                        </td>
 
-                      {/* DELETE */}
-                      <td className="py-4 px-5 text-right">
-                        <button onClick={() => removeItem(idx)}
-                          className="w-11 h-11 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center ml-auto">
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        {/* OBSERVACIONES */}
+                        <td className="py-4 px-4">
+                          <input
+                            type="text"
+                            value={item.observations || ""}
+                            placeholder="Observaciones..."
+                            onChange={e => updateItem(idx, "observations", e.target.value)}
+                            className="w-full h-11 rounded-xl bg-surface border border-transparent focus:border-accent/30 focus:bg-background px-4 outline-none text-sm text-foreground-muted transition-all"
+                          />
+                        </td>
 
-                  {items.length === 0 && (
+                        {/* DELETE */}
+                        <td className="py-4 px-4 text-right">
+                          <button
+                            onClick={() => removeItem(idx)}
+                            className="w-11 h-11 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center ml-auto"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {allItems.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="py-20 text-center">
+                      <td colSpan={9} className="py-20 text-center">
                         <div className="space-y-4">
                           <Shirt size={42} className="mx-auto text-foreground-muted/20" />
                           <div>
@@ -288,16 +375,20 @@ export function EditOrder({ order, items: initialItems, onCancel, onSuccess, use
           <div>
             <p className="text-[9px] font-black uppercase tracking-widest text-foreground-muted/20 mb-1">Total Costura</p>
             <p className="text-xl font-black text-accent tracking-tighter">
-              ${items.reduce((sum, item) => sum + (item.sewing_price || 0), 0).toLocaleString()}
+              ${allItems.reduce((sum, item) => sum + (item.sewing_price || 0), 0).toLocaleString()}
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={onCancel}
-              className="px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-foreground-muted hover:text-foreground-main transition-colors">
+            <button
+              onClick={onCancel}
+              className="px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-foreground-muted hover:text-foreground-main transition-colors"
+            >
               Cancelar
             </button>
-            <button onClick={handleSubmit}
-              className="bg-accent text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-accent/20">
+            <button
+              onClick={handleSubmit}
+              className="bg-accent text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-accent/20"
+            >
               Guardar Cambios
             </button>
           </div>

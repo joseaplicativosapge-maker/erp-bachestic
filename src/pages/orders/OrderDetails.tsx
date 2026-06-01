@@ -126,6 +126,7 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
   const [employees,          setEmployees]          = useState<Employee[]>([]);
   const [payments,           setPayments]           = useState([]);
   const [productPrices,      setProductPrices]      = useState<Record<string, number>>({});
+  const [products, setProducts] = useState<any[]>([]);
 
   // UI toggles
   const [showHistory,              setShowHistory]              = useState(false);
@@ -219,22 +220,26 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
 
   const loadOrder = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const [orderData, historyData, assignmentsData] = await Promise.all([
+      const [orderData, historyData, assignmentsData, productsData] = await Promise.all([
         api.getOrder(orderId),
         api.getOrderHistory(orderId),
         api.getOrderAssignments(orderId),
+        api.getProducts(),
       ]);
       setOrder(orderData);
       setHistory(historyData);
       setAssignments(assignmentsData);
       setProductionAssignments(assignmentsData.filter((a: any) => a.department !== "Confección"));
+      setProducts(productsData);
     } catch (err: any) {
       setError(err.message || "Error al cargar la orden");
     } finally {
       setLoading(false);
     }
+  };
+
+  const getItemCategory = (garmentType: string) => {
+    return garmentType || "—";
   };
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -472,9 +477,9 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
       [],
       ["DETALLE DE UNIFORMES"],
     ];
-    const headers = [["Nombre / Jugador", "Número", "Talla", "Manga", "Tipo", "Horma", "Observaciones"]];
+    const headers = [["Nombre / Jugador", "Categoria", "Número", "Talla", "Manga", "Tipo", "Horma", "Observaciones"]];
     const itemsData = order.items?.map(item => ([
-      item.player_name || "-", item.number || "-", item.size || "-",
+      item.player_name || "-", item.garment_type || "-", item.number || "-", item.size || "-",
       item.sleeve || "-", item.design_type || "-", item.fit || "-", item.observations || "-",
     ])) || [];
 
@@ -734,7 +739,7 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-foreground-main/[0.02]">
-                    {["Nombre / Jugador","N°","Talla","Manga","Tipo","Horma","Observaciones"].map((h, i) => (
+                    {["Nombre / Jugador", "Categoría", "N°", "Talla","Manga","Tipo","Horma","Observaciones"].map((h, i) => (
                       <th key={h} className={`py-10 ${i === 0 || i === 6 ? "px-10" : "px-6"} border-b border-border-custom ${i >= 1 && i <= 5 ? "text-center" : ""}`}>{h}</th>
                     ))}
                   </tr>
@@ -744,6 +749,11 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
                     <tr key={item.id || idx} className="hover:bg-gradient-to-r hover:from-accent/[0.03] hover:to-transparent transition-all duration-700 group border-b border-border-custom/50 last:border-0">
                       <td className="py-12 px-10">
                         <span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500 uppercase">{item.player_name || "-"}</span>
+                      </td>
+                      <td className="py-12 px-6">
+                        <span className="text-[10px] font-black text-foreground-muted uppercase tracking-widest">
+                          {item.garment_type || "—"}
+                        </span>
                       </td>
                       <td className="py-12 px-6 text-center"><span className="font-black text-foreground-main tracking-tighter">{item.number || "-"}</span></td>
                       <td className="py-12 px-6 text-center"><span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500">{item.size || "-"}</span></td>

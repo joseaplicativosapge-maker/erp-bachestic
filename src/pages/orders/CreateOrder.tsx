@@ -708,7 +708,13 @@ export function CreateOrder({ onCancel, onSuccess, user }: CreateOrderProps) {
                               <div className="min-w-0 flex-1">
                                 <p className="text-xs font-black text-foreground-main leading-tight">{type}</p>
                                 {code && <p className="text-[9px] font-black uppercase tracking-widest text-accent mt-0.5">{code}</p>}
+                                {product?.category && (
+                                  <p className="text-[9px] font-bold uppercase tracking-widest text-foreground-muted/60 mt-0.5">
+                                    {product.category}
+                                  </p>
+                                )}
                               </div>
+                              
                               {quantities[type] > 0 && (
                                 <span className="shrink-0 text-[9px] font-black bg-accent text-white px-2 py-0.5 rounded-full">
                                   {quantities[type]}
