@@ -11,7 +11,7 @@ import type { Order, OrderItem, OrderStatus, User } from "@/src/lib/types";
 
 const SIZES = ["2","4","6","8","10","12","14","16","S","M","L","XL","XXL"];
 
-const CATEGORIES = ["Uniforme", "Chaqueta", "Medias", "Camiseta"] as const;
+const CATEGORIES = ["Uniforme", "Pantaloneta", "Chaqueta", "Medias", "Camiseta"] as const;
 
 const DOC_TYPE_OPTIONS = [
   { value: "CC",        label: "CC"        },
@@ -117,11 +117,15 @@ export function EditOrder({ order, items: initialItems, onCancel, onSuccess, use
 
   const handleSubmit = async () => {
     try {
-      await api.updateOrder(order.id, { ...formData, user_name: user.name });
-
-      if (newItems.length > 0) {
-        await api.addItems(order.id, newItems.map(i => ({ ...i, section: 'Uniforme' })));
-      }
+      // Enviar todos los items (existentes + nuevos) en el PUT
+      await api.updateOrder(order.id, {
+        ...formData,
+        items: allItems.map(i => ({
+          ...i,
+          section: (i as any).section || 'uniforme',
+        })),
+        user_name: user.name,
+      });
 
       if (referenceFiles.length > 0) {
         const refsFormData = new FormData();

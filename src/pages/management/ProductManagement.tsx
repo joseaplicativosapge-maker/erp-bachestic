@@ -598,7 +598,7 @@ export function ProductManagement() {
             Categoría del Producto
           </p>
           <div className="flex flex-wrap gap-2">
-            {["Uniforme", "Chaqueta", "Medias", "Camiseta"].map(cat => (
+            {["Uniforme", "Pantaloneta", "Chaqueta", "Medias", "Camiseta"].map(cat => (
               <button
                 key={cat}
                 type="button"
