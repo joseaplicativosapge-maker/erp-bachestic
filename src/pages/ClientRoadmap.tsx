@@ -1640,7 +1640,7 @@ export default function ClientRoadmap({
         >
           <div className="w-full max-w-md bg-surface rounded-[40px] border border-border-custom p-10 shadow-2xl text-center space-y-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-accent" />
-            <img src="/logo-bachestic.png" alt="Bachestic" className="mx-auto object-contain" />
+            <img src="/erp/logo-bachestic.png" alt="Bachestic" className="mx-auto object-contain" />
             <div className="space-y-3">
               <h4 className="text-2xl font-black text-foreground-main tracking-tighter uppercase leading-tight">
                 ¡Bachestic está orgulloso de ser parte de tu equipo!

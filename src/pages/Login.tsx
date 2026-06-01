@@ -92,7 +92,7 @@ export default function Login({ onLogin }: LoginProps) {
         {/* Logo centrado */}
         <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-10">
           <img
-            src="/logo-bachestic.png"
+            src="/erp/logo-bachestic.png"
             alt="Logo Bachestic"
             className="w-[70%] max-w-[450px] object-contain drop-shadow-[0_0_60px_rgba(255,255,255,0.12)]"
           />

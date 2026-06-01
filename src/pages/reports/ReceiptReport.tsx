@@ -37,7 +37,7 @@ export function ReceiptReport({ order, payment }: ReceiptReportProps) {
     >
       {/* HEADER */}
       <div className="text-center border-b border-dashed border-black pb-4 mb-4">
-        <img src="/logo-bachestic.png" alt="Logo" className="mx-auto h-28 object-contain mb-2" />
+        <img src="/erp/logo-bachestic.png" alt="Logo" className="mx-auto h-28 object-contain mb-2" />
         <p className="text-[10px] mt-2">NIT: 123.456.789-0</p>
         <p className="text-[10px]">Calle 123 #45-67</p>
         <p className="text-[10px]">Tel: +57 300 123 4567</p>
