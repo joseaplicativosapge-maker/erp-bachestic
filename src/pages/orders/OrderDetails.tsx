@@ -7,7 +7,7 @@ import {
   ArrowLeft, AlertCircle, Star, Download, Shirt, FileText,
   Palette, CheckCircle2, Upload, Clock, History, Users, Plus,
   DollarSign, Printer, AlertTriangle, MessageSquare, Maximize2,
-  X, ChevronDown,
+  X, ChevronDown, Package
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
@@ -727,7 +727,7 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
                 </div>
               </div>
               <span className="text-[10px] font-black text-foreground-muted uppercase tracking-[0.2em] bg-surface-hover px-5 py-2.5 rounded-2xl border border-border-custom shadow-inner">
-                {order.items?.length || 0} Unidades
+                {order.items?.filter(i => (i as any).section !== 'adicional').length || 0} Unidades
               </span>
             </div>
             <div className="overflow-x-auto relative z-10">
@@ -740,7 +740,7 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-custom">
-                  {order.items?.map((item, idx) => (
+                  {order.items?.filter(i => (i as any).section !== 'adicional').map((item, idx) => (
                     <tr key={item.id || idx} className="hover:bg-gradient-to-r hover:from-accent/[0.03] hover:to-transparent transition-all duration-700 group border-b border-border-custom/50 last:border-0">
                       <td className="py-12 px-10">
                         <span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500 uppercase">{item.player_name || "-"}</span>
@@ -757,6 +757,74 @@ export function OrderDetails({ orderId, onBack, onUpdate, user, canEdit }: Order
               </table>
             </div>
           </div>
+
+          {/* ADDITIONAL PRODUCTS TABLE */}
+          {(() => {
+            const adicionales = order.items?.filter(i => (i as any).section === 'adicional') ?? [];
+            if (!adicionales.length) return null;
+            return (
+              <div className="bg-surface rounded-[48px] border border-border-custom shadow-2xl overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 blur-[100px] -mr-32 -mt-32" />
+                <div className="p-12 border-b border-border-custom flex items-center justify-between relative z-10">
+                  <div className="flex items-center gap-6">
+                    <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center shadow-lg shadow-accent/5">
+                      <Package className="text-accent" size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-foreground-main uppercase tracking-[0.4em] text-[11px]">Productos Adicionales</h4>
+                      <p className="text-[9px] font-bold text-foreground-muted uppercase tracking-widest mt-1">Chaquetas, medias, camisetas individuales</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-black text-foreground-muted uppercase tracking-[0.2em] bg-surface-hover px-5 py-2.5 rounded-2xl border border-border-custom shadow-inner">
+                    {adicionales.length} Unidades
+                  </span>
+                </div>
+                <div className="overflow-x-auto relative z-10">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-foreground-main/[0.02]">
+                        {["Prenda", "Nombre / Jugador", "N°", "Talla", "Manga", "Tipo", "Horma", "Observaciones"].map((h, i) => (
+                          <th key={h} className={`py-8 ${i === 0 || i === 7 ? "px-10" : "px-6"} border-b border-border-custom text-[9px] uppercase font-black tracking-[0.25em] text-foreground-muted ${i >= 2 && i <= 6 ? "text-center" : ""}`}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-custom">
+                      {adicionales.map((item, idx) => (
+                        <tr key={item.id || idx} className="hover:bg-gradient-to-r hover:from-accent/[0.03] hover:to-transparent transition-all duration-700 group">
+                          <td className="py-8 px-10">
+                            <span className="font-black text-accent text-[10px] uppercase tracking-widest">{item.garment_type || "—"}</span>
+                          </td>
+                          <td className="py-8 px-6">
+                            <span className="font-black text-foreground-main tracking-tighter group-hover:text-accent transition-all duration-500 uppercase">{item.player_name || "—"}</span>
+                          </td>
+                          <td className="py-8 px-6 text-center">
+                            <span className="font-black text-foreground-main">{item.number || "—"}</span>
+                          </td>
+                          <td className="py-8 px-6 text-center">
+                            <span className="font-black text-foreground-main group-hover:text-accent transition-all duration-500">{item.size || "—"}</span>
+                          </td>
+                          <td className="py-8 px-6 text-center">
+                            <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.sleeve || "—"}</span>
+                          </td>
+                          <td className="py-8 px-6 text-center">
+                            <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.design_type || "—"}</span>
+                          </td>
+                          <td className="py-8 px-6 text-center">
+                            <span className="font-black text-foreground-main text-xs uppercase tracking-widest">{item.fit || "—"}</span>
+                          </td>
+                          <td className="py-8 px-10">
+                            <span className="text-foreground-main italic text-[11px] font-bold leading-relaxed">{item.observations || "—"}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* RIGHT COLUMN */}

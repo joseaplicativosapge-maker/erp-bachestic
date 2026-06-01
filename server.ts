@@ -251,6 +251,8 @@ async function startServer() {
 
   try { db.prepare('ALTER TABLE orders ADD COLUMN is_priority BOOLEAN DEFAULT 0').run(); } catch (e) {}
 
+  try { db.prepare("ALTER TABLE order_items ADD COLUMN section TEXT DEFAULT 'uniforme'").run(); } catch (e) {}
+  
   const app = express();
   const PORT = 3000;
 
@@ -982,4 +984,4 @@ app.get('/api/orders/:id/assignments', (req, res) => {
   });
 }
 
-startServer();
+startServer(); 

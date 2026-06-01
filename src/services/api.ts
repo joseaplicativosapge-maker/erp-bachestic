@@ -1,7 +1,7 @@
 import { Order, OrderItem, OrderStatus, Employee, 
   ProductionAssignment, EmployeeReport, User, Client, OrderHistory, Product, Team } from '../lib/types';
 
-const API_BASE = '/erp/api';
+const API_BASE = '/api';
 
 const handleResponse = async (res: Response) => {
   const text = await res.text();

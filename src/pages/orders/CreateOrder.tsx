@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Plus, Search, X, Users, ChevronRight,
-  Contact, Calculator, Shirt, 
+  Contact, Calculator, Shirt, Package
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
@@ -128,7 +128,7 @@ interface CreateOrderProps {
 export function CreateOrder({ onCancel, onSuccess, user }: CreateOrderProps) {
 
   // ── State ─────────────────────────────────────────────────────────────────
-
+  const [additionalItems, setAdditionalItems] = useState<Partial<OrderItem>[]>([]);
   const [step,             setStep]             = useState(1);
   const [clientSearch,     setClientSearch]     = useState("");
   const [searchResults,    setSearchResults]    = useState<Client[]>([]);
@@ -148,7 +148,7 @@ export function CreateOrder({ onCancel, onSuccess, user }: CreateOrderProps) {
   const [showReceipt,    setShowReceipt]    = useState(false);
   const [createdOrder,   setCreatedOrder]   = useState<Order | null>(null);
   const [createdPayment, setCreatedPayment] = useState<Payment | null>(null);
-
+  
   // ── Effects ───────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -261,6 +261,7 @@ export function CreateOrder({ onCancel, onSuccess, user }: CreateOrderProps) {
       }
     });
     setItems(newItems);
+    setAdditionalItems([]);  // ← resetea al avanzar
     setStep(2);
   };
 
@@ -268,20 +269,15 @@ export function CreateOrder({ onCancel, onSuccess, user }: CreateOrderProps) {
     try {
       let finalClientId = formData.client_id;
       let finalTeamId   = formData.team_id;
-
       const computedTotal = computeConfeccionTotal(quantities, products);
 
       if (isCreatingClient) {
         const newClient = await api.createClient({
-          name:     formData.client_name,
-          doc:      formData.client_doc,
-          doc_type: formData.client_doc_type,
-          phone:    formData.client_phone,
-          address:  formData.client_address,
-          city:     formData.client_city,
+          name: formData.client_name, doc: formData.client_doc,
+          doc_type: formData.client_doc_type, phone: formData.client_phone,
+          address: formData.client_address, city: formData.client_city,
         });
         finalClientId = newClient.id;
-
         if (selectedTeam && finalClientId) {
           try {
             const newTeam = await api.createClientTeam(finalClientId, { name: selectedTeam.name });
@@ -308,7 +304,11 @@ export function CreateOrder({ onCancel, onSuccess, user }: CreateOrderProps) {
         user_name:    user.name,
       });
 
-      await api.addItems(id, items);
+      const allItems = [
+        ...items.map(i => ({ ...i, section: 'uniforme' })),
+        ...additionalItems.map(i => ({ ...i, section: 'adicional' })),
+      ];
+      await api.addItems(id, allItems);
       toast.success("Orden creada correctamente");
       onSuccess();
     } catch (error) {
@@ -794,9 +794,10 @@ export function CreateOrder({ onCancel, onSuccess, user }: CreateOrderProps) {
           </div>
         )}
 
-        {/* ── STEP 2 ─────────────────────────────────────────────────────── */}
         {step === 2 && (
           <div className="space-y-8">
+
+            {/* Cliente header */}
             <div className="flex justify-between items-center bg-accent/5 p-6 rounded-[24px] border border-accent/20">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-white shadow-lg shadow-accent/20">
@@ -814,18 +815,21 @@ export function CreateOrder({ onCancel, onSuccess, user }: CreateOrderProps) {
                 </div>
               </div>
               <button
-                onClick={() => {
-                  setStep(1);
-                  resetClient();
-                }}
+                onClick={() => setStep(1)}
                 className="text-[10px] font-black text-accent uppercase tracking-widest hover:text-accent/70 transition-colors"
               >
-                Cambiar Cliente
+                Volver
               </button>
             </div>
 
-            <div className="space-y-6">
-              <h4 className="font-black text-xl tracking-tight text-foreground-main uppercase">Listado de Uniformes</h4>
+            {/* ── UNIFORMES ── */}
+            <div className="space-y-4">
+              <h4 className="font-black text-xl tracking-tight text-foreground-main uppercase flex items-center gap-3">
+                <Shirt size={20} className="text-accent" /> Listado de Uniformes
+                <span className="text-xs font-black bg-surface-hover border border-border-custom text-foreground-muted px-2.5 py-1 rounded-full">
+                  {items.length} uds
+                </span>
+              </h4>
               <div className="overflow-x-auto border border-border-custom rounded-[32px] bg-surface-hover">
                 <table className="w-full text-left text-sm">
                   <thead>
@@ -855,6 +859,90 @@ export function CreateOrder({ onCancel, onSuccess, user }: CreateOrderProps) {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* ── PRODUCTOS ADICIONALES ── */}
+            <div className="space-y-4 pt-6 border-t border-border-custom">
+              <div className="flex items-center justify-between">
+                <h4 className="font-black text-xl tracking-tight text-foreground-main uppercase flex items-center gap-3">
+                  <Package size={20} className="text-accent" />
+                  Productos Adicionales
+                  {additionalItems.length > 0 && (
+                    <span className="text-xs font-black bg-accent text-white px-2.5 py-1 rounded-full">
+                      {additionalItems.length}
+                    </span>
+                  )}
+                </h4>
+                <button
+                  onClick={() => setAdditionalItems(prev => [
+                    ...prev,
+                    { garment_type: "", player_name: "", number: "", size: "",
+                      sleeve: "", design_type: "", fit: "", observations: "",
+                      sewing_price: 0, sale_price: 0 },
+                  ])}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border-2 border-dashed border-accent/40 text-accent hover:bg-accent/5 transition-all text-[10px] font-black uppercase tracking-widest"
+                >
+                  <Plus size={14} /> Agregar
+                </button>
+              </div>
+
+              {additionalItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 rounded-[24px] border border-dashed border-border-custom bg-surface-hover/50 text-center">
+                  <Package size={28} className="text-foreground-muted/20 mb-3" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted/50">Sin productos adicionales</p>
+                  <p className="text-[9px] text-foreground-muted/30 mt-1">Chaquetas, medias, camisetas individuales, etc.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {additionalItems.map((item, idx) => (
+                    <div key={idx} className="p-5 rounded-[24px] border border-border-custom bg-surface-hover space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-accent flex items-center gap-2">
+                          <Package size={12} /> Producto #{idx + 1}
+                        </p>
+                        <button
+                          onClick={() => setAdditionalItems(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-foreground-muted hover:text-accent transition-colors p-1"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className="col-span-2 md:col-span-3">
+                          <Input
+                            label="Tipo de Prenda"
+                            value={item.garment_type || ""}
+                            placeholder="Ej. Chaqueta, Medias, Camiseta individual..."
+                            onChange={e => setAdditionalItems(prev =>
+                              prev.map((it, i) => i === idx ? { ...it, garment_type: e.target.value } : it)
+                            )}
+                          />
+                        </div>
+                        <Input label="Nombre / Jugador" value={item.player_name || ""} placeholder="Ej. Carlos García"
+                          onChange={e => setAdditionalItems(prev => prev.map((it, i) => i === idx ? { ...it, player_name: e.target.value } : it))} />
+                        <Input label="Número" value={item.number || ""} placeholder="Ej. 10"
+                          onChange={e => setAdditionalItems(prev => prev.map((it, i) => i === idx ? { ...it, number: e.target.value } : it))} />
+                        <Input label="Talla" value={item.size || ""} placeholder="XS / S / M / L / XL"
+                          onChange={e => setAdditionalItems(prev => prev.map((it, i) => i === idx ? { ...it, size: e.target.value } : it))} />
+                        <Input label="Manga" value={item.sleeve || ""} placeholder="Corta / Larga"
+                          onChange={e => setAdditionalItems(prev => prev.map((it, i) => i === idx ? { ...it, sleeve: e.target.value } : it))} />
+                        <Input label="Tipo Diseño" value={item.design_type || ""} placeholder="Sublimación / Bordado..."
+                          onChange={e => setAdditionalItems(prev => prev.map((it, i) => i === idx ? { ...it, design_type: e.target.value } : it))} />
+                        <Input label="Fit / Horma" value={item.fit || ""} placeholder="Regular / Ajustado"
+                          onChange={e => setAdditionalItems(prev => prev.map((it, i) => i === idx ? { ...it, fit: e.target.value } : it))} />
+                        <div className="col-span-2 md:col-span-3">
+                          <Input label="Observaciones" value={item.observations || ""} placeholder="Detalles especiales..."
+                            onChange={e => setAdditionalItems(prev => prev.map((it, i) => i === idx ? { ...it, observations: e.target.value } : it))} />
+                        </div>
+                        <Input label="Precio Confección" type="number" value={item.sewing_price || 0}
+                          onChange={e => setAdditionalItems(prev => prev.map((it, i) => i === idx ? { ...it, sewing_price: Number(e.target.value) } : it))} />
+                        <Input label="Precio Venta" type="number" value={item.sale_price || 0}
+                          onChange={e => setAdditionalItems(prev => prev.map((it, i) => i === idx ? { ...it, sale_price: Number(e.target.value) } : it))} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

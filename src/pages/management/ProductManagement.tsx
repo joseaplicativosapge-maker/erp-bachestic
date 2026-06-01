@@ -20,7 +20,7 @@ const ITEMS_PER_PAGE = 9;
 const EMPTY_FORM = {
   code: "",
   name: "",
-  category: "Camiseta",
+  category: "Uniforme",
   sale_price: 0,
   sewing_cost: 0,
   active: true,
@@ -476,6 +476,14 @@ export function ProductManagement() {
                     <h4 className="text-xl font-black text-foreground-main tracking-tight uppercase">
                       {product.name}
                     </h4>
+                    <span className={cn(
+                      "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full",
+                      product.category === "Uniforme"
+                        ? "bg-blue-500/10 text-blue-400"
+                        : "bg-purple-500/10 text-purple-400"
+                    )}>
+                      {product.category || "Uniforme"}
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-custom">
@@ -583,6 +591,33 @@ export function ProductManagement() {
             />
             {errors.name && <ErrorMessage message={errors.name} />}
           </div>
+          
+          {/* CATEGORÍA */}
+        <div className="space-y-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-foreground-muted">
+            Categoría del Producto
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {["Uniforme", "Chaqueta", "Medias", "Camiseta", "Otro"].map(cat => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setNewProduct(p => ({ ...p, category: cat }))}
+                className={cn(
+                  "px-4 py-2.5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border",
+                  newProduct.category === cat
+                    ? "bg-accent text-white border-accent shadow-lg shadow-accent/20"
+                    : "bg-surface-hover text-foreground-muted border-border-custom hover:text-foreground-main"
+                )}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+          <p className="text-[9px] text-foreground-muted/60 font-bold uppercase tracking-widest">
+            "Uniforme" aparece en cantidades al crear órdenes. Las demás como productos adicionales.
+          </p>
+        </div>
 
           {/* COSTOS — CAMISETA */}
           <div className="space-y-3">
